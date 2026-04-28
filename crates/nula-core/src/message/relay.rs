@@ -54,6 +54,9 @@ pub enum MachineReadablePrefix {
     Error,
     /// `restricted:` — the author lacks permission (e.g. NIP-42 not done).
     Restricted,
+    /// `mute:` — an ephemeral event nobody was listening to (NIP-01 §OK
+    /// examples).
+    Mute,
     /// `auth-required:` — NIP-42 authentication is required.
     AuthRequired,
     /// `payment-required:` — paid relay; the client has not paid yet.
@@ -72,6 +75,7 @@ impl MachineReadablePrefix {
             Self::Invalid => "invalid",
             Self::Error => "error",
             Self::Restricted => "restricted",
+            Self::Mute => "mute",
             Self::AuthRequired => "auth-required",
             Self::PaymentRequired => "payment-required",
         }
@@ -105,6 +109,7 @@ impl FromStr for MachineReadablePrefix {
             "invalid" => Self::Invalid,
             "error" => Self::Error,
             "restricted" => Self::Restricted,
+            "mute" => Self::Mute,
             "auth-required" => Self::AuthRequired,
             "payment-required" => Self::PaymentRequired,
             _ => return Err(MachineReadablePrefixError::Unknown),
@@ -338,7 +343,11 @@ where
     let accepted: bool = seq
         .next_element()?
         .ok_or_else(|| malformed::<A::Error>(TAG_OK, "missing accepted flag"))?;
-    let message: String = seq.next_element()?.unwrap_or_default();
+    // NIP-01: "The 4th parameter MUST always be present, but MAY be an
+    // empty string when the 3rd is true". An absent message is malformed.
+    let message: String = seq
+        .next_element()?
+        .ok_or_else(|| malformed::<A::Error>(TAG_OK, "missing message"))?;
     Ok(RelayMessage::Ok {
         event_id,
         accepted,
@@ -526,8 +535,32 @@ mod tests {
             MachineReadablePrefix::from_reason("auth-required: please"),
             Some(MachineReadablePrefix::AuthRequired)
         );
+        assert_eq!(
+            MachineReadablePrefix::from_reason("mute: nobody listening"),
+            Some(MachineReadablePrefix::Mute)
+        );
         assert!(MachineReadablePrefix::from_reason("no prefix").is_none());
         assert!(MachineReadablePrefix::from_reason("unknown: thing").is_none());
+    }
+
+    #[test]
+    fn ok_round_trips_mute_prefix() {
+        let msg = RelayMessage::Ok {
+            event_id: signed_event().id,
+            accepted: false,
+            message: "mute: nobody was listening".to_owned(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let parsed: RelayMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, msg);
+    }
+
+    #[test]
+    fn ok_rejects_missing_message_per_nip01() {
+        // NIP-01: "The 4th parameter MUST always be present"
+        let json = format!(r#"["OK","{}",true]"#, signed_event().id.to_hex());
+        let err = serde_json::from_str::<RelayMessage>(&json).unwrap_err();
+        assert!(err.to_string().contains("missing message"));
     }
 
     #[test]
