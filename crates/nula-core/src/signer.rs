@@ -134,11 +134,9 @@ mod tests {
         let waker = Waker::noop();
         let mut cx = Context::from_waker(waker);
         let mut fut = pin!(f);
-        loop {
-            match fut.as_mut().poll(&mut cx) {
-                Poll::Ready(out) => return out,
-                Poll::Pending => panic!("future is not synchronous; use a real executor"),
-            }
+        match fut.as_mut().poll(&mut cx) {
+            Poll::Ready(out) => out,
+            Poll::Pending => unreachable!("test futures must be synchronous"),
         }
     }
 

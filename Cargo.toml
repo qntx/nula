@@ -28,7 +28,7 @@ bitcoin_hashes = { version = "0.20", default-features = false, features = ["std"
 sha2 = { version = "0.10", default-features = false, features = ["std"] }
 
 # Encoding
-bech32 = { version = "0.11.1", default-features = false, features = ["alloc"] }
+bech32 = { version = "0.11.1", default-features = false, features = ["std"] }
 faster-hex = { version = "0.10.0", default-features = false, features = ["std"] }
 url = { version = "2.5.8", default-features = false, features = ["serde"] }
 

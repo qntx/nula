@@ -17,11 +17,26 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/nula-core")]
 #![forbid(unsafe_code)]
+#![cfg_attr(
+    test,
+    allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::indexing_slicing,
+        clippy::missing_panics_doc,
+        clippy::missing_assert_message,
+        clippy::missing_errors_doc,
+        clippy::tests_outside_test_module,
+        reason = "test code may use panicking and indexing idioms for brevity"
+    )
+)]
 
 pub mod event;
 pub mod filter;
 pub mod key;
 pub mod message;
+pub mod nip19;
 pub mod signer;
 pub mod types;
 pub mod util;
@@ -36,6 +51,10 @@ pub use self::key::{Keys, PublicKey, PublicKeyError, SecretKey, SecretKeyError};
 pub use self::message::{
     ClientMessage, ClientMessageError, MachineReadablePrefix, MachineReadablePrefixError,
     RelayMessage, RelayMessageError, SubscriptionId, SubscriptionIdError,
+};
+pub use self::nip19::{
+    FromBech32, FromBech32Error, Nip19Coordinate, Nip19Entity, Nip19Event, Nip19Profile, ToBech32,
+    ToBech32Error,
 };
 pub use self::signer::{NostrSigner, SignerError, SignerFuture};
 pub use self::types::{

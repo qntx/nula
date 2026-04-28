@@ -24,6 +24,7 @@ default = ["std"]
 std = []
 
 [dependencies]
+bech32.workspace = true
 faster-hex.workspace = true
 getrandom.workspace = true
 secp256k1 = { workspace = true, features = ["global-context", "rand"] }
