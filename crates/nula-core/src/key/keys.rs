@@ -116,6 +116,16 @@ impl fmt::Debug for Keys {
     }
 }
 
+impl Drop for Keys {
+    fn drop(&mut self) {
+        // Erase the cached keypair's private half. The wrapped `SecretKey`
+        // is erased independently by its own `Drop` impl, so both copies of
+        // the secret material are best-effort zeroized when `Keys` falls
+        // out of scope.
+        self.keypair.non_secure_erase();
+    }
+}
+
 impl PartialEq for Keys {
     fn eq(&self, other: &Self) -> bool {
         self.secret_key == other.secret_key

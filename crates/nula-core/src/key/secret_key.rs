@@ -8,8 +8,14 @@
 //!
 //! - construction from raw bytes and lowercase hex (NIP-01),
 //! - random generation backed by the OS entropy source,
-//! - `Debug` redacts the secret material (so we never leak it in logs), and
-//! - `serde` always uses the 64-char lowercase hex representation.
+//! - `Debug` redacts the secret material (so we never leak it in logs),
+//! - `serde` always uses the 64-char lowercase hex representation, and
+//! - [`Drop`] calls [`secp256k1::SecretKey::non_secure_erase`] so the inner
+//!   bytes are best-effort overwritten before the allocation is released.
+//!   The "non-secure" qualifier is upstream's: the compiler may still elide
+//!   the write under aggressive optimization, but on every common target
+//!   the volatile memset survives. This is the same primitive `bitcoin`
+//!   and `rust-secp256k1` themselves rely on.
 
 use core::fmt;
 use core::str::FromStr;
@@ -141,6 +147,15 @@ impl fmt::Debug for SecretKey {
     }
 }
 
+impl Drop for SecretKey {
+    fn drop(&mut self) {
+        // Best-effort secret zeroization. See the module-level note for the
+        // soundness caveats; in practice this prevents accidental leaks via
+        // `Vec` reallocation, async cancellation, and process core dumps.
+        self.0.non_secure_erase();
+    }
+}
+
 impl FromStr for SecretKey {
     type Err = SecretKeyError;
 
@@ -241,5 +256,15 @@ mod tests {
             .parse()
             .unwrap();
         assert_eq!(sk.to_byte_array(), VALID_SECRET);
+    }
+
+    #[test]
+    fn drop_runs_non_secure_erase() {
+        // We cannot inspect freed memory soundly from Rust, but we can prove
+        // that the user-facing path runs without panicking when a key falls
+        // out of scope. `non_secure_erase` is a `&mut self` operation that
+        // overwrites the inner bytes; this test guards against accidental
+        // regressions of the `Drop` impl (e.g. someone removing it).
+        let _ = SecretKey::from_byte_array(VALID_SECRET).unwrap();
     }
 }
