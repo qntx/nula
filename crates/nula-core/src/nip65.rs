@@ -150,6 +150,14 @@ impl RelayList {
 
     /// Insert or replace the relay's marker. Returns the previous marker, if
     /// any.
+    ///
+    /// # Spec recommendation
+    ///
+    /// NIP-65 §Size says: "Clients SHOULD guide users to keep `kind:10002`
+    /// lists small (2-4 relays of each category)." The crate does not
+    /// enforce that bound — it would be a breaking surprise — but a
+    /// caller building user-facing UX should warn well before the list
+    /// crosses, say, 8 read or 8 write relays.
     pub fn insert(&mut self, url: RelayUrl, marker: RelayMarker) -> Option<RelayMarker> {
         self.relays.insert(url, marker)
     }

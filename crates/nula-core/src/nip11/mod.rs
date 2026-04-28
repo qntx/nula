@@ -62,6 +62,10 @@ pub struct RelayInformation {
     /// Software version string.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
+    /// Link to the relay's terms-of-service document (NIP-11 §Terms of
+    /// Service). Free text; typically a URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terms_of_service: Option<Url>,
     /// Visual representation of the relay (NIP-11 §Banner).
     ///
     /// Distinct from [`Self::icon`]: a banner is the wide visual used in
@@ -76,15 +80,28 @@ pub struct RelayInformation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limitation: Option<RelayLimitation>,
     /// Two-letter ISO country codes the relay primarily serves.
+    ///
+    /// Not part of NIP-11's normative spec; defined under §"Community
+    /// Preferences" and emitted by relays such as `nostr.wine`.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub relay_countries: Vec<String>,
     /// IETF BCP-47 language tags the operator suggests for the relay.
+    ///
+    /// Not part of NIP-11's normative spec; defined under §"Community
+    /// Preferences" and used by community indexes to filter discovery.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub language_tags: Vec<String>,
     /// Free-form classification tags (`"spanish"`, `"music"`, …).
+    ///
+    /// Not part of NIP-11's normative spec; defined under §"Community
+    /// Preferences" alongside `relay_countries` and `language_tags`.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     /// Posting policy URL (terms of use).
+    ///
+    /// Distinct from [`Self::terms_of_service`]: this is the *content*
+    /// policy (what users may post). Defined alongside the community
+    /// preferences block.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub posting_policy: Option<Url>,
     /// Web page where users can pay fees.
@@ -140,6 +157,7 @@ mod tests {
             supported_nips: vec![1, 9, 11, 19, 42],
             software: Some(Url::parse("https://github.com/qntx/nula").unwrap()),
             version: Some("0.1.0".to_owned()),
+            terms_of_service: Some(Url::parse("https://nula.example/tos").unwrap()),
             banner: Some(Url::parse("https://nula.example/banner.png").unwrap()),
             icon: Some(Url::parse("https://nula.example/icon.png").unwrap()),
             limitation: Some(RelayLimitation {

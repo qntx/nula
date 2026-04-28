@@ -42,7 +42,14 @@ pub enum EventBuilderError {
 /// gossip planners, fuzzers, …) can mutate them without going through the
 /// builder methods. Direct construction is intentionally cheap: every field
 /// is owned and the builder never copies anything implicitly.
+///
+/// The struct is `#[non_exhaustive]` so future versions may add fields
+/// (e.g. an `unsigned_event_id` cache, a `random_aux` slot for NIP-13
+/// mining) without breaking downstream pattern matches or struct
+/// literals. In-crate construction continues to use struct-literal syntax
+/// because `non_exhaustive` only restricts callers in *other* crates.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct EventBuilder {
     /// Event kind. Defaults to [`Kind::TEXT_NOTE`].
     pub kind: Kind,

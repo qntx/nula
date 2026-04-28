@@ -92,6 +92,23 @@ impl CommentScope {
 ///
 /// Both `root` and `parent` are mandatory; if the comment replies directly
 /// to the root, set both fields to the same scope.
+///
+/// # Spec note on `K` / `P` tags
+///
+/// NIP-22 declares that the `K` (root kind) and `P` (root pubkey) tags
+/// "MUST be" present alongside an `E`/`A` root scope. The crate stores
+/// them as `Option`s for two practical reasons:
+///
+/// - the [`CommentScope::External`] flavour has no inherent kind or
+///   author (the comment targets a URL, podcast, or NIP-73 identifier),
+/// - real-world events from Coracle, Damus and others sometimes ship a
+///   comment without the K/P columns, and the lenient parser would
+///   otherwise reject them.
+///
+/// Authors writing new NIP-22 events targeting [`CommentScope::Event`] /
+/// [`CommentScope::Address`] roots SHOULD set [`Self::root_kind`] (and
+/// the matching parent kind / author hints) so downstream relays can
+/// index the comment correctly.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Comment {
     /// Top of the conversation.
