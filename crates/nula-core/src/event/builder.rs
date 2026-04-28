@@ -27,6 +27,7 @@ use crate::types::{Timestamp, TimestampError};
 
 /// Errors raised by [`EventBuilder`] terminal methods.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum EventBuilderError {
     /// The system clock could not be read while choosing `created_at`.
     #[error("could not read the system clock: {0}")]
@@ -36,29 +37,32 @@ pub enum EventBuilderError {
     Signer(#[from] UnsignedEventError),
 }
 
-/// Fluent builder.
+/// Fluent builder for [`UnsignedEvent`] / [`Event`].
 ///
-/// All fields are public so adapters in higher layers (NIP-specific helpers,
-/// gossip planners, fuzzers, …) can mutate them without going through the
-/// builder methods. Direct construction is intentionally cheap: every field
-/// is owned and the builder never copies anything implicitly.
+/// The four constituents — `kind`, `content`, `tags`, `created_at` — are
+/// **private** by design: callers must go through the builder methods to
+/// mutate them. The reason is twofold:
 ///
-/// The struct is `#[non_exhaustive]` so future versions may add fields
-/// (e.g. an `unsigned_event_id` cache, a `random_aux` slot for NIP-13
-/// mining) without breaking downstream pattern matches or struct
-/// literals. In-crate construction continues to use struct-literal syntax
-/// because `non_exhaustive` only restricts callers in *other* crates.
+/// 1. NIP-46 / NIP-59 (gift wrap) compose builders that produce
+///    *encrypted* `content` derived from a particular `(kind, tags)`
+///    snapshot. Letting outer code reach in and rewrite, say, `kind`
+///    after the inner ciphertext was sealed would silently corrupt the
+///    event without the type system noticing.
+/// 2. Keeping the surface fluent (`builder.kind(K).tag(t).content(c)`)
+///    means downstream code never has to know whether a field is `String`
+///    vs `Cow<'_, str>` vs `&str` — we can change the storage type freely
+///    without breaking callers.
+///
+/// The struct is `#[non_exhaustive]` so future versions may add
+/// configuration fields (`PoW` search budget, dedup toggles, mining-aux
+/// nonce cache, …) without breaking downstream pattern matches.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct EventBuilder {
-    /// Event kind. Defaults to [`Kind::TEXT_NOTE`].
-    pub kind: Kind,
-    /// Event content.
-    pub content: String,
-    /// Event tags (insertion order is preserved).
-    pub tags: Tags,
-    /// Optional `created_at`. `None` means "use the wall clock at sign time".
-    pub created_at: Option<Timestamp>,
+    kind: Kind,
+    content: String,
+    tags: Tags,
+    created_at: Option<Timestamp>,
 }
 
 impl EventBuilder {
@@ -83,6 +87,43 @@ impl EventBuilder {
         S: Into<String>,
     {
         Self::new(Kind::TEXT_NOTE, content)
+    }
+
+    /// Read-only accessor for the event kind.
+    #[must_use]
+    pub const fn current_kind(&self) -> Kind {
+        self.kind
+    }
+
+    /// Read-only accessor for the event content.
+    #[must_use]
+    pub fn current_content(&self) -> &str {
+        &self.content
+    }
+
+    /// Read-only accessor for the event tags.
+    #[must_use]
+    pub const fn current_tags(&self) -> &Tags {
+        &self.tags
+    }
+
+    /// Read-only accessor for the explicitly pinned `created_at`.
+    ///
+    /// `None` means "use the wall clock at sign time".
+    #[must_use]
+    pub const fn current_created_at(&self) -> Option<Timestamp> {
+        self.created_at
+    }
+
+    /// Mutable accessor for the in-progress tag list.
+    ///
+    /// Use this when a tag insertion needs custom logic (deduplication,
+    /// uniqueness, replace-or-push) that the fluent [`Self::tag`] /
+    /// [`Self::tags`] helpers do not cover. The fluent methods remain the
+    /// preferred surface for plain appends.
+    #[must_use]
+    pub const fn tags_mut(&mut self) -> &mut Tags {
+        &mut self.tags
     }
 
     /// Set the event kind (overrides any previously set value).

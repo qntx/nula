@@ -30,6 +30,7 @@ const TAG_COUNT: &str = "COUNT";
 
 /// Errors raised when parsing a [`ClientMessage`].
 #[derive(Debug, Clone, Error)]
+#[non_exhaustive]
 pub enum ClientMessageError {
     /// The wire array was empty.
     #[error("client message must not be empty")]
@@ -49,6 +50,7 @@ pub enum ClientMessageError {
 
 /// Messages sent from a client to a relay.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ClientMessage {
     /// Publish an event to the relay.
     ///

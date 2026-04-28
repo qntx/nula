@@ -58,8 +58,16 @@ impl Kind {
     pub const REPORTING: Self = Self(1984);
     /// Relay authentication (NIP-42).
     pub const AUTHENTICATION: Self = Self(22242);
+    /// Seal (NIP-59) — the encrypted middle layer of a gift-wrapped event.
+    pub const SEAL: Self = Self(13);
+    /// Private direct message (NIP-17).
+    pub const PRIVATE_DIRECT_MESSAGE: Self = Self(14);
+    /// File message (NIP-17).
+    pub const FILE_MESSAGE: Self = Self(15);
     /// Gift wrap (NIP-59).
     pub const GIFT_WRAP: Self = Self(1059);
+    /// Direct-message relay list (NIP-17 §10050).
+    pub const DM_RELAYS: Self = Self(10_050);
     /// Long-form content (NIP-23).
     pub const LONG_FORM_TEXT_NOTE: Self = Self(30023);
     /// Relay list metadata (NIP-65).
@@ -83,10 +91,13 @@ impl Kind {
         matches!(self.0, 0 | 3 | 10_000..=19_999)
     }
 
-    /// True for the `30000..=39999` parameterized replaceable range
-    /// (NIP-01 / NIP-33).
+    /// True for the `30000..=39999` addressable range (NIP-01).
+    ///
+    /// Addressable events are uniquely identified by
+    /// `(pubkey, kind, d-tag)` and are the modern term for what NIP-33
+    /// originally called "parameterized replaceable events".
     #[must_use]
-    pub const fn is_parameterized_replaceable(self) -> bool {
+    pub const fn is_addressable(self) -> bool {
         matches!(self.0, 30_000..=39_999)
     }
 
@@ -122,7 +133,7 @@ impl Kind {
     pub const fn is_unclassified(self) -> bool {
         !(self.is_regular()
             || self.is_replaceable()
-            || self.is_parameterized_replaceable()
+            || self.is_addressable()
             || self.is_ephemeral())
     }
 }
@@ -172,9 +183,9 @@ mod tests {
     }
 
     #[test]
-    fn parameterized_replaceable_classification() {
-        assert!(Kind::LONG_FORM_TEXT_NOTE.is_parameterized_replaceable());
-        assert!(!Kind::TEXT_NOTE.is_parameterized_replaceable());
+    fn addressable_classification() {
+        assert!(Kind::LONG_FORM_TEXT_NOTE.is_addressable());
+        assert!(!Kind::TEXT_NOTE.is_addressable());
     }
 
     #[test]
@@ -229,7 +240,7 @@ mod tests {
             let kind = Kind::new(raw);
             let count = u32::from(kind.is_regular())
                 + u32::from(kind.is_replaceable())
-                + u32::from(kind.is_parameterized_replaceable())
+                + u32::from(kind.is_addressable())
                 + u32::from(kind.is_ephemeral())
                 + u32::from(kind.is_unclassified());
             assert_eq!(

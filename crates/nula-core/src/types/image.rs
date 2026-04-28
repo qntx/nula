@@ -16,6 +16,7 @@ use thiserror::Error;
 
 /// Errors raised when parsing [`ImageDimensions`].
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum ImageError {
     /// The input did not contain exactly one `x` separator.
     #[error("invalid image dimensions format, expected `WIDTHxHEIGHT`, got `{0}`")]

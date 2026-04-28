@@ -26,6 +26,7 @@ use crate::types::Timestamp;
 
 /// Errors raised when validating an [`Event`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum EventError {
     /// The event's `id` did not match the SHA-256 of its canonical
     /// serialization.
@@ -139,9 +140,9 @@ impl Event {
     ///
     /// # Errors
     ///
-    /// Returns [`crate::nip40::ExpirationError`] if the `expiration` tag
+    /// Returns [`crate::nip40::Error`] if the `expiration` tag
     /// is present but malformed.
-    pub fn expiration(&self) -> Result<Option<Timestamp>, crate::nip40::ExpirationError> {
+    pub fn expiration(&self) -> Result<Option<Timestamp>, crate::nip40::Error> {
         crate::nip40::parse_expiration(self)
     }
 
@@ -151,9 +152,9 @@ impl Event {
     ///
     /// # Errors
     ///
-    /// Returns [`crate::nip40::ExpirationError`] if the `expiration` tag
+    /// Returns [`crate::nip40::Error`] if the `expiration` tag
     /// is malformed.
-    pub fn is_expired(&self, now: Timestamp) -> Result<bool, crate::nip40::ExpirationError> {
+    pub fn is_expired(&self, now: Timestamp) -> Result<bool, crate::nip40::Error> {
         crate::nip40::is_expired(self, now)
     }
 }

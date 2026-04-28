@@ -21,6 +21,7 @@ use thiserror::Error;
 
 /// Errors returned by [`Url`] constructors.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum UrlError {
     /// The input could not be parsed as an absolute URL.
     #[error("invalid URL: {0}")]

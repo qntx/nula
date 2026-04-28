@@ -15,7 +15,8 @@ use thiserror::Error;
 /// Error returned when the operating system fails to provide entropy.
 #[derive(Debug, Clone, Copy, Error)]
 #[error("operating system failed to provide entropy: {0}")]
-pub struct RngError(#[from] getrandom::Error);
+#[non_exhaustive]
+pub struct RngError(#[from] pub(crate) getrandom::Error);
 
 /// Fill `buf` with cryptographically secure random bytes from the OS.
 ///

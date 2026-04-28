@@ -68,6 +68,7 @@ pub const MAX_NIP19_LENGTH: usize = 5000;
 
 /// Error produced when encoding a value to its NIP-19 representation.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum ToBech32Error {
     /// `bech32` rejected the encoding (typically: HRP + data is too long for
     /// the underlying checksum algorithm).
@@ -80,6 +81,7 @@ pub enum ToBech32Error {
 
 /// Error produced when decoding a NIP-19 string.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum FromBech32Error {
     /// The input exceeded [`MAX_NIP19_LENGTH`].
     #[error("NIP-19 string is too long: {len} characters (max {max})")]
@@ -151,7 +153,14 @@ pub enum FromBech32Error {
 }
 
 /// Encode `Self` into its bech32 NIP-19 representation.
-pub trait ToBech32 {
+///
+/// This trait is **sealed**: it can only be implemented for types defined
+/// in this crate. Downstream crates must not implement it because doing so
+/// would break the [NIP-19] HRP / TLV invariants we rely on for
+/// round-trip safety. To extend the encoding, contribute to `nula-core`.
+///
+/// [NIP-19]: https://github.com/nostr-protocol/nips/blob/master/19.md
+pub trait ToBech32: sealed::Sealed {
     /// Produce the NIP-19 bech32 string.
     ///
     /// # Errors
@@ -162,7 +171,11 @@ pub trait ToBech32 {
 }
 
 /// Decode `Self` from its bech32 NIP-19 representation.
-pub trait FromBech32: Sized {
+///
+/// This trait is **sealed** for the same reason as [`ToBech32`]: NIP-19
+/// HRPs and TLV layouts are defined by spec and any downstream
+/// implementation could violate the round-trip contract.
+pub trait FromBech32: sealed::Sealed + Sized {
     /// Parse the given NIP-19 bech32 string.
     ///
     /// # Errors
@@ -179,6 +192,7 @@ pub trait FromBech32: Sized {
 /// derive `Hash`: bundling secret keys with hashable variants would invite
 /// accidental side-channels through `HashSet`/`HashMap` use.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Nip19Entity {
     /// `npub`
     PublicKey(PublicKey),
@@ -337,6 +351,26 @@ impl FromBech32 for Nip19Coordinate {
         let data = decode_with_hrp(s, hrp::NADDR)?;
         decode_naddr(&data)
     }
+}
+
+/// Private module that prevents downstream crates from implementing
+/// [`ToBech32`] / [`FromBech32`] for their own types.
+mod sealed {
+    use super::{
+        EventId, Nip19Coordinate, Nip19Entity, Nip19Event, Nip19Profile, PublicKey, SecretKey,
+    };
+
+    /// Marker trait that limits the set of `ToBech32` / `FromBech32`
+    /// implementors to the types defined in this crate.
+    pub trait Sealed {}
+
+    impl Sealed for PublicKey {}
+    impl Sealed for SecretKey {}
+    impl Sealed for EventId {}
+    impl Sealed for Nip19Profile {}
+    impl Sealed for Nip19Event {}
+    impl Sealed for Nip19Coordinate {}
+    impl Sealed for Nip19Entity {}
 }
 
 fn encode_raw(hrp_value: &'static str, data: &[u8]) -> Result<String, ToBech32Error> {

@@ -31,6 +31,7 @@ pub const SECRET_KEY_SIZE: usize = 32;
 
 /// Errors raised when constructing a [`SecretKey`].
 #[derive(Debug, Clone, Copy, Error)]
+#[non_exhaustive]
 pub enum SecretKeyError {
     /// The hex representation could not be decoded.
     #[error("invalid hex encoding: {0}")]

@@ -32,7 +32,7 @@
 //! Schnorr signature itself, and impls that already produce a boxed
 //! future (NIP-46 RPC, browser extensions) pay no extra cost.
 
-use core::error::Error;
+use core::error::Error as StdError;
 use core::fmt;
 use core::future::Future;
 use core::pin::Pin;
@@ -53,7 +53,7 @@ pub type SignerFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// Convenience wrapper so signer impls can write
 ///
 /// ```ignore
-/// fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, SignerError>> {
+/// fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, Error>> {
 ///     boxed_signer_future(async { Ok(*self.public_key()) })
 /// }
 /// ```
@@ -70,7 +70,8 @@ where
 
 /// Errors raised by a [`NostrSigner`].
 #[derive(Debug, ThisError)]
-pub enum SignerError {
+#[non_exhaustive]
+pub enum Error {
     /// The signer's public key did not match the unsigned event author.
     #[error(transparent)]
     AuthorMismatch(#[from] UnsignedEventError),
@@ -92,22 +93,22 @@ pub enum SignerError {
     },
     /// The signer could not communicate with its backend.
     #[error("signer backend failure: {0}")]
-    Backend(Box<dyn Error + Send + Sync>),
+    Backend(Box<dyn StdError + Send + Sync>),
     /// The signer does not implement the requested operation.
     #[error("signer does not support `{0}`")]
     Unsupported(&'static str),
 }
 
-impl SignerError {
+impl Error {
     /// Wrap an arbitrary error as a backend failure.
     pub fn backend<E>(err: E) -> Self
     where
-        E: Error + Send + Sync + 'static,
+        E: StdError + Send + Sync + 'static,
     {
         Self::Backend(Box::new(err))
     }
 
-    /// Convenience constructor for [`SignerError::Rejected`] without a
+    /// Convenience constructor for [`Error::Rejected`] without a
     /// structured backend code (NIP-07, sandbox signers, etc.).
     pub fn rejected<S>(message: S) -> Self
     where
@@ -119,7 +120,7 @@ impl SignerError {
         }
     }
 
-    /// Convenience constructor for [`SignerError::Rejected`] with a
+    /// Convenience constructor for [`Error::Rejected`] with a
     /// machine-readable code (typically the NIP-46 `error` string).
     pub fn rejected_with_code<S, C>(message: S, code: C) -> Self
     where
@@ -144,22 +145,22 @@ pub trait NostrSigner: fmt::Debug + Send + Sync {
     /// The method is named `get_public_key` (rather than `public_key`) so it
     /// never shadows the inherent accessor on concrete keypair types like
     /// [`Keys`].
-    fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, SignerError>>;
+    fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, Error>>;
 
     /// Sign an [`UnsignedEvent`] and return the resulting [`Event`].
     ///
     /// Implementations must reject events whose `pubkey` does not match the
     /// signer's own public key.
-    fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, SignerError>>;
+    fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, Error>>;
 }
 
 impl NostrSigner for Keys {
-    fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, SignerError>> {
+    fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, Error>> {
         let key = *self.public_key();
         boxed_signer_future(async move { Ok(key) })
     }
 
-    fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, SignerError>> {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, Error>> {
         boxed_signer_future(async move {
             let event = unsigned.sign_with_keys(self)?;
             Ok(event)
@@ -171,11 +172,11 @@ impl<S> NostrSigner for Arc<S>
 where
     S: NostrSigner + ?Sized,
 {
-    fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, SignerError>> {
+    fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, Error>> {
         (**self).get_public_key()
     }
 
-    fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, SignerError>> {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, Error>> {
         (**self).sign_event(unsigned)
     }
 }
@@ -231,7 +232,7 @@ mod tests {
 
     #[test]
     fn rejected_error_carries_reason() {
-        let err = SignerError::rejected("user denied");
+        let err = Error::rejected("user denied");
         let s = err.to_string();
         assert!(s.contains("user denied"));
         assert!(!s.contains("code"), "no structured code → no code suffix");
@@ -239,7 +240,7 @@ mod tests {
 
     #[test]
     fn rejected_with_code_surfaces_machine_readable_code() {
-        let err = SignerError::rejected_with_code("user denied", "user_rejected");
+        let err = Error::rejected_with_code("user denied", "user_rejected");
         let s = err.to_string();
         assert!(s.contains("user denied"));
         assert!(
@@ -251,7 +252,7 @@ mod tests {
     #[test]
     fn backend_error_round_trip() {
         let inner = std::io::Error::other("oops");
-        let err = SignerError::backend(inner);
+        let err = Error::backend(inner);
         assert!(err.to_string().contains("oops"));
     }
 }

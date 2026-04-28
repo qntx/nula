@@ -17,24 +17,57 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std"]
+default = ["nip04", "nip06", "nip17", "nip44", "nip46", "nip49", "nip59"]
 
-# Enable `std` (default). Required by the crate today; reserved for future
-# `no_std` work that splits crypto/IO out of the core.
-std = []
+# Encryption primitives (bring in optional crypto deps).
+nip04 = ["dep:aes", "dep:cbc", "dep:base64"]
+nip06 = ["dep:bip39"]
+nip44 = ["dep:chacha20", "dep:hkdf", "dep:hmac", "dep:base64"]
+nip49 = ["dep:chacha20poly1305", "dep:scrypt", "dep:unicode-normalization"]
+
+# Composite NIPs (pure additions on top of crypto features).
+nip17 = ["nip44", "nip59"]
+nip46 = ["nip44"]
+nip59 = ["nip44"]
+
+# Networking-bound NIPs (HTTP fetches via reqwest).
+nip05 = ["dep:reqwest"]
+nip11-fetch = ["dep:reqwest"]
+
+# Performance toggles.
+pow-multi-thread = []
 
 [dependencies]
+# Always-on protocol primitives.
 bech32.workspace = true
 faster-hex.workspace = true
 getrandom.workspace = true
+indexmap.workspace = true
 secp256k1 = { workspace = true, features = ["global-context", "rand"] }
 serde.workspace = true
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["std"] }
 sha2.workspace = true
 thiserror.workspace = true
 url.workspace = true
+zeroize.workspace = true
+
+# Optional crypto primitives (feature-gated).
+aes = { workspace = true, optional = true }
+base64 = { workspace = true, optional = true }
+bip39 = { workspace = true, optional = true }
+cbc = { workspace = true, optional = true }
+chacha20 = { workspace = true, optional = true }
+chacha20poly1305 = { workspace = true, optional = true }
+hkdf = { workspace = true, optional = true }
+hmac = { workspace = true, optional = true }
+scrypt = { workspace = true, optional = true }
+unicode-normalization = { workspace = true, optional = true }
+
+# Optional HTTP client (feature-gated).
+reqwest = { workspace = true, optional = true }
 
 [dev-dependencies]
+base64.workspace = true
 hex-literal.workspace = true
 serde_json = { workspace = true, features = ["std"] }
 

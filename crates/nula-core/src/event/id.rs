@@ -35,6 +35,7 @@ pub const EVENT_ID_SIZE: usize = 32;
 
 /// Errors raised when constructing an [`EventId`].
 #[derive(Debug, Clone, Copy, Error)]
+#[non_exhaustive]
 pub enum EventIdError {
     /// The hex representation could not be decoded.
     #[error("invalid hex encoding: {0}")]

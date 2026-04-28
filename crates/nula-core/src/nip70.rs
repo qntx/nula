@@ -38,7 +38,7 @@ impl EventBuilder {
         // `Tag::with` ships the head string as the tag's first element and
         // accepts zero further values, producing exactly `["-"]`.
         let tag = Tag::with(&kind, core::iter::empty::<String>());
-        self.tags.push_unique_kind(tag);
+        self.tags_mut().push_unique_kind(tag);
         self
     }
 }

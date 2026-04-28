@@ -24,6 +24,7 @@ use super::single_letter::{Alphabet, SingleLetterTag};
 
 /// Errors raised when parsing a [`TagKind`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum TagKindError {
     /// The tag head was empty.
     #[error("tag head must not be empty")]

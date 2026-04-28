@@ -27,8 +27,7 @@
 //! Single-letter tag filter keys use the `#<letter>` form. Both lowercase and
 //! uppercase forms are supported (NIP-01 §generic tag queries).
 
-use std::collections::BTreeMap;
-
+use indexmap::IndexMap;
 use serde::de::{self, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -68,10 +67,14 @@ pub struct Filter {
     pub search: Option<String>,
     /// Single-letter tag filters (`#a`, `#e`, `#p`, …).
     ///
-    /// Outer keys are sorted by [`BTreeMap`] for stable wire ordering of the
-    /// filter object. Inner [`Vec`] preserves insertion order to match
-    /// rust-nostr / nostr-tools / go-nostr. Duplicates are skipped on insert.
-    pub generic_tags: BTreeMap<SingleLetterTag, Vec<String>>,
+    /// Both the outer key order and the inner value order preserve
+    /// insertion. NIP-01 does not pin the wire order down, but every
+    /// major implementation (rust-nostr, nostr-tools, go-nostr) keeps
+    /// insertion order; we follow suit so byte-level interop is exact.
+    /// We use [`IndexMap`] instead of `BTreeMap` to combine `O(1)` keyed
+    /// lookup with stable, deterministic iteration. Duplicate values are
+    /// skipped on insert.
+    pub generic_tags: IndexMap<SingleLetterTag, Vec<String>>,
 }
 
 impl Filter {

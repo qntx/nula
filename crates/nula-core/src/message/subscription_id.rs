@@ -22,6 +22,7 @@ pub const MAX_LENGTH: usize = 64;
 
 /// Errors raised when constructing a [`SubscriptionId`].
 #[derive(Debug, Clone, Copy, Error)]
+#[non_exhaustive]
 pub enum SubscriptionIdError {
     /// The input was empty.
     #[error("subscription id must not be empty")]

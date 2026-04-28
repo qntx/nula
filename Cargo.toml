@@ -22,20 +22,43 @@ nula-core = { version = "0.1.0", path = "crates/nula-core", default-features = f
 serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0.149", default-features = false, features = ["alloc"] }
 
-# Cryptography
-secp256k1 = { version = "0.31", default-features = false, features = ["std", "serde"] }
-sha2 = { version = "0.10", default-features = false, features = ["std"] }
+# Cryptography (always-on)
+secp256k1 = { version = "0.31.1", default-features = false, features = ["std", "serde"] }
+sha2 = { version = "0.11.0", default-features = false, features = ["std"] }
+zeroize = { version = "1.8.2", default-features = false, features = ["zeroize_derive"] }
+
+# Cryptography (NIP-04 / NIP-44 / NIP-49 - feature-gated)
+aes = { version = "0.9.0", default-features = false }
+cbc = { version = "0.2.0", default-features = false }
+chacha20 = { version = "0.10.0", default-features = false }
+chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc"] }
+hkdf = { version = "0.13.0", default-features = false }
+hmac = { version = "0.13.0", default-features = false }
+scrypt = { version = "0.12.0", default-features = false }
+
+# Mnemonic derivation (NIP-06)
+bip39 = { version = "2.2.2", default-features = false }
+
+# Unicode NFKC normalization (NIP-49 password handling)
+unicode-normalization = { version = "0.1.25", default-features = false, features = ["std"] }
 
 # Encoding
+base64 = { version = "0.22.1", default-features = false, features = ["std"] }
 bech32 = { version = "0.11.1", default-features = false, features = ["std"] }
 faster-hex = { version = "0.10.0", default-features = false, features = ["std"] }
 url = { version = "2.5.8", default-features = false, features = ["serde"] }
+
+# Containers
+indexmap = { version = "2.14.0", default-features = false, features = ["std", "serde"] }
 
 # Error handling
 thiserror = { version = "2.0.18", default-features = false }
 
 # Random number generation
-getrandom = { version = "0.3", default-features = false, features = ["std"] }
+getrandom = { version = "0.4.2", default-features = false, features = ["std"] }
+
+# HTTP (NIP-05 / NIP-11)
+reqwest = { version = "0.13.3", default-features = false, features = ["rustls", "json", "http2", "charset"] }
 
 # Testing
 hex-literal = "1.1.0"
@@ -131,7 +154,11 @@ rc_buffer = "warn"
 rc_mutex = "warn"
 
 fallible_impl_from = "warn"
-error_impl_error = "warn"
+# Allow `Error` as a module-local error name (e.g. `nip02::Error`,
+# `signer::Error`). This is the std-library convention (`std::io::Error`,
+# `std::fmt::Error`) and lets callers write `nip02::Error` instead of
+# the redundant `nip02::Nip02Error`.
+error_impl_error = "allow"
 let_underscore_must_use = "warn"
 
 rest_pat_in_fully_bound_structs = "warn"

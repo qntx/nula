@@ -35,6 +35,7 @@ pub const KIND: u8 = 3;
 
 /// Errors raised while encoding or decoding a TLV stream.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum TlvError {
     /// A value supplied to [`encode`] exceeded the 255-byte cap.
     #[error("TLV value is too long for a 1-byte length field: {len} bytes (max 255)")]

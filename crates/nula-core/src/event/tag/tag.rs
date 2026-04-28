@@ -24,6 +24,7 @@ use crate::key::PublicKey;
 
 /// Errors raised when constructing a [`Tag`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum TagError {
     /// The tag had no head element.
     #[error("a tag must contain at least one element (the head)")]

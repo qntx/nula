@@ -39,6 +39,7 @@ pub struct Timestamp(u64);
 
 /// Errors raised when constructing a [`Timestamp`].
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum TimestampError {
     /// The system clock is set before the Unix epoch.
     #[error("system clock is before the Unix epoch: {0}")]

@@ -31,6 +31,7 @@ const TAG_COUNT: &str = "COUNT";
 
 /// Errors raised when constructing a [`MachineReadablePrefix`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum MachineReadablePrefixError {
     /// The prefix string was not one of the known NIP-20 prefixes.
     #[error("unknown machine-readable prefix")]
@@ -39,6 +40,7 @@ pub enum MachineReadablePrefixError {
 
 /// Standardised reason prefix used in `OK` / `CLOSED` reasons (NIP-20).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum MachineReadablePrefix {
     /// `duplicate:` — the relay already had the event.
     Duplicate,
@@ -120,6 +122,7 @@ impl FromStr for MachineReadablePrefix {
 
 /// Errors raised when parsing a [`RelayMessage`].
 #[derive(Debug, Clone, Error)]
+#[non_exhaustive]
 pub enum RelayMessageError {
     /// The wire array was empty.
     #[error("relay message must not be empty")]
@@ -139,6 +142,7 @@ pub enum RelayMessageError {
 
 /// Messages sent from a relay to a client.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RelayMessage {
     /// A subscription event match.
     ///

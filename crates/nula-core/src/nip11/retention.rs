@@ -32,6 +32,7 @@ pub struct RelayRetention {
 
 /// Either a single [`Kind`] or an inclusive `[start, end]` kind range.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum KindRange {
     /// One specific kind.
     Single(Kind),

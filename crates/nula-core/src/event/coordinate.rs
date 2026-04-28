@@ -29,6 +29,7 @@ use crate::key::{PublicKey, PublicKeyError};
 
 /// Errors raised when parsing a [`Coordinate`] from its wire form.
 #[derive(Debug, Clone, Error)]
+#[non_exhaustive]
 pub enum CoordinateError {
     /// The wire form did not contain exactly two `:` separators.
     #[error("expected `<kind>:<author>:<identifier>`, got `{0}`")]

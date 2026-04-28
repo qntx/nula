@@ -57,6 +57,7 @@ pub enum Alphabet {
 
 /// Errors raised when constructing an [`Alphabet`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum AlphabetError {
     /// The character was not an ASCII letter.
     #[error("expected an ASCII letter, got `{0}`")]
@@ -184,6 +185,7 @@ pub struct SingleLetterTag {
 
 /// Errors raised when constructing a [`SingleLetterTag`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum SingleLetterTagError {
     /// The input could not be mapped to an ASCII letter.
     #[error(transparent)]

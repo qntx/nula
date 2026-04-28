@@ -30,6 +30,7 @@ use thiserror::Error;
 
 /// Errors returned by [`RelayUrl`] constructors.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum RelayUrlError {
     /// The input could not be parsed as a URL at all.
     #[error("invalid relay URL: {0}")]

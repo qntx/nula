@@ -20,6 +20,7 @@ pub const PUBLIC_KEY_SIZE: usize = 32;
 
 /// Errors raised when constructing a [`PublicKey`].
 #[derive(Debug, Clone, Copy, Error)]
+#[non_exhaustive]
 pub enum PublicKeyError {
     /// The hex representation could not be decoded.
     #[error("invalid hex encoding: {0}")]

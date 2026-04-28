@@ -32,7 +32,8 @@ pub const EXPIRATION_TAG: &str = "expiration";
 
 /// Errors raised when reading an [`Event`]'s NIP-40 deadline.
 #[derive(Debug, Clone, Error)]
-pub enum ExpirationError {
+#[non_exhaustive]
+pub enum Error {
     /// The expiration tag had no value (i.e. only `["expiration"]`).
     #[error("`expiration` tag is missing the timestamp value")]
     MissingValue,
@@ -48,18 +49,18 @@ pub enum ExpirationError {
 ///
 /// # Errors
 ///
-/// Returns [`ExpirationError`] if the tag exists but is malformed.
-pub fn parse_expiration(event: &Event) -> Result<Option<Timestamp>, ExpirationError> {
+/// Returns [`Error`] if the tag exists but is malformed.
+pub fn parse_expiration(event: &Event) -> Result<Option<Timestamp>, Error> {
     let kind = TagKind::from_wire(EXPIRATION_TAG);
     let Some(tag) = event.tags.find_first(&kind) else {
         return Ok(None);
     };
     let Some(value) = tag.values().get(1) else {
-        return Err(ExpirationError::MissingValue);
+        return Err(Error::MissingValue);
     };
     let secs: u64 = value
         .parse()
-        .map_err(|_| ExpirationError::InvalidTimestamp(value.clone()))?;
+        .map_err(|_| Error::InvalidTimestamp(value.clone()))?;
     Ok(Some(Timestamp::from_secs(secs)))
 }
 
@@ -70,8 +71,8 @@ pub fn parse_expiration(event: &Event) -> Result<Option<Timestamp>, ExpirationEr
 ///
 /// # Errors
 ///
-/// Returns [`ExpirationError`] if the tag exists but is malformed.
-pub fn is_expired(event: &Event, now: Timestamp) -> Result<bool, ExpirationError> {
+/// Returns [`Error`] if the tag exists but is malformed.
+pub fn is_expired(event: &Event, now: Timestamp) -> Result<bool, Error> {
     Ok(parse_expiration(event)?.is_some_and(|deadline| now >= deadline))
 }
 
@@ -79,7 +80,7 @@ pub fn is_expired(event: &Event, now: Timestamp) -> Result<bool, ExpirationError
 ///
 /// # Errors
 ///
-/// Returns [`ExpirationError`] for a malformed tag, or
+/// Returns [`Error`] for a malformed tag, or
 /// [`TimestampError`] if the system clock cannot be read.
 pub fn is_expired_now(event: &Event) -> Result<bool, IsExpiredError> {
     let now = Timestamp::now()?;
@@ -88,10 +89,11 @@ pub fn is_expired_now(event: &Event) -> Result<bool, IsExpiredError> {
 
 /// Composite error returned by [`is_expired_now`].
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum IsExpiredError {
     /// The expiration tag was malformed.
     #[error(transparent)]
-    Expiration(#[from] ExpirationError),
+    Expiration(#[from] Error),
     /// The wall clock could not be read.
     #[error(transparent)]
     Clock(#[from] TimestampError),
@@ -106,7 +108,7 @@ impl EventBuilder {
     pub fn expiration(mut self, ts: Timestamp) -> Self {
         let kind = TagKind::from_wire(EXPIRATION_TAG);
         let tag = Tag::with(&kind, [ts.as_secs().to_string()]);
-        self.tags.replace_or_push(&kind, tag);
+        self.tags_mut().replace_or_push(&kind, tag);
         self
     }
 }
@@ -190,7 +192,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = parse_expiration(&event).unwrap_err();
-        assert!(matches!(err, ExpirationError::InvalidTimestamp(_)));
+        assert!(matches!(err, Error::InvalidTimestamp(_)));
     }
 
     #[test]
@@ -201,6 +203,6 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = parse_expiration(&event).unwrap_err();
-        assert!(matches!(err, ExpirationError::MissingValue));
+        assert!(matches!(err, Error::MissingValue));
     }
 }

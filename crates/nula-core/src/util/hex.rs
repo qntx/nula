@@ -14,6 +14,7 @@ use thiserror::Error;
 
 /// Error raised while encoding or decoding hex.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum HexError {
     /// The hex string contained a non-ASCII or non-hex character.
     #[error("invalid hex character")]

@@ -23,6 +23,7 @@ use crate::types::Timestamp;
 
 /// Errors raised when signing an [`UnsignedEvent`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum UnsignedEventError {
     /// The signer's public key did not match the event author.
     #[error("signer public key does not match event pubkey")]

@@ -22,7 +22,8 @@
 //! # Example
 //!
 //! ```
-//! use nula_core::{Keys, RelayList, RelayMarker, RelayUrl};
+//! use nula_core::nip65::{RelayList, RelayMarker};
+//! use nula_core::{Keys, RelayUrl};
 //!
 //! let mut list = RelayList::new();
 //! list.insert(RelayUrl::parse("wss://read.example").unwrap(), RelayMarker::Read);
@@ -104,6 +105,7 @@ impl FromStr for RelayMarker {
 
 /// Errors raised when parsing a NIP-65 marker string.
 #[derive(Debug, Clone, Error)]
+#[non_exhaustive]
 pub enum RelayMarkerError {
     /// The marker string was neither `read` nor `write`.
     #[error("unknown NIP-65 relay marker `{0}`")]
@@ -112,7 +114,8 @@ pub enum RelayMarkerError {
 
 /// Errors raised when building a [`RelayList`] from an [`Event`].
 #[derive(Debug, Clone, Error)]
-pub enum RelayListError {
+#[non_exhaustive]
+pub enum Error {
     /// The event's `kind` was not `10002`.
     #[error("expected kind {expected}, got {got}")]
     UnexpectedKind {
@@ -238,11 +241,11 @@ impl RelayList {
     ///
     /// # Errors
     ///
-    /// Returns [`RelayListError::UnexpectedKind`] if the event's kind is not
+    /// Returns [`Error::UnexpectedKind`] if the event's kind is not
     /// `10002`, or any of the parsing errors when an `r` tag is malformed.
-    pub fn from_event(event: &Event) -> Result<Self, RelayListError> {
+    pub fn from_event(event: &Event) -> Result<Self, Error> {
         if event.kind != Kind::RELAY_LIST {
-            return Err(RelayListError::UnexpectedKind {
+            return Err(Error::UnexpectedKind {
                 expected: Kind::RELAY_LIST.as_u16(),
                 got: event.kind.as_u16(),
             });
@@ -253,7 +256,7 @@ impl RelayList {
                 continue;
             }
             let mut args = tag.values().iter().skip(1);
-            let url_str = args.next().ok_or(RelayListError::MissingRelayUrl)?;
+            let url_str = args.next().ok_or(Error::MissingRelayUrl)?;
             let url = RelayUrl::parse(url_str)?;
             let marker = match args.next() {
                 Some(s) if !s.is_empty() => s.parse::<RelayMarker>()?,
@@ -352,7 +355,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = RelayList::from_event(&event).unwrap_err();
-        assert!(matches!(err, RelayListError::MissingRelayUrl));
+        assert!(matches!(err, Error::MissingRelayUrl));
     }
 
     #[test]
@@ -364,7 +367,7 @@ mod tests {
         let err = RelayList::from_event(&event).unwrap_err();
         assert!(matches!(
             err,
-            RelayListError::InvalidMarker(RelayMarkerError::Unknown(_))
+            Error::InvalidMarker(RelayMarkerError::Unknown(_))
         ));
     }
 
@@ -376,7 +379,7 @@ mod tests {
         let err = RelayList::from_event(&event).unwrap_err();
         assert!(matches!(
             err,
-            RelayListError::UnexpectedKind {
+            Error::UnexpectedKind {
                 expected: 10_002,
                 got: 1
             }
