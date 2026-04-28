@@ -31,7 +31,7 @@ use crate::types::{Timestamp, TimestampError};
 /// Wire name of the NIP-13 nonce tag (`nonce`).
 pub const NONCE_TAG: &str = "nonce";
 
-/// Errors raised by [`verify_pow`].
+/// Errors raised by [`verify_pow`] and [`verify_pow_strict`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum PowError {
     /// The event's id has fewer leading zero bits than required.
@@ -57,6 +57,10 @@ pub enum PowError {
     /// parse.
     #[error("nonce tag commitment is not a valid u8 integer")]
     InvalidCommitment,
+    /// The strict-mode verifier required a committed difficulty but the
+    /// event carried no `nonce` tag (or the tag had no commitment column).
+    #[error("strict PoW verification requires a committed difficulty")]
+    MissingCommitment,
 }
 
 /// Errors raised by [`mine`] / [`mine_and_sign`].
@@ -159,6 +163,28 @@ pub fn verify_pow(event: &Event, min_difficulty: u8) -> Result<(), PowError> {
             actual: commitment,
             expected: min_difficulty,
         });
+    }
+    Ok(())
+}
+
+/// Strict version of [`verify_pow`]: also rejects events that lack a
+/// committed difficulty entirely.
+///
+/// NIP-13 §commitment notes that "without a committed target difficulty
+/// you could not reject" a low-difficulty grind that happened to land on
+/// a high zero-bit count. Strict verifiers (relays enforcing `PoW`
+/// policies) should call this entry point so an absent commitment is
+/// treated as a policy violation rather than silently accepted.
+///
+/// # Errors
+///
+/// Returns the matching [`PowError`] variant; in particular,
+/// [`PowError::MissingCommitment`] when the event has no usable `nonce`
+/// commitment column.
+pub fn verify_pow_strict(event: &Event, min_difficulty: u8) -> Result<(), PowError> {
+    verify_pow(event, min_difficulty)?;
+    if min_difficulty > 0 && committed_difficulty(event)?.is_none() {
+        return Err(PowError::MissingCommitment);
     }
     Ok(())
 }
@@ -370,6 +396,35 @@ mod tests {
             .unwrap();
         let err = committed_difficulty(&event).unwrap_err();
         assert!(matches!(err, PowError::InvalidCommitment));
+    }
+
+    #[test]
+    fn verify_pow_strict_rejects_missing_commitment() {
+        // Plain text note, no nonce tag -> verify_pow accepts at any
+        // difficulty if the id happens to satisfy it; verify_pow_strict
+        // must reject for any min_difficulty > 0.
+        let event = EventBuilder::text_note("no-nonce")
+            .created_at(Timestamp::from_secs(8))
+            .sign_with_keys(&keys())
+            .unwrap();
+        let err = verify_pow_strict(&event, 1).unwrap_err();
+        assert!(matches!(err, PowError::MissingCommitment));
+        // min_difficulty == 0 means "no PoW required" so strict mode
+        // accepts even unmined events for parity with verify_pow.
+        verify_pow_strict(&event, 0).unwrap();
+    }
+
+    #[test]
+    fn verify_pow_strict_accepts_when_commitment_meets_floor() {
+        let builder = EventBuilder::text_note("strict-ok").created_at(Timestamp::from_secs(9));
+        let event = mine_and_sign(&builder, &keys(), 6).unwrap();
+        verify_pow_strict(&event, 6).unwrap();
+        // Asking for 7 still rejects via the existing commitment check.
+        let err = verify_pow_strict(&event, 7).unwrap_err();
+        assert!(matches!(
+            err,
+            PowError::InsufficientWork { .. } | PowError::InsufficientCommitment { actual: 6, .. }
+        ));
     }
 
     /// NIP-13 §"Example mined note" reference vector. The leading bytes of

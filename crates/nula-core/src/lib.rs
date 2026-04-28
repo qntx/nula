@@ -70,7 +70,10 @@ pub use self::nip10::{EventReference, NoteMarker, NoteMarkerError, ThreadContext
 pub use self::nip11::{
     KindRange, RelayFee, RelayFees, RelayInformation, RelayLimitation, RelayRetention,
 };
-pub use self::nip13::{MineError, PowAttempt, PowError};
+pub use self::nip13::{
+    MineError, PowAttempt, PowError, count_leading_zero_bits, event_id_difficulty, mine,
+    mine_and_sign, verify_pow, verify_pow_strict,
+};
 pub use self::nip19::{
     FromBech32, FromBech32Error, MAX_NIP19_LENGTH, Nip19Coordinate, Nip19Entity, Nip19Event,
     Nip19Profile, ToBech32, ToBech32Error,
