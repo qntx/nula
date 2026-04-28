@@ -37,6 +37,7 @@ pub mod filter;
 pub mod key;
 pub mod message;
 pub mod metadata;
+pub mod nip02;
 pub mod nip09;
 pub mod nip11;
 pub mod nip13;
@@ -60,6 +61,7 @@ pub use self::message::{
     RelayMessage, RelayMessageError, SubscriptionId, SubscriptionIdError,
 };
 pub use self::metadata::Metadata;
+pub use self::nip02::{Contact, ContactList, ContactListError};
 pub use self::nip09::{AuthorityError, DeletionError, DeletionRequest};
 pub use self::nip11::{
     KindRange, RelayFee, RelayFees, RelayInformation, RelayLimitation, RelayRetention,
