@@ -96,18 +96,34 @@ impl Kind {
         matches!(self.0, 20_000..=29_999)
     }
 
-    /// True for the regular `1..=9999` range (excluding metadata/contacts at
-    /// `0` and `3`, which are replaceable). Regular events are persisted by
-    /// relays without being replaced or evicted.
+    /// True for the regular ranges spelled out by NIP-01:
+    /// `n == 1`, `n == 2`, `4 <= n < 45`, or `1000 <= n < 10000`.
+    ///
+    /// Note that NIP-01 leaves the kinds `45..=999` unclassified — they
+    /// are *not* regular by the strict reading of the spec, even though
+    /// many implementations historically lumped them in. Use
+    /// [`Self::is_unclassified`] to detect those.
     #[must_use]
     pub const fn is_regular(self) -> bool {
-        !self.is_replaceable() && !self.is_parameterized_replaceable() && !self.is_ephemeral()
+        matches!(self.0, 1 | 2 | 4..45 | 1000..10_000)
     }
 
     /// True for kinds in the reserved range `40000..=65535`.
     #[must_use]
     pub const fn is_reserved(self) -> bool {
         matches!(self.0, 40_000..=65_535)
+    }
+
+    /// True for kinds that NIP-01 does *not* assign to any category:
+    /// `45..=999` and the reserved `40000..=65535` block. Surface these so
+    /// callers (relays, indexers) can decide how to treat the holes
+    /// without having to invert every other classifier.
+    #[must_use]
+    pub const fn is_unclassified(self) -> bool {
+        !(self.is_regular()
+            || self.is_replaceable()
+            || self.is_parameterized_replaceable()
+            || self.is_ephemeral())
     }
 }
 
@@ -169,12 +185,19 @@ mod tests {
 
     #[test]
     fn regular_range() {
+        // NIP-01 spec: `n == 1 || n == 2 || 4 <= n < 45 || 1000 <= n < 10000`.
         assert!(Kind::TEXT_NOTE.is_regular());
         assert!(Kind::REACTION.is_regular());
         assert!(Kind::GIFT_WRAP.is_regular());
+        assert!(Kind::new(44).is_regular());
+        assert!(Kind::new(1_000).is_regular());
+        assert!(Kind::new(9_999).is_regular());
         assert!(!Kind::METADATA.is_regular());
         assert!(!Kind::AUTHENTICATION.is_regular());
         assert!(!Kind::LONG_FORM_TEXT_NOTE.is_regular());
+        // The 45..1000 hole is NOT regular per the strict spec reading.
+        assert!(!Kind::new(45).is_regular());
+        assert!(!Kind::new(999).is_regular());
     }
 
     #[test]
@@ -185,14 +208,34 @@ mod tests {
     }
 
     #[test]
-    fn classification_is_disjoint() {
-        for raw in [0_u16, 1, 3, 1_059, 10_002, 22_242, 30_023, 50_000] {
+    fn unclassified_range_is_distinct_from_every_category() {
+        // The 45..1000 hole is unclassified.
+        assert!(Kind::new(45).is_unclassified());
+        assert!(Kind::new(500).is_unclassified());
+        assert!(Kind::new(999).is_unclassified());
+        // The reserved 40000..=65535 block is unclassified and reserved.
+        assert!(Kind::new(40_000).is_unclassified());
+        assert!(Kind::new(65_535).is_unclassified());
+        // Each named category is *not* unclassified.
+        assert!(!Kind::TEXT_NOTE.is_unclassified());
+        assert!(!Kind::METADATA.is_unclassified());
+        assert!(!Kind::AUTHENTICATION.is_unclassified());
+        assert!(!Kind::LONG_FORM_TEXT_NOTE.is_unclassified());
+    }
+
+    #[test]
+    fn classification_is_disjoint_and_complete() {
+        for raw in 0_u16..=u16::MAX {
             let kind = Kind::new(raw);
             let count = u32::from(kind.is_regular())
                 + u32::from(kind.is_replaceable())
                 + u32::from(kind.is_parameterized_replaceable())
-                + u32::from(kind.is_ephemeral());
-            assert_eq!(count, 1, "kind {raw} matched {count} categories");
+                + u32::from(kind.is_ephemeral())
+                + u32::from(kind.is_unclassified());
+            assert_eq!(
+                count, 1,
+                "kind {raw} matched {count} categories (must be exactly 1)"
+            );
         }
     }
 
