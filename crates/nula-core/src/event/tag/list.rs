@@ -63,6 +63,33 @@ impl Tags {
         self.items.extend(tags);
     }
 
+    /// Replace any existing tag whose head equals `kind` with `tag`, or
+    /// append `tag` when no such tag is present.
+    ///
+    /// This is the building block for builders that maintain an
+    /// at-most-one-tag-per-head invariant — NIP-40's `expiration`,
+    /// NIP-65's `r` (per-relay), NIP-70's `-`, NIP-13's `nonce`. Centralising
+    /// the logic here keeps every builder consistent and avoids the
+    /// `iter().filter().cloned().collect() → push → from_vec` template
+    /// each one used to inline.
+    pub fn replace_or_push(&mut self, kind: &TagKind, tag: Tag) {
+        if let Some(slot) = self.items.iter_mut().find(|t| &t.kind() == kind) {
+            *slot = tag;
+        } else {
+            self.items.push(tag);
+        }
+    }
+
+    /// Append `tag` only if no existing tag has the same head.
+    ///
+    /// Used by NIP-70 where the protected marker is idempotent.
+    pub fn push_unique_kind(&mut self, tag: Tag) {
+        if self.items.iter().any(|t| t.kind() == tag.kind()) {
+            return;
+        }
+        self.items.push(tag);
+    }
+
     /// Borrow the tags as a slice.
     #[must_use]
     pub fn as_slice(&self) -> &[Tag] {
@@ -241,5 +268,34 @@ mod tests {
         for t in &tags {
             assert_eq!(t.name(), "e");
         }
+    }
+
+    #[test]
+    fn replace_or_push_appends_when_absent() {
+        let mut tags = Tags::new();
+        let kind = TagKind::from_wire("expiration");
+        tags.replace_or_push(&kind, tag(&["expiration", "100"]));
+        assert_eq!(tags.len(), 1);
+        assert_eq!(tags.find_first(&kind).unwrap().content(), Some("100"));
+    }
+
+    #[test]
+    fn replace_or_push_replaces_existing() {
+        let mut tags = Tags::from_vec(vec![tag(&["expiration", "100"])]);
+        let kind = TagKind::from_wire("expiration");
+        tags.replace_or_push(&kind, tag(&["expiration", "200"]));
+        assert_eq!(tags.len(), 1, "must not duplicate");
+        assert_eq!(tags.find_first(&kind).unwrap().content(), Some("200"));
+    }
+
+    #[test]
+    fn push_unique_kind_is_idempotent() {
+        let mut tags = Tags::new();
+        let marker = tag(&["-"]);
+        tags.push_unique_kind(marker.clone());
+        tags.push_unique_kind(marker.clone());
+        tags.push_unique_kind(marker);
+        let head_kind = TagKind::from_wire("-");
+        assert_eq!(tags.find_all(&head_kind).count(), 1);
     }
 }

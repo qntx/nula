@@ -105,14 +105,8 @@ impl EventBuilder {
     #[must_use]
     pub fn expiration(mut self, ts: Timestamp) -> Self {
         let kind = TagKind::from_wire(EXPIRATION_TAG);
-        let mut owned: Vec<Tag> = self
-            .tags
-            .iter()
-            .filter(|t| t.kind() != kind)
-            .cloned()
-            .collect();
-        owned.push(Tag::with(&kind, [ts.as_secs().to_string()]));
-        self.tags = crate::event::Tags::from_vec(owned);
+        let tag = Tag::with(&kind, [ts.as_secs().to_string()]);
+        self.tags.replace_or_push(&kind, tag);
         self
     }
 }

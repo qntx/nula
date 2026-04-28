@@ -35,15 +35,10 @@ impl EventBuilder {
     #[must_use]
     pub fn protected(mut self) -> Self {
         let kind = TagKind::from_wire(PROTECTED_TAG);
-        if self.tags.iter().any(|t| t.kind() == kind) {
-            return self;
-        }
         // `Tag::with` ships the head string as the tag's first element and
         // accepts zero further values, producing exactly `["-"]`.
         let tag = Tag::with(&kind, core::iter::empty::<String>());
-        let mut owned: Vec<Tag> = self.tags.iter().cloned().collect();
-        owned.push(tag);
-        self.tags = crate::event::Tags::from_vec(owned);
+        self.tags.push_unique_kind(tag);
         self
     }
 }
