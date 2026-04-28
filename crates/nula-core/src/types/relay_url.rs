@@ -73,21 +73,21 @@ impl RelayUrl {
         let input = input.as_ref();
         let mut inner = url::Url::parse(input)?;
 
-        let scheme = inner.scheme();
-        if !matches!(scheme, "ws" | "wss") {
-            return Err(RelayUrlError::InvalidScheme(scheme.to_owned()));
-        }
+        // Fold scheme validation and default-port lookup into a single match
+        // so the validated invariant ("scheme is ws or wss") cannot drift
+        // away from the lookup table. This eliminates the previous
+        // `unreachable!()` fallback, which was a `panic!` in production code.
+        let default_port = match inner.scheme() {
+            "ws" => 80,
+            "wss" => 443,
+            other => return Err(RelayUrlError::InvalidScheme(other.to_owned())),
+        };
 
         if inner.host_str().is_none() {
             return Err(RelayUrlError::MissingHost(input.to_owned()));
         }
 
         inner.set_fragment(None);
-        let default_port = match inner.scheme() {
-            "ws" => 80,
-            "wss" => 443,
-            _ => unreachable!("scheme already validated"),
-        };
         if inner.port() == Some(default_port) {
             inner.set_port(None).map_err(|()| {
                 RelayUrlError::Parse("URL cannot have its port modified".to_owned())
