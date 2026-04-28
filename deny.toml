@@ -1,0 +1,75 @@
+# cargo-deny configuration for the `nula` workspace.
+#
+# Run with `cargo deny check` to enforce supply-chain hygiene:
+# - advisories: every transitive dependency must be free of known CVEs
+# - bans:       the workspace ships exactly one version of every crate
+# - licenses:   only permissive licenses are allowed
+# - sources:    only crates.io is trusted
+#
+# This file is intentionally strict; relax a section only when a real
+# constraint forces a temporary exception (and add a comment explaining
+# the deadline for removing it).
+
+[graph]
+# Only check the host platform; cargo-deny defaults are noisy when the
+# workspace pulls in target-specific deps via cfg.
+all-features = true
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+# ─── advisories ────────────────────────────────────────────────────────
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# Fail on any RUSTSEC advisory; downgrade individual entries via `ignore`
+# only after a documented review.
+yanked = "deny"
+ignore = []
+
+# ─── licenses ──────────────────────────────────────────────────────────
+[licenses]
+# Standard permissive set. Reject GPL/AGPL/copyleft transitively.
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "CC0-1.0",
+]
+# `confidence-threshold` controls how strict cargo-deny is when the
+# crate license is inferred from the LICENSE file rather than the
+# Cargo.toml `license` field. `1.0` accepts only exact matches.
+confidence-threshold = 0.93
+exceptions = []
+
+# ─── bans ──────────────────────────────────────────────────────────────
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+allow = []
+deny = [
+    # Add concrete entries here when a known-bad crate is found in the
+    # transitive graph; e.g.
+    # { name = "openssl-sys", reason = "use rustls instead" },
+]
+skip = []
+skip-tree = []
+
+# ─── sources ───────────────────────────────────────────────────────────
+[sources]
+# Reject anything outside crates.io. Add explicit Git allow-listing when
+# a future workspace member depends on an unreleased fork.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
