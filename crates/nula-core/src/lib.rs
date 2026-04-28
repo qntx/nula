@@ -80,7 +80,7 @@ pub use self::nip19::{
 };
 pub use self::nip22::{Comment, CommentError, CommentScope};
 pub use self::nip40::{ExpirationError, IsExpiredError};
-pub use self::nip42::AuthError;
+pub use self::nip42::{AuthError, auth_event, verify_auth_event, verify_auth_event_against};
 pub use self::nip65::{RelayList, RelayListError, RelayMarker, RelayMarkerError};
 pub use self::signer::{NostrSigner, SignerError, SignerFuture, boxed_signer_future};
 pub use self::types::{

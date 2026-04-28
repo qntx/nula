@@ -124,6 +124,33 @@ pub fn verify_auth_event(
     now: Timestamp,
     max_age: u64,
 ) -> Result<(), AuthError> {
+    verify_auth_event_against(event, relay, &[challenge], now, max_age)
+}
+
+/// Verify a NIP-42 auth event against a *set* of in-flight challenges.
+///
+/// Long-lived relay connections may rotate the AUTH challenge; client
+/// implementations sometimes lag behind the latest one. This entry point
+/// accepts any challenge in `accepted` and returns success on the first
+/// match. All other verification rules — kind, relay tag, freshness
+/// window — match [`verify_auth_event`].
+///
+/// `accepted` must be non-empty. An empty slice is treated as
+/// "accept nothing" and produces [`AuthError::ChallengeMismatch`].
+///
+/// As with [`verify_auth_event`], this function does **not** verify the
+/// event's Schnorr signature; call [`Event::verify`] separately.
+///
+/// # Errors
+///
+/// Returns the matching [`AuthError`] variant on the first failed check.
+pub fn verify_auth_event_against(
+    event: &Event,
+    relay: &RelayUrl,
+    accepted: &[&str],
+    now: Timestamp,
+    max_age: u64,
+) -> Result<(), AuthError> {
     if event.kind != Kind::AUTHENTICATION {
         return Err(AuthError::UnexpectedKind(event.kind.as_u16()));
     }
@@ -149,7 +176,7 @@ pub fn verify_auth_event(
         .and_then(|t| t.values().get(1))
         .filter(|s| !s.is_empty())
         .ok_or(AuthError::MissingChallengeTag)?;
-    if claimed_challenge.as_str() != challenge {
+    if !accepted.contains(&claimed_challenge.as_str()) {
         return Err(AuthError::ChallengeMismatch);
     }
 
@@ -293,5 +320,42 @@ mod tests {
         let err =
             verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600).unwrap_err();
         assert!(matches!(err, AuthError::MissingChallengeTag));
+    }
+
+    #[test]
+    fn verify_against_multi_challenge_accepts_any_match() {
+        // Client signs against the older "c1"; server now also offers "c2".
+        let event = signed("c1", Timestamp::from_secs(1));
+        verify_auth_event_against(
+            &event,
+            &relay(),
+            &["c2", "c1"],
+            Timestamp::from_secs(1),
+            600,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn verify_against_multi_challenge_rejects_when_none_match() {
+        let event = signed("c1", Timestamp::from_secs(1));
+        let err = verify_auth_event_against(
+            &event,
+            &relay(),
+            &["c2", "c3"],
+            Timestamp::from_secs(1),
+            600,
+        )
+        .unwrap_err();
+        assert!(matches!(err, AuthError::ChallengeMismatch));
+    }
+
+    #[test]
+    fn verify_against_empty_challenge_set_rejects() {
+        let event = signed("c1", Timestamp::from_secs(1));
+        let err =
+            verify_auth_event_against(&event, &relay(), &[], Timestamp::from_secs(1), 600)
+                .unwrap_err();
+        assert!(matches!(err, AuthError::ChallengeMismatch));
     }
 }
