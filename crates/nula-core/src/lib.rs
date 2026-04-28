@@ -72,8 +72,8 @@ pub use self::nip11::{
 };
 pub use self::nip13::{MineError, PowAttempt, PowError};
 pub use self::nip19::{
-    FromBech32, FromBech32Error, Nip19Coordinate, Nip19Entity, Nip19Event, Nip19Profile, ToBech32,
-    ToBech32Error,
+    FromBech32, FromBech32Error, MAX_NIP19_LENGTH, Nip19Coordinate, Nip19Entity, Nip19Event,
+    Nip19Profile, ToBech32, ToBech32Error,
 };
 pub use self::nip22::{Comment, CommentError, CommentScope};
 pub use self::nip40::{ExpirationError, IsExpiredError};

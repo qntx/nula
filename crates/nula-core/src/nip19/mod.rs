@@ -43,6 +43,13 @@ use crate::event::{EventId, EventIdError, Kind};
 use crate::key::{PublicKey, PublicKeyError, SecretKey, SecretKeyError};
 use crate::types::{RelayUrl, RelayUrlError};
 
+/// Maximum accepted length, in characters, of any NIP-19 bech32 string.
+///
+/// NIP-19 §Notes recommends limiting bech32 strings to 5000 characters; we
+/// turn that recommendation into a hard cap so untrusted input cannot
+/// trigger pathological allocations during decoding.
+pub const MAX_NIP19_LENGTH: usize = 5000;
+
 /// Error produced when encoding a value to its NIP-19 representation.
 #[derive(Debug, Error)]
 pub enum ToBech32Error {
@@ -58,6 +65,14 @@ pub enum ToBech32Error {
 /// Error produced when decoding a NIP-19 string.
 #[derive(Debug, Error)]
 pub enum FromBech32Error {
+    /// The input exceeded [`MAX_NIP19_LENGTH`].
+    #[error("NIP-19 string is too long: {len} characters (max {max})")]
+    TooLong {
+        /// Length of the rejected input.
+        len: usize,
+        /// The cap that was exceeded.
+        max: usize,
+    },
     /// The string is not valid bech32 with the expected checksum.
     #[error("bech32 decoding failed: {0}")]
     Decode(String),
@@ -315,6 +330,15 @@ fn encode_raw(hrp_value: &'static str, data: &[u8]) -> Result<String, ToBech32Er
 }
 
 fn decode_bech32(s: &str) -> Result<(String, Vec<u8>), FromBech32Error> {
+    // Enforce the NIP-19 §Notes cap before touching the bech32 state machine
+    // so adversarial input can never allocate more than ~5 KiB even when the
+    // checksum check would otherwise sweep the full string.
+    if s.len() > MAX_NIP19_LENGTH {
+        return Err(FromBech32Error::TooLong {
+            len: s.len(),
+            max: MAX_NIP19_LENGTH,
+        });
+    }
     let parsed = CheckedHrpstring::new::<Bech32>(s).map_err(
         |err: bech32::primitives::decode::CheckedHrpstringError| {
             FromBech32Error::Decode(err.to_string())
@@ -659,6 +683,38 @@ mod tests {
             assert_eq!(profile.to_bech32().unwrap(), expected);
             assert_eq!(Nip19Profile::from_bech32(expected).unwrap(), profile);
         }
+    }
+
+    #[test]
+    fn rejects_input_above_max_length() {
+        // Construct a string that is *syntactically* a bech32 candidate
+        // (lowercase ascii + a `1` separator) but longer than the cap.
+        // The length check must fire before any expensive bech32 work.
+        let oversized: String = core::iter::repeat_n('q', MAX_NIP19_LENGTH + 1).collect();
+        let err = Nip19Entity::from_bech32(&oversized).unwrap_err();
+        assert!(matches!(
+            err,
+            FromBech32Error::TooLong {
+                len,
+                max: MAX_NIP19_LENGTH,
+            } if len == MAX_NIP19_LENGTH + 1
+        ));
+    }
+
+    #[test]
+    fn accepts_input_at_max_length_boundary() {
+        // A npub is 63 characters; padding it up to exactly 5000 with extra
+        // garbage data is rejected by the bech32 decoder, but the length
+        // check must *not* fire — that decision belongs to the checksum.
+        let pk = *fixture_keys().public_key();
+        let mut s = pk.to_bech32().unwrap();
+        while s.len() < MAX_NIP19_LENGTH {
+            s.push('q');
+        }
+        assert_eq!(s.len(), MAX_NIP19_LENGTH);
+        let err = Nip19Entity::from_bech32(&s).unwrap_err();
+        // The cap did not fire; the bech32 checksum did instead.
+        assert!(!matches!(err, FromBech32Error::TooLong { .. }));
     }
 
     #[test]
