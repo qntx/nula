@@ -1,17 +1,51 @@
 [workspace]
 members = ["crates/*"]
-default-members = ["crates/nula"]
+default-members = ["crates/nula-core"]
 resolver = "3"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.94"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/qntx/nula"
-description = "Nostr protocol implementation and SDK for Rust."
+homepage = "https://github.com/qntx/nula"
+authors = ["QNTX <https://qntx.fun>"]
+keywords = ["nostr", "protocol", "sdk"]
+categories = ["cryptography", "network-programming"]
 
 [workspace.dependencies]
+# Internal crates
+nula-core = { version = "0.1.0", path = "crates/nula-core", default-features = false }
 
+# Serialization
+serde = { version = "1.0.228", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0.149", default-features = false, features = ["alloc"] }
+
+# Cryptography
+secp256k1 = { version = "0.31", default-features = false, features = ["std", "serde"] }
+bitcoin_hashes = { version = "0.20", default-features = false, features = ["std", "serde"] }
+sha2 = { version = "0.10", default-features = false, features = ["std"] }
+
+# Encoding
+bech32 = { version = "0.11.1", default-features = false, features = ["alloc"] }
+faster-hex = { version = "0.10.0", default-features = false, features = ["std"] }
+url = { version = "2.5.8", default-features = false, features = ["serde"] }
+
+# Error handling
+thiserror = { version = "2.0.18", default-features = false }
+
+# Random number generation
+rand = { version = "0.10", default-features = false, features = ["std", "std_rng", "sys_rng", "thread_rng"] }
+getrandom = { version = "0.3", default-features = false, features = ["std"] }
+
+# Containers
+arrayvec = { version = "0.7.6", default-features = false, features = ["std", "serde"] }
+
+# Testing
+proptest = { version = "1.11.0", default-features = false, features = ["std"] }
+rstest = { version = "0.26.1", default-features = false }
+hex-literal = "1.1.0"
 
 [profile.release]
 codegen-units = 1
