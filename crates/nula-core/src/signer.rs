@@ -16,6 +16,21 @@
 //! deliberately object-safe (`dyn NostrSigner`) so consumers can store an
 //! `Arc<dyn NostrSigner>` in their state without committing to a concrete
 //! signer at construction time.
+//!
+//! # Why `Pin<Box<dyn Future + Send>>` instead of `async fn`
+//!
+//! `async fn` in traits is stable since Rust 1.75, but the resulting
+//! return-position-impl-trait makes the trait *not* `dyn`-safe on stable.
+//! Higher-level crates need `Arc<dyn NostrSigner>` (relay pools, gossip
+//! planners, multi-account UIs); a `dyn`-unsafe trait would force every
+//! consumer to either (a) pick a concrete signer at construction time,
+//! or (b) pull in a third-party adapter such as `trait_variant`.
+//!
+//! Boxing the future is the idiomatic stable workaround and the same
+//! choice the `tokio` / `futures` ecosystem uses for object-safe async
+//! traits. The single allocation per call is negligible compared to the
+//! Schnorr signature itself, and impls that already produce a boxed
+//! future (NIP-46 RPC, browser extensions) pay no extra cost.
 
 use core::error::Error;
 use core::fmt;
@@ -32,6 +47,26 @@ use crate::key::{Keys, PublicKey};
 ///
 /// Synchronous signers can wrap their work with [`std::future::ready`].
 pub type SignerFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// Box and pin an `async` block as a [`SignerFuture`].
+///
+/// Convenience wrapper so signer impls can write
+///
+/// ```ignore
+/// fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, SignerError>> {
+///     boxed_signer_future(async { Ok(*self.public_key()) })
+/// }
+/// ```
+///
+/// instead of repeating `Box::pin(async move { ... })` at every call
+/// site. The function exists in `nula_core` so downstream crates do not
+/// have to depend on `futures-util` or rewrite the boilerplate.
+pub fn boxed_signer_future<'a, F, T>(future: F) -> SignerFuture<'a, T>
+where
+    F: Future<Output = T> + Send + 'a,
+{
+    Box::pin(future)
+}
 
 /// Errors raised by a [`NostrSigner`].
 #[derive(Debug, ThisError)]
@@ -92,11 +127,11 @@ pub trait NostrSigner: fmt::Debug + Send + Sync {
 impl NostrSigner for Keys {
     fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, SignerError>> {
         let key = *self.public_key();
-        Box::pin(async move { Ok(key) })
+        boxed_signer_future(async move { Ok(key) })
     }
 
     fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, SignerError>> {
-        Box::pin(async move {
+        boxed_signer_future(async move {
             let event = unsigned.sign_with_keys(self)?;
             Ok(event)
         })

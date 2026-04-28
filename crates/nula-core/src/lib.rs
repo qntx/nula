@@ -79,7 +79,7 @@ pub use self::nip22::{Comment, CommentError, CommentScope};
 pub use self::nip40::{ExpirationError, IsExpiredError};
 pub use self::nip42::AuthError;
 pub use self::nip65::{RelayList, RelayListError, RelayMarker, RelayMarkerError};
-pub use self::signer::{NostrSigner, SignerError, SignerFuture};
+pub use self::signer::{NostrSigner, SignerError, SignerFuture, boxed_signer_future};
 pub use self::types::{
     ImageDimensions, ImageError, RelayUrl, RelayUrlError, Timestamp, TimestampError, Url, UrlError,
 };
