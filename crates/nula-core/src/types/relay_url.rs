@@ -33,19 +33,19 @@ use thiserror::Error;
 pub enum RelayUrlError {
     /// The input could not be parsed as a URL at all.
     #[error("invalid relay URL: {0}")]
-    Parse(String),
+    Parse(#[from] url::ParseError),
     /// The scheme is not `ws` or `wss`.
     #[error("invalid relay scheme `{0}`: expected `ws` or `wss`")]
     InvalidScheme(String),
     /// The URL has no host (e.g. `ws:///path`).
     #[error("relay URL has no host: {0}")]
     MissingHost(String),
-}
-
-impl From<url::ParseError> for RelayUrlError {
-    fn from(err: url::ParseError) -> Self {
-        Self::Parse(err.to_string())
-    }
+    /// The URL was syntactically valid but the [`url`] crate refused the
+    /// `set_port(None)` call when stripping the default port. In practice
+    /// unreachable for `ws`/`wss` schemes, but kept as an explicit
+    /// failure mode rather than a `String` fallback.
+    #[error("relay URL cannot have its port modified")]
+    PortNotModifiable,
 }
 
 /// WebSocket relay URL.
@@ -89,9 +89,9 @@ impl RelayUrl {
 
         inner.set_fragment(None);
         if inner.port() == Some(default_port) {
-            inner.set_port(None).map_err(|()| {
-                RelayUrlError::Parse("URL cannot have its port modified".to_owned())
-            })?;
+            inner
+                .set_port(None)
+                .map_err(|()| RelayUrlError::PortNotModifiable)?;
         }
 
         Ok(Self { inner })

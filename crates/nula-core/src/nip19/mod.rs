@@ -547,9 +547,9 @@ mod tests {
     fn nevent_round_trip_full() {
         let pk = *fixture_keys().public_key();
         let event = Nip19Event::new(EventId::from_byte_array([0xab; 32]))
-            .author(pk)
-            .kind(Kind::TEXT_NOTE)
-            .relays([relay("wss://relay.example")]);
+            .with_author(pk)
+            .with_kind(Kind::TEXT_NOTE)
+            .with_relays([relay("wss://relay.example")]);
         let encoded = event.to_bech32().unwrap();
         assert!(encoded.starts_with("nevent1"));
         let parsed = Nip19Event::from_bech32(&encoded).unwrap();

@@ -24,16 +24,10 @@ use thiserror::Error;
 pub enum UrlError {
     /// The input could not be parsed as an absolute URL.
     #[error("invalid URL: {0}")]
-    Parse(String),
+    Parse(#[from] url::ParseError),
     /// The URL was relative; absolute URLs are required.
     #[error("URL must be absolute: {0}")]
     Relative(String),
-}
-
-impl From<url::ParseError> for UrlError {
-    fn from(err: url::ParseError) -> Self {
-        Self::Parse(err.to_string())
-    }
 }
 
 /// Absolute URL.

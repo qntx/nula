@@ -108,6 +108,23 @@ impl PublicKey {
     pub const fn as_inner(&self) -> &secp256k1::XOnlyPublicKey {
         &self.0
     }
+
+    /// Verify a BIP-340 Schnorr signature against this public key.
+    ///
+    /// `message` is the 32-byte digest the signer signed (typically the
+    /// canonical NIP-01 event id). The function uses the global
+    /// `secp256k1` context and is therefore allocation-free.
+    ///
+    /// Returns `true` when the signature is valid for this public key
+    /// over `message`, `false` on every other path (invalid signature,
+    /// wrong key, malformed point at construction time is impossible
+    /// because [`PublicKey`] only holds curve-valid points).
+    #[must_use]
+    pub fn verify_schnorr(&self, message: &[u8; 32], sig: &secp256k1::schnorr::Signature) -> bool {
+        secp256k1::SECP256K1
+            .verify_schnorr(sig, message, &self.0)
+            .is_ok()
+    }
 }
 
 impl fmt::Debug for PublicKey {
@@ -234,5 +251,20 @@ mod tests {
         ))
         .unwrap();
         assert!(lhs < rhs);
+    }
+
+    #[test]
+    fn verify_schnorr_round_trip() {
+        use crate::Keys;
+        let keys = Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
+            .unwrap();
+        let message = hex!("0202020202020202020202020202020202020202020202020202020202020202");
+        let sig = keys.sign_schnorr(&message);
+        // Correct key + correct message: success.
+        assert!(keys.public_key().verify_schnorr(&message, &sig));
+        // Tamper with the message: must reject.
+        let mut bad = message;
+        bad[0] ^= 0xff;
+        assert!(!keys.public_key().verify_schnorr(&bad, &sig));
     }
 }

@@ -29,6 +29,11 @@ pub enum HexError {
         /// Bytes provided by the caller.
         actual: usize,
     },
+    /// Upstream `faster_hex` reported an internal capacity overflow. Kept
+    /// as a distinct variant so callers can tell it apart from the
+    /// (much more common) `InvalidLength` failure on user input.
+    #[error("hex decoder reported an internal overflow")]
+    Overflow,
 }
 
 impl From<faster_hex::Error> for HexError {
@@ -36,7 +41,7 @@ impl From<faster_hex::Error> for HexError {
         match err {
             faster_hex::Error::InvalidChar => Self::InvalidChar,
             faster_hex::Error::InvalidLength(len) => Self::InvalidLength(len),
-            faster_hex::Error::Overflow => Self::InvalidLength(usize::MAX),
+            faster_hex::Error::Overflow => Self::Overflow,
         }
     }
 }

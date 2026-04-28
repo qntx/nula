@@ -48,6 +48,7 @@ pub mod nip40;
 pub mod nip42;
 pub mod nip65;
 pub mod nip70;
+pub mod prelude;
 pub mod signer;
 pub mod types;
 pub mod util;

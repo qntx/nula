@@ -36,21 +36,21 @@ impl Nip19Event {
 
     /// Add an author hint.
     #[must_use]
-    pub const fn author(mut self, author: PublicKey) -> Self {
+    pub const fn with_author(mut self, author: PublicKey) -> Self {
         self.author = Some(author);
         self
     }
 
     /// Add a kind hint.
     #[must_use]
-    pub const fn kind(mut self, kind: Kind) -> Self {
+    pub const fn with_kind(mut self, kind: Kind) -> Self {
         self.kind = Some(kind);
         self
     }
 
     /// Add relay hints.
     #[must_use]
-    pub fn relays(mut self, relays: impl IntoIterator<Item = RelayUrl>) -> Self {
+    pub fn with_relays(mut self, relays: impl IntoIterator<Item = RelayUrl>) -> Self {
         self.relays.extend(relays);
         self
     }

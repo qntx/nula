@@ -228,6 +228,64 @@ mod tests {
         kind.try_to_json().ok()
     }
 
+    /// Regression-test the NIP-01 §32 control-character escapes.
+    ///
+    /// NIP-01 mandates exactly seven short escapes (\b\t\n\f\r\"\\) and
+    /// permits no other shortcut for control characters in the canonical
+    /// JSON. `serde_json` produces precisely that shape today; if a
+    /// future upgrade ever drifts (e.g. switches `\u0008` for `\b`),
+    /// every event id we produce would silently change. This test pins
+    /// the byte-level wire form for the seven escapes plus a sample of
+    /// other control codes (`\u0000`, `\u001f`).
+    #[test]
+    fn nip01_control_character_escapes_are_canonical() {
+        // pubkey is fixed so the canonical bytes are deterministic.
+        let pubkey =
+            PublicKey::parse("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+                .unwrap();
+        // Content carries the seven mandated control characters plus two
+        // generic-escape codepoints.
+        let content = "\u{0008}\t\n\u{000C}\r\"\\\0\u{001F}";
+        let bytes = canonical_bytes(
+            &pubkey,
+            Timestamp::ZERO,
+            Kind::TEXT_NOTE,
+            &Tags::new(),
+            content,
+        );
+        let s = String::from_utf8(bytes).expect("canonical bytes are UTF-8 by construction");
+        // Each NIP-01-mandated escape must appear in its short form.
+        assert!(s.contains(r"\b"), "missing \\b in {s}");
+        assert!(s.contains(r"\t"));
+        assert!(s.contains(r"\n"));
+        assert!(s.contains(r"\f"));
+        assert!(s.contains(r"\r"));
+        assert!(s.contains(r#"\""#));
+        assert!(s.contains(r"\\"));
+        // Generic control chars use \u00xx (case-insensitive).
+        assert!(
+            s.contains(r"\u0000") || s.contains(r"\u0000"),
+            "missing \\u0000 in {s}",
+        );
+        assert!(s.contains(r"\u001f"));
+        // Sanity: the canonical hash is stable across two runs.
+        let id_a = compute_event_id(
+            &pubkey,
+            Timestamp::ZERO,
+            Kind::TEXT_NOTE,
+            &Tags::new(),
+            content,
+        );
+        let id_b = compute_event_id(
+            &pubkey,
+            Timestamp::ZERO,
+            Kind::TEXT_NOTE,
+            &Tags::new(),
+            content,
+        );
+        assert_eq!(id_a, id_b);
+    }
+
     /// Regression-test the safety invariant that lets `canonical_bytes`
     /// avoid `expect()`. We exercise every known-tricky content shape:
     /// empty content, the seven NIP-01 §32 control-character escapes, and
