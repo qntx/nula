@@ -353,9 +353,8 @@ mod tests {
     #[test]
     fn verify_against_empty_challenge_set_rejects() {
         let event = signed("c1", Timestamp::from_secs(1));
-        let err =
-            verify_auth_event_against(&event, &relay(), &[], Timestamp::from_secs(1), 600)
-                .unwrap_err();
+        let err = verify_auth_event_against(&event, &relay(), &[], Timestamp::from_secs(1), 600)
+            .unwrap_err();
         assert!(matches!(err, AuthError::ChallengeMismatch));
     }
 }

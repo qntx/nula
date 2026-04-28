@@ -48,7 +48,7 @@ use core::str;
 use core::str::Utf8Error;
 
 use bech32::Bech32;
-use bech32::primitives::decode::CheckedHrpstring;
+use bech32::primitives::decode::{CheckedHrpstring, CheckedHrpstringError};
 use thiserror::Error;
 
 pub use self::coordinate::Nip19Coordinate;
@@ -91,7 +91,7 @@ pub enum FromBech32Error {
     },
     /// The string is not valid bech32 with the expected checksum.
     #[error("bech32 decoding failed: {0}")]
-    Decode(String),
+    Decode(#[from] CheckedHrpstringError),
     /// The HRP is not one of the NIP-19 prefixes.
     #[error("unknown NIP-19 prefix `{0}`")]
     UnknownHrp(String),
@@ -355,11 +355,7 @@ fn decode_bech32(s: &str) -> Result<(String, Vec<u8>), FromBech32Error> {
             max: MAX_NIP19_LENGTH,
         });
     }
-    let parsed = CheckedHrpstring::new::<Bech32>(s).map_err(
-        |err: bech32::primitives::decode::CheckedHrpstringError| {
-            FromBech32Error::Decode(err.to_string())
-        },
-    )?;
+    let parsed = CheckedHrpstring::new::<Bech32>(s)?;
     let hrp_str = parsed.hrp().to_lowercase();
     let data: Vec<u8> = parsed.byte_iter().collect();
     Ok((hrp_str, data))

@@ -260,7 +260,10 @@ mod tests {
             .expiration(Timestamp::from_secs(2_000))
             .sign_with_keys(&keys)
             .unwrap();
-        assert_eq!(event.expiration().unwrap(), Some(Timestamp::from_secs(2_000)));
+        assert_eq!(
+            event.expiration().unwrap(),
+            Some(Timestamp::from_secs(2_000))
+        );
         assert!(!event.is_expired(Timestamp::from_secs(1_999)).unwrap());
         assert!(event.is_expired(Timestamp::from_secs(2_000)).unwrap());
     }

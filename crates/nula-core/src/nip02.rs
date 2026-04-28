@@ -247,8 +247,9 @@ impl ContactList {
     /// neither empty nor a JSON object of the documented shape, or
     /// [`ContactListError::InvalidRelay`] if a key is not a valid
     /// `ws://`/`wss://` URL.
-    pub fn legacy_relays(content: &str) -> Result<BTreeMap<RelayUrl, RelayMarker>, ContactListError>
-    {
+    pub fn legacy_relays(
+        content: &str,
+    ) -> Result<BTreeMap<RelayUrl, RelayMarker>, ContactListError> {
         let trimmed = content.trim();
         if trimmed.is_empty() {
             return Ok(BTreeMap::new());

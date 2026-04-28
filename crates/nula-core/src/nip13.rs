@@ -259,9 +259,7 @@ impl PowAttempt {
 
         let mut iterations: u64 = 0;
         loop {
-            iterations = iterations
-                .checked_add(1)
-                .ok_or(MineError::NonceExhausted)?;
+            iterations = iterations.checked_add(1).ok_or(MineError::NonceExhausted)?;
             let mut tags = prefix.clone();
             tags.push(make_nonce_tag(iterations, difficulty));
             let unsigned = crate::event::UnsignedEvent::new(
@@ -447,10 +445,9 @@ mod tests {
         // Build the synthetic event the spec would have produced. The
         // signature is a placeholder: verify_pow only inspects `id` and
         // the `nonce` tag, never the signature.
-        let pubkey = PublicKey::parse(
-            "a48380f4cfcc1ad5378294fcac36439770f9c878dd880ffa94bb74ea54a6f243",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::parse("a48380f4cfcc1ad5378294fcac36439770f9c878dd880ffa94bb74ea54a6f243")
+                .unwrap();
         let event = Event::from_parts(
             id,
             pubkey,

@@ -437,7 +437,9 @@ where
         // so downstream Filter::matches never has to defend against
         // malformed input.
         validate_hex_filter_values::<M>(letter, &values)?;
-        filter.generic_tags.insert(letter, dedup_preserving_order(values));
+        filter
+            .generic_tags
+            .insert(letter, dedup_preserving_order(values));
         return Ok(());
     }
     match key {
