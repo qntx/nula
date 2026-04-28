@@ -36,6 +36,7 @@ pub mod event;
 pub mod filter;
 pub mod key;
 pub mod message;
+pub mod nip11;
 pub mod nip19;
 pub mod signer;
 pub mod types;
@@ -51,6 +52,9 @@ pub use self::key::{Keys, PublicKey, PublicKeyError, SecretKey, SecretKeyError};
 pub use self::message::{
     ClientMessage, ClientMessageError, MachineReadablePrefix, MachineReadablePrefixError,
     RelayMessage, RelayMessageError, SubscriptionId, SubscriptionIdError,
+};
+pub use self::nip11::{
+    KindRange, RelayFee, RelayFees, RelayInformation, RelayLimitation, RelayRetention,
 };
 pub use self::nip19::{
     FromBech32, FromBech32Error, Nip19Coordinate, Nip19Entity, Nip19Event, Nip19Profile, ToBech32,
