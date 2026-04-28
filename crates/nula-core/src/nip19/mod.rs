@@ -654,8 +654,7 @@ mod tests {
                     RelayUrl::parse("wss://djbas.sadkb.com/").unwrap(),
                 ],
             );
-            let expected =
-                "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gppemhxue69uhhytnc9e3k7mf0qyt8wumn8ghj7er2vfshxtnnv9jxkc3wvdhk6tclr7lsh";
+            let expected = "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gppemhxue69uhhytnc9e3k7mf0qyt8wumn8ghj7er2vfshxtnnv9jxkc3wvdhk6tclr7lsh";
             assert_eq!(profile.to_bech32().unwrap(), expected);
             assert_eq!(Nip19Profile::from_bech32(expected).unwrap(), profile);
         }
