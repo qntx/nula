@@ -13,11 +13,11 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use super::compute_event_id;
 use super::event::Event;
 use super::id::EventId;
 use super::kind::Kind;
 use super::tag::Tags;
-use super::{compute_event_id};
 use crate::key::{Keys, PublicKey};
 use crate::types::Timestamp;
 
@@ -123,8 +123,7 @@ mod tests {
     use super::*;
 
     fn fixture_keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     #[test]
@@ -160,10 +159,8 @@ mod tests {
     #[test]
     fn sign_with_keys_rejects_mismatch() {
         let alice = fixture_keys();
-        let bob = Keys::parse(
-            "0000000000000000000000000000000000000000000000000000000000000005",
-        )
-        .unwrap();
+        let bob = Keys::parse("0000000000000000000000000000000000000000000000000000000000000005")
+            .unwrap();
         let unsigned = UnsignedEvent::new(
             *alice.public_key(),
             Timestamp::from_secs(1_700_000_000),

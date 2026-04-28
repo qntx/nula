@@ -16,10 +16,10 @@ use secp256k1::schnorr::Signature;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use super::compute_event_id;
 use super::id::EventId;
 use super::kind::Kind;
 use super::tag::Tags;
-use super::compute_event_id;
 use crate::JsonUtil;
 use crate::key::PublicKey;
 use crate::types::Timestamp;
@@ -141,8 +141,7 @@ mod tests {
     use crate::Keys;
 
     fn fixture_keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     fn signed_event(content: &str) -> Event {

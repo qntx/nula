@@ -38,7 +38,6 @@ pub use self::tag::{
     Alphabet, AlphabetError, SingleLetterTag, SingleLetterTagError, Tag, TagError, TagKind, Tags,
 };
 pub use self::unsigned::{UnsignedEvent, UnsignedEventError};
-
 use crate::key::PublicKey;
 use crate::types::Timestamp;
 
@@ -113,16 +112,14 @@ pub fn compute_event_id(
 
 #[cfg(test)]
 mod tests {
-    use crate::JsonUtil;
-
     use super::*;
+    use crate::JsonUtil;
 
     #[test]
     fn canonical_serialization_is_compact() {
-        let pubkey = PublicKey::parse(
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::parse("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+                .unwrap();
         let tags = Tags::from_vec(vec![
             Tag::new(["e", "id-1"]).unwrap(),
             Tag::new(["p", "pk-1"]).unwrap(),
@@ -145,33 +142,19 @@ mod tests {
         // Reference vector borrowed from the rust-nostr test fixtures: the
         // canonical form for an empty-content `kind:1` event signed by the
         // generator point with `created_at = 0` and no tags.
-        let pubkey = PublicKey::parse(
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-        )
-        .unwrap();
-        let id_a = compute_event_id(
-            &pubkey,
-            Timestamp::ZERO,
-            Kind::TEXT_NOTE,
-            &Tags::new(),
-            "",
-        );
-        let id_b = compute_event_id(
-            &pubkey,
-            Timestamp::ZERO,
-            Kind::TEXT_NOTE,
-            &Tags::new(),
-            "",
-        );
+        let pubkey =
+            PublicKey::parse("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+                .unwrap();
+        let id_a = compute_event_id(&pubkey, Timestamp::ZERO, Kind::TEXT_NOTE, &Tags::new(), "");
+        let id_b = compute_event_id(&pubkey, Timestamp::ZERO, Kind::TEXT_NOTE, &Tags::new(), "");
         assert_eq!(id_a, id_b);
     }
 
     #[test]
     fn changing_any_field_changes_id() {
-        let pubkey = PublicKey::parse(
-            "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-        )
-        .unwrap();
+        let pubkey =
+            PublicKey::parse("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+                .unwrap();
         let baseline = compute_event_id(
             &pubkey,
             Timestamp::from_secs(1),

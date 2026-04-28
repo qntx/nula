@@ -168,8 +168,7 @@ mod tests {
     use super::*;
 
     /// Generator point `G`'s x-coordinate (BIP-340 § Test Vectors).
-    const G_X: [u8; 32] =
-        hex!("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798");
+    const G_X: [u8; 32] = hex!("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798");
 
     #[test]
     fn parse_lowercase_hex() {
@@ -203,7 +202,10 @@ mod tests {
         let pk = PublicKey::from_byte_array(G_X).unwrap();
         let s = format!("{pk}");
         assert_eq!(s.len(), 64);
-        assert!(s.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        assert!(
+            s.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+        );
     }
 
     #[test]

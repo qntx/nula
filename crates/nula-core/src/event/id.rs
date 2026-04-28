@@ -219,7 +219,10 @@ mod tests {
         let id = EventId::from_byte_array(SHA256_EMPTY);
         let s = format!("{id}");
         assert_eq!(s.len(), 64);
-        assert!(s.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        assert!(
+            s.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+        );
     }
 
     #[test]

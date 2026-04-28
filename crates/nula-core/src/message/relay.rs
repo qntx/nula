@@ -418,8 +418,7 @@ mod tests {
     use crate::event::EventBuilder;
 
     fn keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     fn signed_event() -> Event {

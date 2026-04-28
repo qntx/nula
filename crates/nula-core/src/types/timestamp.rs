@@ -196,9 +196,7 @@ mod tests {
     fn to_system_time_round_trip() {
         let ts = Timestamp::from_secs(1_700_000_000);
         let st = ts.to_system_time();
-        let back = st
-            .duration_since(UNIX_EPOCH)
-            .expect("UNIX_EPOCH ordering");
+        let back = st.duration_since(UNIX_EPOCH).expect("UNIX_EPOCH ordering");
         assert_eq!(back.as_secs(), 1_700_000_000);
     }
 }

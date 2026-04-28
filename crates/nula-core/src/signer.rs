@@ -86,10 +86,7 @@ pub trait NostrSigner: fmt::Debug + Send + Sync {
     ///
     /// Implementations must reject events whose `pubkey` does not match the
     /// signer's own public key.
-    fn sign_event(
-        &self,
-        unsigned: UnsignedEvent,
-    ) -> SignerFuture<'_, Result<Event, SignerError>>;
+    fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, SignerError>>;
 }
 
 impl NostrSigner for Keys {
@@ -98,10 +95,7 @@ impl NostrSigner for Keys {
         Box::pin(async move { Ok(key) })
     }
 
-    fn sign_event(
-        &self,
-        unsigned: UnsignedEvent,
-    ) -> SignerFuture<'_, Result<Event, SignerError>> {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, SignerError>> {
         Box::pin(async move {
             let event = unsigned.sign_with_keys(self)?;
             Ok(event)
@@ -117,10 +111,7 @@ where
         (**self).get_public_key()
     }
 
-    fn sign_event(
-        &self,
-        unsigned: UnsignedEvent,
-    ) -> SignerFuture<'_, Result<Event, SignerError>> {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, SignerError>> {
         (**self).sign_event(unsigned)
     }
 }
@@ -132,8 +123,7 @@ mod tests {
     use crate::types::Timestamp;
 
     fn fixture_keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     fn block_on<F: Future>(f: F) -> F::Output {

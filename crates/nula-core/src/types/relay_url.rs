@@ -247,10 +247,9 @@ mod tests {
 
     #[test]
     fn detects_onion() {
-        let url = RelayUrl::parse(
-            "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
-        )
-        .unwrap();
+        let url =
+            RelayUrl::parse("ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion")
+                .unwrap();
         assert!(url.is_onion());
     }
 

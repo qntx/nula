@@ -130,10 +130,7 @@ impl EventBuilder {
     ///
     /// Returns [`EventBuilderError::Clock`] if the wall clock could not be
     /// read.
-    pub fn build_unsigned(
-        self,
-        pubkey: PublicKey,
-    ) -> Result<UnsignedEvent, EventBuilderError> {
+    pub fn build_unsigned(self, pubkey: PublicKey) -> Result<UnsignedEvent, EventBuilderError> {
         let created_at = match self.created_at {
             Some(ts) => ts,
             None => Timestamp::now()?,
@@ -166,8 +163,7 @@ mod tests {
     use super::*;
 
     fn fixture_keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     #[test]

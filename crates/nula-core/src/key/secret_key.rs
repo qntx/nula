@@ -237,10 +237,9 @@ mod tests {
 
     #[test]
     fn from_str_works() {
-        let sk: SecretKey =
-            "0000000000000000000000000000000000000000000000000000000000000001"
-                .parse()
-                .unwrap();
+        let sk: SecretKey = "0000000000000000000000000000000000000000000000000000000000000001"
+            .parse()
+            .unwrap();
         assert_eq!(sk.to_byte_array(), VALID_SECRET);
     }
 }

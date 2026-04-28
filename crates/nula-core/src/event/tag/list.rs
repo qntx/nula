@@ -81,10 +81,7 @@ impl Tags {
     }
 
     /// Iterate over every tag whose kind matches `kind`.
-    pub fn find_all<'a>(
-        &'a self,
-        kind: &'a TagKind,
-    ) -> impl Iterator<Item = &'a Tag> + 'a {
+    pub fn find_all<'a>(&'a self, kind: &'a TagKind) -> impl Iterator<Item = &'a Tag> + 'a {
         self.items.iter().filter(move |tag| tag.kind() == *kind)
     }
 
@@ -92,18 +89,14 @@ impl Tags {
     /// `letter`. Convenience for the very common `e`/`p`/`a` queries.
     pub fn find_letter(&self, letter: Alphabet) -> impl Iterator<Item = &Tag> + '_ {
         let kind = TagKind::single_letter(SingleLetterTag::lowercase(letter));
-        self.items
-            .iter()
-            .filter(move |tag| tag.kind() == kind)
+        self.items.iter().filter(move |tag| tag.kind() == kind)
     }
 
     /// Return the value of the first `d` tag (the *identifier* used by NIP-01
     /// addressable events).
     #[must_use]
     pub fn identifier(&self) -> Option<&str> {
-        self.find_letter(Alphabet::D)
-            .next()
-            .and_then(Tag::content)
+        self.find_letter(Alphabet::D).next().and_then(Tag::content)
     }
 
     /// Decompose into the underlying `Vec<Tag>`.
@@ -207,10 +200,7 @@ mod tests {
             tag(&["e", "id-2"]),
         ]);
         let kind = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
-        let collected: Vec<&str> = tags
-            .find_all(&kind)
-            .filter_map(Tag::content)
-            .collect();
+        let collected: Vec<&str> = tags.find_all(&kind).filter_map(Tag::content).collect();
         assert_eq!(collected, ["id-1", "id-2"]);
     }
 

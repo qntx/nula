@@ -88,7 +88,9 @@ impl Filter {
     /// Add a single author.
     #[must_use]
     pub fn author(mut self, pubkey: PublicKey) -> Self {
-        self.authors.get_or_insert_with(BTreeSet::new).insert(pubkey);
+        self.authors
+            .get_or_insert_with(BTreeSet::new)
+            .insert(pubkey);
         self
     }
 
@@ -98,7 +100,9 @@ impl Filter {
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        self.authors.get_or_insert_with(BTreeSet::new).extend(authors);
+        self.authors
+            .get_or_insert_with(BTreeSet::new)
+            .extend(authors);
         self
     }
 
@@ -399,8 +403,7 @@ mod tests {
     use crate::event::{Alphabet, EventBuilder, Tag};
 
     fn keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     fn signed_event() -> Event {
@@ -457,11 +460,9 @@ mod tests {
     #[test]
     fn generic_tag_filter() {
         let event = signed_event();
-        let filter = Filter::new()
-            .custom_tag(SingleLetterTag::lowercase(Alphabet::T), "rust");
+        let filter = Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::T), "rust");
         assert!(filter.matches(&event));
-        let no_match = Filter::new()
-            .custom_tag(SingleLetterTag::lowercase(Alphabet::T), "nostr");
+        let no_match = Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::T), "nostr");
         assert!(!no_match.matches(&event));
     }
 
