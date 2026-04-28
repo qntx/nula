@@ -76,8 +76,20 @@ pub enum SignerError {
     AuthorMismatch(#[from] UnsignedEventError),
     /// The remote signer rejected the request (e.g. user denied a NIP-46
     /// prompt, NIP-07 returned `null`, …).
-    #[error("signer rejected the request: {0}")]
-    Rejected(String),
+    ///
+    /// `code` carries the machine-readable NIP-46 error string when the
+    /// backend supplies one (`"user_rejected"`, `"timeout"`, etc.); leave
+    /// it `None` for backends without a structured error channel.
+    #[error(
+        "signer rejected the request{}: {message}",
+        code.as_ref().map_or_else(String::new, |c| format!(" (code = {c})"))
+    )]
+    Rejected {
+        /// Human-readable explanation, suitable for display.
+        message: String,
+        /// Machine-readable error code when supplied by the backend.
+        code: Option<String>,
+    },
     /// The signer could not communicate with its backend.
     #[error("signer backend failure: {0}")]
     Backend(Box<dyn Error + Send + Sync>),
@@ -95,12 +107,29 @@ impl SignerError {
         Self::Backend(Box::new(err))
     }
 
-    /// Convenience constructor for [`SignerError::Rejected`].
-    pub fn rejected<S>(reason: S) -> Self
+    /// Convenience constructor for [`SignerError::Rejected`] without a
+    /// structured backend code (NIP-07, sandbox signers, etc.).
+    pub fn rejected<S>(message: S) -> Self
     where
         S: Into<String>,
     {
-        Self::Rejected(reason.into())
+        Self::Rejected {
+            message: message.into(),
+            code: None,
+        }
+    }
+
+    /// Convenience constructor for [`SignerError::Rejected`] with a
+    /// machine-readable code (typically the NIP-46 `error` string).
+    pub fn rejected_with_code<S, C>(message: S, code: C) -> Self
+    where
+        S: Into<String>,
+        C: Into<String>,
+    {
+        Self::Rejected {
+            message: message.into(),
+            code: Some(code.into()),
+        }
     }
 }
 
@@ -203,7 +232,20 @@ mod tests {
     #[test]
     fn rejected_error_carries_reason() {
         let err = SignerError::rejected("user denied");
-        assert!(err.to_string().contains("user denied"));
+        let s = err.to_string();
+        assert!(s.contains("user denied"));
+        assert!(!s.contains("code"), "no structured code → no code suffix");
+    }
+
+    #[test]
+    fn rejected_with_code_surfaces_machine_readable_code() {
+        let err = SignerError::rejected_with_code("user denied", "user_rejected");
+        let s = err.to_string();
+        assert!(s.contains("user denied"));
+        assert!(
+            s.contains("code = user_rejected"),
+            "expected code suffix in: {s}",
+        );
     }
 
     #[test]
