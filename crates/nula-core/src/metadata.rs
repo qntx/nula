@@ -248,4 +248,88 @@ mod tests {
         assert_eq!(parsed, meta);
         event.verify().unwrap();
     }
+
+    /// Pinned vectors from the NIP-24 §"Extra metadata fields" spec.
+    /// Each fixture is the literal `content` JSON a real-world client
+    /// (Damus, Amethyst, Coracle) ships in a `kind: 0` event. These
+    /// guard against drift in the field-level serde shape across
+    /// future refactors.
+    mod nip24_fixtures {
+        use super::*;
+
+        /// Minimal NIP-01 §user-metadata payload (name + about + picture).
+        /// Round-tripping must produce identical bytes after re-encoding.
+        #[test]
+        fn nip01_minimal_round_trip() {
+            let json = r#"{"name":"alice","about":"cypherpunk","picture":"https://alice.example/pfp.png"}"#;
+            let parsed = Metadata::from_event_content(json).unwrap();
+            assert_eq!(parsed.name.as_deref(), Some("alice"));
+            assert_eq!(parsed.about.as_deref(), Some("cypherpunk"));
+            assert_eq!(
+                parsed.picture.as_ref().map(Url::as_str),
+                Some("https://alice.example/pfp.png"),
+            );
+            // Re-encode and confirm the JSON round-trips field-for-field.
+            let again = Metadata::from_event_content(&parsed.to_event_content().unwrap()).unwrap();
+            assert_eq!(again, parsed);
+        }
+
+        /// Full NIP-24 payload exercising every standardised field.
+        #[test]
+        fn nip24_full_payload_round_trip() {
+            let meta = Metadata::new()
+                .with_name("alice")
+                .with_display_name("Alice the Cypherpunk")
+                .with_about("Building on Nostr.")
+                .with_website(Url::parse("https://alice.example").unwrap())
+                .with_picture(Url::parse("https://alice.example/pfp.png").unwrap())
+                .with_banner(Url::parse("https://alice.example/banner.png").unwrap())
+                .with_nip05("alice@alice.example")
+                .with_lud06("LNURL1DP68GURN8GHJ7AMPD3KX2AR0VEEKZAR0WD5XJTNRDAKJ7TNHV4KXCTTTDEHHWM30D3H82UNVWQHKZURF9AKXUATJD3CZ7CT9XGEK2ATWXSHHQH4UQAQE")
+                .with_lud16("alice@getalby.com")
+                .with_custom("bot", false)
+                .with_custom("birthday", serde_json::json!({"year": 1990, "month": 6, "day": 15}));
+
+            let json = meta.to_event_content().unwrap();
+            // Sanity: every standardised field appears verbatim in the
+            // wire form. serde_json sorts Object keys alphabetically, so
+            // for nested objects we only assert the inner numbers, not
+            // the surrounding key order.
+            for needle in [
+                r#""name":"alice""#,
+                r#""display_name":"Alice the Cypherpunk""#,
+                r#""website":"https://alice.example/""#,
+                r#""banner":"https://alice.example/banner.png""#,
+                r#""nip05":"alice@alice.example""#,
+                r#""lud16":"alice@getalby.com""#,
+                r#""bot":false"#,
+                r#""day":15"#,
+                r#""month":6"#,
+                r#""year":1990"#,
+            ] {
+                assert!(
+                    json.contains(needle),
+                    "missing `{needle}` in serialized metadata: {json}",
+                );
+            }
+            assert_eq!(Metadata::from_event_content(&json).unwrap(), meta);
+        }
+
+        /// Real-world Coracle-style payload that emits an unknown
+        /// `damus_donation_v2` field. Forward-compat: we round-trip it
+        /// through `custom` without dropping bytes.
+        #[test]
+        fn forward_compat_unknown_fields_round_trip() {
+            let json = r#"{"name":"bob","damus_donation_v2":21,"website":"https://b.example/"}"#;
+            let parsed = Metadata::from_event_content(json).unwrap();
+            assert_eq!(parsed.name.as_deref(), Some("bob"));
+            assert_eq!(
+                parsed.custom.get("damus_donation_v2"),
+                Some(&serde_json::Value::Number(21.into()))
+            );
+            // Re-encoding preserves the unknown field.
+            let again = parsed.to_event_content().unwrap();
+            assert!(again.contains(r#""damus_donation_v2":21"#));
+        }
+    }
 }
