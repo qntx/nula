@@ -19,7 +19,7 @@ categories = ["cryptography", "network-programming"]
 nula-core = { version = "0.1.0", path = "crates/nula-core", default-features = false }
 
 # Serialization
-serde = { version = "1.0.228", default-features = false, features = ["derive"] }
+serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0.149", default-features = false, features = ["alloc"] }
 
 # Cryptography

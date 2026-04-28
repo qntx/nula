@@ -19,12 +19,11 @@ pub mod fees;
 pub mod limitation;
 pub mod retention;
 
+use serde::{Deserialize, Serialize};
+
 pub use self::fees::{RelayFee, RelayFees};
 pub use self::limitation::RelayLimitation;
 pub use self::retention::{KindRange, RelayRetention};
-
-use serde::{Deserialize, Serialize};
-
 use crate::key::PublicKey;
 use crate::types::Url;
 
@@ -105,9 +104,8 @@ mod tests {
     use crate::Keys;
 
     fn fixture_pubkey() -> PublicKey {
-        let keys =
-            Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-                .unwrap();
+        let keys = Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
+            .unwrap();
         *keys.public_key()
     }
 
