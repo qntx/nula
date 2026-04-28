@@ -24,7 +24,6 @@ serde_json = { version = "1.0.149", default-features = false, features = ["alloc
 
 # Cryptography
 secp256k1 = { version = "0.31", default-features = false, features = ["std", "serde"] }
-bitcoin_hashes = { version = "0.20", default-features = false, features = ["std", "serde"] }
 sha2 = { version = "0.10", default-features = false, features = ["std"] }
 
 # Encoding
@@ -36,15 +35,9 @@ url = { version = "2.5.8", default-features = false, features = ["serde"] }
 thiserror = { version = "2.0.18", default-features = false }
 
 # Random number generation
-rand = { version = "0.10", default-features = false, features = ["std", "std_rng", "sys_rng", "thread_rng"] }
 getrandom = { version = "0.3", default-features = false, features = ["std"] }
 
-# Containers
-arrayvec = { version = "0.7.6", default-features = false, features = ["std", "serde"] }
-
 # Testing
-proptest = { version = "1.11.0", default-features = false, features = ["std"] }
-rstest = { version = "0.26.1", default-features = false }
 hex-literal = "1.1.0"
 
 [profile.release]
