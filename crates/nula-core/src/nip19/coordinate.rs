@@ -3,29 +3,23 @@
 
 //! `naddr` — TLV-encoded coordinate `(identifier, author, kind, [relays])`.
 
-use crate::event::Kind;
+use crate::event::{Coordinate, Kind};
 use crate::key::PublicKey;
 use crate::types::RelayUrl;
 
-/// Replaceable-event coordinate (a.k.a. "address" in NIP-01 §parameterized
-/// replaceable events): an `(identifier, author, kind)` triple uniquely
-/// identifies a parameterized replaceable event.
+/// `naddr`-style address: a [`Coordinate`] plus relay hints.
 ///
 /// Wire form is `bech32("naddr", TLV[(0, identifier), (1, relay)*, (2, author), (3, kind)])`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Nip19Coordinate {
-    /// `d`-tag identifier of the parameterized replaceable event.
-    pub identifier: String,
-    /// Author public key.
-    pub author: PublicKey,
-    /// Event kind.
-    pub kind: Kind,
+    /// `(kind, author, identifier)` address of the replaceable event.
+    pub coordinate: Coordinate,
     /// Hints of relays that store the event.
     pub relays: Vec<RelayUrl>,
 }
 
 impl Nip19Coordinate {
-    /// Construct a coordinate.
+    /// Construct an `naddr` coordinate.
     #[must_use]
     pub fn new(
         identifier: impl Into<String>,
@@ -34,10 +28,38 @@ impl Nip19Coordinate {
         relays: impl IntoIterator<Item = RelayUrl>,
     ) -> Self {
         Self {
-            identifier: identifier.into(),
-            author,
-            kind,
+            coordinate: Coordinate::new(kind, author, identifier),
             relays: relays.into_iter().collect(),
         }
+    }
+
+    /// Build from a pre-existing [`Coordinate`] and a list of relay hints.
+    #[must_use]
+    pub fn from_coordinate(
+        coordinate: Coordinate,
+        relays: impl IntoIterator<Item = RelayUrl>,
+    ) -> Self {
+        Self {
+            coordinate,
+            relays: relays.into_iter().collect(),
+        }
+    }
+
+    /// Borrow the inner [`Kind`].
+    #[must_use]
+    pub const fn kind(&self) -> Kind {
+        self.coordinate.kind
+    }
+
+    /// Borrow the inner author public key.
+    #[must_use]
+    pub const fn author(&self) -> &PublicKey {
+        &self.coordinate.author
+    }
+
+    /// Borrow the inner identifier.
+    #[must_use]
+    pub fn identifier(&self) -> &str {
+        &self.coordinate.identifier
     }
 }

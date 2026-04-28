@@ -37,6 +37,7 @@ pub mod filter;
 pub mod key;
 pub mod message;
 pub mod metadata;
+pub mod nip09;
 pub mod nip11;
 pub mod nip13;
 pub mod nip19;
@@ -48,9 +49,9 @@ pub mod types;
 pub mod util;
 
 pub use self::event::{
-    Alphabet, AlphabetError, Event, EventBuilder, EventBuilderError, EventError, EventId,
-    EventIdError, Kind, SingleLetterTag, SingleLetterTagError, Tag, TagError, TagKind, Tags,
-    UnsignedEvent, UnsignedEventError, compute_event_id,
+    Alphabet, AlphabetError, Coordinate, CoordinateError, Event, EventBuilder, EventBuilderError,
+    EventError, EventId, EventIdError, Kind, SingleLetterTag, SingleLetterTagError, Tag, TagError,
+    TagKind, Tags, UnsignedEvent, UnsignedEventError, compute_event_id,
 };
 pub use self::filter::Filter;
 pub use self::key::{Keys, PublicKey, PublicKeyError, SecretKey, SecretKeyError};
@@ -59,6 +60,7 @@ pub use self::message::{
     RelayMessage, RelayMessageError, SubscriptionId, SubscriptionIdError,
 };
 pub use self::metadata::Metadata;
+pub use self::nip09::{AuthorityError, DeletionError, DeletionRequest};
 pub use self::nip11::{
     KindRange, RelayFee, RelayFees, RelayInformation, RelayLimitation, RelayRetention,
 };

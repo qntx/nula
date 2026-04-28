@@ -20,6 +20,7 @@
 //! [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md
 
 pub mod builder;
+pub mod coordinate;
 #[allow(
     clippy::module_inception,
     reason = "the inner `event` module exposes the `Event` struct; the outer module groups the event-related submodules"
@@ -31,6 +32,7 @@ pub mod tag;
 pub mod unsigned;
 
 pub use self::builder::{EventBuilder, EventBuilderError};
+pub use self::coordinate::{Coordinate, CoordinateError};
 pub use self::event::{Event, EventError};
 pub use self::id::{EventId, EventIdError};
 pub use self::kind::Kind;

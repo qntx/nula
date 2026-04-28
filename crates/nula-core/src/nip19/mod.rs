@@ -284,9 +284,9 @@ impl FromBech32 for Nip19Event {
 
 impl ToBech32 for Nip19Coordinate {
     fn to_bech32(&self) -> Result<String, ToBech32Error> {
-        let identifier_bytes = self.identifier.as_bytes();
-        let author_bytes = self.author.to_byte_array();
-        let kind_bytes = u32::from(self.kind.as_u16()).to_be_bytes();
+        let identifier_bytes = self.coordinate.identifier.as_bytes();
+        let author_bytes = self.coordinate.author.to_byte_array();
+        let kind_bytes = u32::from(self.coordinate.kind.as_u16()).to_be_bytes();
 
         let mut records: Vec<(u8, &[u8])> = Vec::with_capacity(3 + self.relays.len());
         records.push((tlv::SPECIAL, identifier_bytes));
@@ -425,10 +425,11 @@ fn decode_naddr(data: &[u8]) -> Result<Nip19Coordinate, FromBech32Error> {
         }
     }
 
+    let identifier = identifier.ok_or(FromBech32Error::MissingTlv { tag: tlv::SPECIAL })?;
+    let author = author.ok_or(FromBech32Error::MissingTlv { tag: tlv::AUTHOR })?;
+    let kind = kind.ok_or(FromBech32Error::MissingTlv { tag: tlv::KIND })?;
     Ok(Nip19Coordinate {
-        identifier: identifier.ok_or(FromBech32Error::MissingTlv { tag: tlv::SPECIAL })?,
-        author: author.ok_or(FromBech32Error::MissingTlv { tag: tlv::AUTHOR })?,
-        kind: kind.ok_or(FromBech32Error::MissingTlv { tag: tlv::KIND })?,
+        coordinate: crate::event::Coordinate::new(kind, author, identifier),
         relays,
     })
 }
