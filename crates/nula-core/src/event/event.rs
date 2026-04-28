@@ -124,6 +124,38 @@ impl Event {
         }
         Ok(())
     }
+
+    /// True when the event carries the NIP-70 `["-"]` protected marker.
+    ///
+    /// Convenience wrapper around [`crate::nip70::is_protected`].
+    #[must_use]
+    pub fn is_protected(&self) -> bool {
+        crate::nip70::is_protected(self)
+    }
+
+    /// Read the NIP-40 deadline carried by this event, if any.
+    ///
+    /// Convenience wrapper around [`crate::nip40::parse_expiration`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`crate::nip40::ExpirationError`] if the `expiration` tag
+    /// is present but malformed.
+    pub fn expiration(&self) -> Result<Option<Timestamp>, crate::nip40::ExpirationError> {
+        crate::nip40::parse_expiration(self)
+    }
+
+    /// Whether this event's NIP-40 deadline (if any) has passed at `now`.
+    ///
+    /// Convenience wrapper around [`crate::nip40::is_expired`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`crate::nip40::ExpirationError`] if the `expiration` tag
+    /// is malformed.
+    pub fn is_expired(&self, now: Timestamp) -> Result<bool, crate::nip40::ExpirationError> {
+        crate::nip40::is_expired(self, now)
+    }
 }
 
 impl fmt::Display for Event {
@@ -202,5 +234,34 @@ mod tests {
         let parsed: Event = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed, event);
         parsed.verify().unwrap();
+    }
+
+    #[test]
+    fn inherent_is_protected_matches_free_function() {
+        // Bare event: not protected
+        let event = signed_event("public");
+        assert!(!event.is_protected());
+
+        // Build a protected event via the NIP-70 builder helper.
+        let keys = fixture_keys();
+        let protected = super::super::EventBuilder::text_note("private")
+            .created_at(Timestamp::from_secs(1))
+            .protected()
+            .sign_with_keys(&keys)
+            .unwrap();
+        assert!(protected.is_protected());
+    }
+
+    #[test]
+    fn inherent_expiration_matches_free_function() {
+        let keys = fixture_keys();
+        let event = super::super::EventBuilder::text_note("with-deadline")
+            .created_at(Timestamp::from_secs(1))
+            .expiration(Timestamp::from_secs(2_000))
+            .sign_with_keys(&keys)
+            .unwrap();
+        assert_eq!(event.expiration().unwrap(), Some(Timestamp::from_secs(2_000)));
+        assert!(!event.is_expired(Timestamp::from_secs(1_999)).unwrap());
+        assert!(event.is_expired(Timestamp::from_secs(2_000)).unwrap());
     }
 }
