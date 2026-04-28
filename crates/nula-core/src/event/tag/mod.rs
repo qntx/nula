@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Event tags.
 //!
 //! A tag is an array of strings whose first element names the tag and whose

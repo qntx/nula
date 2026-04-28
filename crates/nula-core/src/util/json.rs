@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! JSON serialization helper trait.
 //!
 //! [`JsonUtil`] is implemented automatically for every `serde::Serialize +

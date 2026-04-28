@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Wire messages exchanged over a relay WebSocket.
 //!
 //! Per [NIP-01], every Nostr message is a JSON array whose first element is

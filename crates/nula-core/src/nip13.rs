@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-13] Proof of Work.
 //!
 //! NIP-13 mines an event so that its [`EventId`] has at least `D` leading

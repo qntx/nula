@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-11] Relay Information Document.
 //!
 //! NIP-11 lets a relay describe itself by serving a JSON document over HTTPS

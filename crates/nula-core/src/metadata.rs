@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! NIP-01 user metadata (kind `0` event content).
 //!
 //! Per [NIP-01], the content of a `kind: 0` event is a JSON-encoded user

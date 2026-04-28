@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Convenience re-exports for the most common Nostr types.
 //!
 //! Glob-importing this module pulls in the surface most application code

@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-02] Follow List.
 //!
 //! NIP-02 publishes the author's follow set as a `kind: 3` event whose `p`
@@ -116,11 +113,12 @@ impl ContactList {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::UnexpectedKind`] if the event's kind is
-    /// not `3`, plus the matching parse error if any `p` tag is malformed.
-    pub fn from_event(event: &Event) -> Result<Self, Error> {
+    /// Returns [`ContactListError::UnexpectedKind`] if the event's kind
+    /// is not `3`, plus the matching parse error if any `p` tag is
+    /// malformed.
+    pub fn from_event(event: &Event) -> Result<Self, ContactListError> {
         if event.kind != Kind::CONTACTS {
-            return Err(Error::UnexpectedKind(event.kind.as_u16()));
+            return Err(ContactListError::UnexpectedKind(event.kind.as_u16()));
         }
         let p_kind = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::P));
         let mut contacts = Vec::with_capacity(event.tags.as_slice().len());
@@ -131,7 +129,7 @@ impl ContactList {
             let mut values = tag.values().iter().skip(1);
             let pubkey = values
                 .next()
-                .ok_or(Error::MissingPubkey)?
+                .ok_or(ContactListError::MissingPubkey)?
                 .parse::<PublicKey>()?;
             let relay_hint = match values.next() {
                 Some(s) if !s.is_empty() => Some(RelayUrl::parse(s)?),
@@ -183,7 +181,7 @@ fn build_p_tag(p_kind: &TagKind, contact: &Contact) -> Tag {
 /// Errors raised when parsing a NIP-02 contact list event.
 #[derive(Debug, Clone, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum ContactListError {
     /// The event's kind was not `3`.
     #[error("expected kind 3, got {0}")]
     UnexpectedKind(u16),
@@ -244,17 +242,19 @@ impl ContactList {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::InvalidLegacyJson`] if `content` is
+    /// Returns [`ContactListError::InvalidLegacyJson`] if `content` is
     /// neither empty nor a JSON object of the documented shape, or
-    /// [`Error::InvalidRelay`] if a key is not a valid
+    /// [`ContactListError::InvalidRelay`] if a key is not a valid
     /// `ws://`/`wss://` URL.
-    pub fn legacy_relays(content: &str) -> Result<BTreeMap<RelayUrl, RelayMarker>, Error> {
+    pub fn legacy_relays(
+        content: &str,
+    ) -> Result<BTreeMap<RelayUrl, RelayMarker>, ContactListError> {
         let trimmed = content.trim();
         if trimmed.is_empty() {
             return Ok(BTreeMap::new());
         }
         let raw: BTreeMap<String, LegacyRelayEntry> = serde_json::from_str(trimmed)
-            .map_err(|err| Error::InvalidLegacyJson(err.to_string()))?;
+            .map_err(|err| ContactListError::InvalidLegacyJson(err.to_string()))?;
         let mut out = BTreeMap::new();
         for (url, entry) in raw {
             let marker = match (entry.read, entry.write) {
@@ -358,7 +358,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = ContactList::from_event(&event).unwrap_err();
-        assert!(matches!(err, Error::UnexpectedKind(1)));
+        assert!(matches!(err, ContactListError::UnexpectedKind(1)));
     }
 
     #[test]
@@ -369,7 +369,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = ContactList::from_event(&event).unwrap_err();
-        assert!(matches!(err, Error::MissingPubkey));
+        assert!(matches!(err, ContactListError::MissingPubkey));
     }
 
     #[test]
@@ -405,13 +405,13 @@ mod tests {
     #[test]
     fn legacy_relays_rejects_invalid_json() {
         let err = ContactList::legacy_relays("not json").unwrap_err();
-        assert!(matches!(err, Error::InvalidLegacyJson(_)));
+        assert!(matches!(err, ContactListError::InvalidLegacyJson(_)));
     }
 
     #[test]
     fn legacy_relays_rejects_invalid_relay_url() {
         let json = r#"{"https://not-a-relay.example": {"read": true, "write": true}}"#;
         let err = ContactList::legacy_relays(json).unwrap_err();
-        assert!(matches!(err, Error::InvalidRelay(_)));
+        assert!(matches!(err, ContactListError::InvalidRelay(_)));
     }
 }

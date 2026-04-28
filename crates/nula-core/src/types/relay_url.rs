@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! WebSocket relay URL.
 //!
 //! Per [NIP-01], a relay is identified by a `ws://` or `wss://` URL. This

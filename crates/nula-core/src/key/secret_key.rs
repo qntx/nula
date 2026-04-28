@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! 32-byte secp256k1 secret scalar.
 //!
 //! [`SecretKey`] is a thin wrapper around [`secp256k1::SecretKey`] that

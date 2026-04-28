@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! 32-byte event identifier.
 //!
 //! Per [NIP-01], an event's `id` is the SHA-256 hash of its canonical

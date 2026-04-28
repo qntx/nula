@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Signed Nostr event.
 //!
 //! [`Event`] is the canonical on-the-wire representation. Construction always

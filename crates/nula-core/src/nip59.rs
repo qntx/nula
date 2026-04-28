@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-59] Gift Wrap.
 //!
 //! Gift wrapping turns an unsigned *rumor* into a sealed, anonymously

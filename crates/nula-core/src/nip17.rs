@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-17] Private Direct Messages.
 //!
 //! NIP-17 layers a *chat-message rumor* (kind 14) on top of the NIP-59

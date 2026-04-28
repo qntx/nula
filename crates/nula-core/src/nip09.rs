@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-09] Event Deletion Request.
 //!
 //! NIP-09 lets an author request deletion of one or more of their own

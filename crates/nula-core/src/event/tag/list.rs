@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Ordered collection of [`Tag`]s.
 //!
 //! [`Tags`] preserves the insertion order — relays and clients rely on the

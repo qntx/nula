@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-44] Encrypted Payloads (Versioned).
 //!
 //! `nula-core` ships **only the v2 algorithm** spelled out by the NIP:
@@ -60,6 +57,7 @@ use chacha20::ChaCha20;
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
+use hmac::digest::KeyInit;
 use secp256k1::{Parity, ecdh};
 use sha2::Sha256;
 use thiserror::Error;
@@ -509,7 +507,7 @@ fn compute_hmac(key: &[u8], nonce: &[u8], ciphertext: &[u8]) -> [u8; HMAC_BYTES]
     // size of the underlying hash, but HMAC-SHA256 has no upper bound
     // (it just rehashes oversized keys). 32-byte keys are well below.
     let mut mac =
-        <Hmac<Sha256> as Mac>::new_from_slice(key).expect("HMAC-SHA256 accepts any key length");
+        <Hmac<Sha256> as KeyInit>::new_from_slice(key).expect("HMAC-SHA256 accepts any key length");
     mac.update(nonce);
     mac.update(ciphertext);
     mac.finalize().into_bytes().into()

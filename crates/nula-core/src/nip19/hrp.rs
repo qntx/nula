@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Human-readable prefixes used by NIP-19.
 //!
 //! Each constant lists the canonical lowercase HRP. The helpers wrap them in

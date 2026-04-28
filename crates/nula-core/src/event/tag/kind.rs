@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Tag head identifier.
 //!
 //! Every Nostr tag is an array of strings whose first entry names the tag.

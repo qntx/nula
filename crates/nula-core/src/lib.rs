@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Protocol primitives for the [Nostr] protocol used across the `nula` workspace.
 //!
 //! `nula-core` is the lowest layer of the workspace. It defines the on-the-wire

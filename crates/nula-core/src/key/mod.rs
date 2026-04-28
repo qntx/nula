@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Cryptographic identity for the Nostr protocol.
 //!
 //! Nostr uses BIP-340 Schnorr signatures over secp256k1. Each user is

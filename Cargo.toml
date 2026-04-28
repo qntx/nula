@@ -24,26 +24,26 @@ serde_json = { version = "1.0.149", default-features = false, features = ["alloc
 
 # Cryptography (always-on)
 secp256k1 = { version = "0.31.1", default-features = false, features = ["std", "serde"] }
-sha2 = { version = "0.11.0", default-features = false, features = ["std"] }
+sha2 = "0.11.0"
 zeroize = { version = "1.8.2", default-features = false, features = ["zeroize_derive"] }
 
 # Cryptography (NIP-04 / NIP-44 / NIP-49 - feature-gated)
-aes = { version = "0.9.0", default-features = false }
-cbc = { version = "0.2.0", default-features = false }
-chacha20 = { version = "0.10.0", default-features = false }
+aes = "0.9.0"
+cbc = "0.2.0"
+chacha20 = "0.10.0"
 chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc"] }
-hkdf = { version = "0.13.0", default-features = false }
-hmac = { version = "0.13.0", default-features = false }
-scrypt = { version = "0.12.0", default-features = false }
+hkdf = "0.13.0"
+hmac = "0.13.0"
+scrypt = "0.12.0"
 
 # Mnemonic derivation (NIP-06)
-bip39 = { version = "2.2.2", default-features = false }
+bip39 = "2.2.2"
 
 # Unicode NFKC normalization (NIP-49 password handling)
-unicode-normalization = { version = "0.1.25", default-features = false, features = ["std"] }
+unicode-normalization = "0.1.25"
 
 # Encoding
-base64 = { version = "0.22.1", default-features = false, features = ["std"] }
+base64 = "0.22.1"
 bech32 = { version = "0.11.1", default-features = false, features = ["std"] }
 faster-hex = { version = "0.10.0", default-features = false, features = ["std"] }
 url = { version = "2.5.8", default-features = false, features = ["serde"] }
@@ -52,7 +52,7 @@ url = { version = "2.5.8", default-features = false, features = ["serde"] }
 indexmap = { version = "2.14.0", default-features = false, features = ["std", "serde"] }
 
 # Error handling
-thiserror = { version = "2.0.18", default-features = false }
+thiserror = "2.0.18"
 
 # Random number generation
 getrandom = { version = "0.4.2", default-features = false, features = ["std"] }
@@ -154,11 +154,7 @@ rc_buffer = "warn"
 rc_mutex = "warn"
 
 fallible_impl_from = "warn"
-# Allow `Error` as a module-local error name (e.g. `nip02::Error`,
-# `signer::Error`). This is the std-library convention (`std::io::Error`,
-# `std::fmt::Error`) and lets callers write `nip02::Error` instead of
-# the redundant `nip02::Nip02Error`.
-error_impl_error = "allow"
+error_impl_error = "warn"
 let_underscore_must_use = "warn"
 
 rest_pat_in_fully_bound_structs = "warn"

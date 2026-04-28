@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Hex encoding and decoding helpers.
 //!
 //! Thin wrappers over [`faster_hex`] that present a small, allocation-aware

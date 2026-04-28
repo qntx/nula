@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! 32-byte BIP-340 x-only public key.
 //!
 //! NIP-01 carries public keys as a 32-byte x-only encoding (the `pubkey` field

@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! NIP-11 retention policy (`retention` array).
 //!
 //! Each [`RelayRetention`] entry tells clients how long the relay holds a

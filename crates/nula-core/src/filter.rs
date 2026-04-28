@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! NIP-01 subscription filter.
 //!
 //! A [`Filter`] is the JSON object Nostr clients ship inside `REQ` messages

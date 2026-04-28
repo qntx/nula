@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Messages a relay sends to a client.
 //!
 //! Per [NIP-01], every relay-to-client message is a JSON array tagged by its

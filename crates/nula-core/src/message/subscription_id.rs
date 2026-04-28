@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Opaque subscription identifier.
 //!
 //! Per NIP-01, a subscription id is a non-empty string of up to 64

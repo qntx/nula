@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! BIP-340 secp256k1 keypair convenient for signing.
 //!
 //! [`Keys`] holds a [`SecretKey`] alongside a cached

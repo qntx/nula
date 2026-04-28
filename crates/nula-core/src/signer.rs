@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! `NostrSigner` trait — the universal signing interface used by every
 //! higher-level crate.
 //!

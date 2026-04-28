@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-19] bech32 encoding for Nostr entities.
 //!
 //! NIP-19 covers two families of identifiers:

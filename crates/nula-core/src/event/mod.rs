@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Nostr events.
 //!
 //! Per [NIP-01], an event is the only object the protocol talks about. Every

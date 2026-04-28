@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-49] Private Key Encryption (`ncryptsec`).
 //!
 //! Encrypts a 32-byte secp256k1 secret key with a user-supplied
@@ -181,6 +178,16 @@ pub enum Error {
 /// An encrypted secret key, ready to be bech32-encoded as `ncryptsec1...`.
 ///
 /// `Debug` redacts every byte so the value can be safely logged.
+///
+/// We deliberately do **not** implement `Copy`: even though every
+/// field is `Copy`-eligible, silently duplicating an encrypted secret
+/// across the stack would violate the principle that callers must
+/// reason explicitly about every place the ciphertext lives. Use
+/// [`Clone`] when you really need a second owned copy.
+#[allow(
+    missing_copy_implementations,
+    reason = "see doc comment: explicit Clone keeps callers honest about the secret's lifetime"
+)]
 #[derive(Clone, PartialEq, Eq)]
 pub struct EncryptedSecretKey {
     log_n: u8,
@@ -406,12 +413,15 @@ fn derive_symmetric_key(
     // strings entered on different OS / IME stacks produce the same
     // symmetric key.
     let normalized: String = password.nfkc().collect();
-    let params = ScryptParams::new(log_n, SCRYPT_R, SCRYPT_P, SYM_KEY_BYTES).map_err(|err| {
-        Error::InvalidParams {
+    // `scrypt 0.12` dropped the output-length argument from `Params::new`
+    // (the length is fixed at the caller's `&mut` buffer in
+    // `scrypt::scrypt`). The previous (log_n, r, p, len) signature is
+    // gone.
+    let params =
+        ScryptParams::new(log_n, SCRYPT_R, SCRYPT_P).map_err(|err| Error::InvalidParams {
             log_n,
             message: err.to_string(),
-        }
-    })?;
+        })?;
     let mut key = [0u8; SYM_KEY_BYTES];
     scrypt(normalized.as_bytes(), salt, &params, &mut key).map_err(|err| Error::Scrypt(err.to_string()))?;
     Ok(key)

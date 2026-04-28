@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-22] Comments.
 //!
 //! NIP-22 introduces `kind: 1111` events that comment on **any** other

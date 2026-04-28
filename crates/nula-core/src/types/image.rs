@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Image dimensions, encoded as `WIDTHxHEIGHT`.
 //!
 //! Used by NIP-92 (media attachments), NIP-94 (file metadata), and the

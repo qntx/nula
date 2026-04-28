@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Event kind.
 //!
 //! Per [NIP-01], every event carries a non-negative integer `kind` in the

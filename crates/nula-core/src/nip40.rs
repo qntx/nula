@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-40] Expiration Timestamp.
 //!
 //! NIP-40 lets the author of an event declare a deadline after which the

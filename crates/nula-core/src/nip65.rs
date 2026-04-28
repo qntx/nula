@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-65] Relay List Metadata.
 //!
 //! NIP-65 lets a user advertise the relays they use by publishing a `kind:

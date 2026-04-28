@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-42] Authentication of clients to relays.
 //!
 //! NIP-42 lets a relay challenge a connected client and the client prove

@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! Fluent builder for [`Event`]s and [`UnsignedEvent`]s.
 //!
 //! [`EventBuilder`] decouples the *intent* (kind, content, tags, …) from the

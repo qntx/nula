@@ -1,6 +1,3 @@
-// Copyright (c) 2026 QNTX <https://qntx.fun>
-// Distributed under the MIT or Apache-2.0 license.
-
 //! [NIP-10] Replies and Mentions in Text Notes.
 //!
 //! NIP-10 specifies how `kind: 1` notes reference one another to build
