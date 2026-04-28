@@ -17,6 +17,22 @@
 //! input is *some* NIP-19 string (for example, a value pasted by an end
 //! user).
 //!
+//! # Wire-format placement
+//!
+//! Per **NIP-19 §Notes**, bech32-encoded entities are **only** for human
+//! display, copy-paste, and QR codes. They MUST NOT appear inside:
+//!
+//! - the `pubkey` / `id` / `tags` fields of a [`crate::Event`] (NIP-01),
+//! - the `ids` / `authors` fields of a [`crate::Filter`],
+//! - the `#e` / `#p` filter values, or
+//! - NIP-05 JSON responses.
+//!
+//! These places strictly require the underlying lowercase hex form. The
+//! Nip19* types in this module always decode back to those primitive
+//! types ([`PublicKey`], [`EventId`], [`crate::event::Coordinate`]) so
+//! callers should pass *those* downstream rather than the bech32
+//! strings.
+//!
 //! [NIP-19]: https://github.com/nostr-protocol/nips/blob/master/19.md
 //! [`PublicKey`]: crate::PublicKey
 //! [`SecretKey`]: crate::SecretKey
