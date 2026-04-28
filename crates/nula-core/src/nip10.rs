@@ -183,6 +183,51 @@ impl ThreadContext {
             .filter(|r| r.marker == Some(NoteMarker::Mention))
     }
 
+    /// Fill in markers on `e` references that came from the *deprecated
+    /// positional form* of NIP-10.
+    ///
+    /// Per NIP-10 §"deprecated positional form": when an event carries
+    /// `e` tags without explicit markers, the position determines the
+    /// role:
+    ///
+    /// - 0 unmarked references: nothing to do
+    /// - 1 unmarked reference: it is the [`NoteMarker::Root`]
+    /// - 2+ unmarked references: first is [`NoteMarker::Root`], last is
+    ///   [`NoteMarker::Reply`], every entry in between is
+    ///   [`NoteMarker::Mention`]
+    ///
+    /// Existing markers are never overwritten — references that already
+    /// have a marker keep it. This makes the operation safe to call on
+    /// any [`ThreadContext`], including ones produced by
+    /// [`ThreadContext::from_event`] on a legacy thread mixed with
+    /// modern markers.
+    #[must_use]
+    pub fn infer_legacy_markers(mut self) -> Self {
+        let unmarked: Vec<usize> = self
+            .events
+            .iter()
+            .enumerate()
+            .filter_map(|(i, r)| if r.marker.is_none() { Some(i) } else { None })
+            .collect();
+        let assign = |slot: &mut Self, idx: usize, marker: NoteMarker| {
+            if let Some(r) = slot.events.get_mut(idx) {
+                r.marker = Some(marker);
+            }
+        };
+        match unmarked.as_slice() {
+            [] => {}
+            [only] => assign(&mut self, *only, NoteMarker::Root),
+            [first, middle @ .., last] => {
+                assign(&mut self, *first, NoteMarker::Root);
+                assign(&mut self, *last, NoteMarker::Reply);
+                for &idx in middle {
+                    assign(&mut self, idx, NoteMarker::Mention);
+                }
+            }
+        }
+        self
+    }
+
     /// Render the context as the [`Tag`]s that go into a `kind: 1` note.
     #[must_use]
     pub fn to_tags(&self) -> Vec<Tag> {
@@ -459,5 +504,58 @@ mod tests {
         let tag = Tag::new(["p", &pk(1).to_hex()]).unwrap();
         let err = EventReference::from_tag(&tag).unwrap_err();
         assert!(matches!(err, ThreadError::NotEventTag(_)));
+    }
+
+    #[test]
+    fn legacy_positional_single_e_tag_becomes_root() {
+        let context = ThreadContext::new()
+            .reference(EventReference::new(event_id(0xaa)))
+            .infer_legacy_markers();
+        assert_eq!(context.events[0].marker, Some(NoteMarker::Root));
+        assert!(context.reply().is_none());
+    }
+
+    #[test]
+    fn legacy_positional_multi_e_tag_assigns_root_reply_mention() {
+        let context = ThreadContext::new()
+            .reference(EventReference::new(event_id(0xaa)))
+            .reference(EventReference::new(event_id(0xbb)))
+            .reference(EventReference::new(event_id(0xcc)))
+            .reference(EventReference::new(event_id(0xdd)))
+            .infer_legacy_markers();
+        assert_eq!(context.events[0].marker, Some(NoteMarker::Root));
+        assert_eq!(context.events[1].marker, Some(NoteMarker::Mention));
+        assert_eq!(context.events[2].marker, Some(NoteMarker::Mention));
+        assert_eq!(context.events[3].marker, Some(NoteMarker::Reply));
+    }
+
+    #[test]
+    fn legacy_positional_two_e_tags_become_root_and_reply() {
+        let context = ThreadContext::new()
+            .reference(EventReference::new(event_id(0xaa)))
+            .reference(EventReference::new(event_id(0xbb)))
+            .infer_legacy_markers();
+        assert_eq!(context.events[0].marker, Some(NoteMarker::Root));
+        assert_eq!(context.events[1].marker, Some(NoteMarker::Reply));
+    }
+
+    #[test]
+    fn legacy_positional_inference_preserves_existing_markers() {
+        // Mixed thread: an explicit Root plus an unmarked tail. Inference
+        // must not overwrite the explicit marker; it labels only the
+        // unmarked entries (here: only one, which becomes Root by the
+        // single-unmarked rule).
+        let context = ThreadContext::new()
+            .reference(EventReference::new(event_id(0xaa)).with_marker(NoteMarker::Root))
+            .reference(EventReference::new(event_id(0xbb)))
+            .infer_legacy_markers();
+        assert_eq!(context.events[0].marker, Some(NoteMarker::Root));
+        assert_eq!(context.events[1].marker, Some(NoteMarker::Root));
+    }
+
+    #[test]
+    fn legacy_positional_no_e_tags_is_a_noop() {
+        let context = ThreadContext::new().infer_legacy_markers();
+        assert!(context.events.is_empty());
     }
 }

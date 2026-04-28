@@ -68,6 +68,15 @@ pub enum MineError {
     /// Forwarded from event signing.
     #[error(transparent)]
     Builder(#[from] EventBuilderError),
+    /// The nonce search exhausted the full `u64` space without finding a
+    /// matching id at the requested difficulty.
+    ///
+    /// In practice unreachable for any real-world `difficulty`; the variant
+    /// exists so the mining loop never silently saturates and never spins
+    /// forever. Callers may recover by re-mining with a different
+    /// `created_at` (NIP-13 explicitly suggests refreshing it).
+    #[error("nonce search exhausted u64 space; refresh created_at and retry")]
+    NonceExhausted,
 }
 
 /// Count the leading zero bits in a byte slice.
@@ -224,7 +233,9 @@ impl PowAttempt {
 
         let mut iterations: u64 = 0;
         loop {
-            iterations = iterations.saturating_add(1);
+            iterations = iterations
+                .checked_add(1)
+                .ok_or(MineError::NonceExhausted)?;
             let mut tags = prefix.clone();
             tags.push(make_nonce_tag(iterations, difficulty));
             let unsigned = crate::event::UnsignedEvent::new(

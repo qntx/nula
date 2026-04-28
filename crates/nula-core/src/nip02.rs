@@ -16,10 +16,14 @@
 //!
 //! [NIP-02]: https://github.com/nostr-protocol/nips/blob/master/02.md
 
+use std::collections::BTreeMap;
+
+use serde::Deserialize;
 use thiserror::Error;
 
 use crate::event::{Alphabet, Event, EventBuilder, Kind, SingleLetterTag, Tag, TagKind};
 use crate::key::{PublicKey, PublicKeyError};
+use crate::nip65::RelayMarker;
 use crate::types::{RelayUrl, RelayUrlError};
 
 /// A single follow entry inside a NIP-02 contact list.
@@ -191,6 +195,79 @@ pub enum ContactListError {
     /// A `p` tag's relay hint did not parse.
     #[error(transparent)]
     InvalidRelay(#[from] RelayUrlError),
+    /// The legacy `content` relay map was malformed JSON.
+    #[error("invalid legacy relay JSON: {0}")]
+    InvalidLegacyJson(String),
+}
+
+/// Per-relay read/write flags carried by the deprecated NIP-02 `content`
+/// JSON map.
+///
+/// The wire shape is `{"<relay-url>": {"read": bool, "write": bool}}`.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+struct LegacyRelayEntry {
+    #[serde(default)]
+    read: bool,
+    #[serde(default)]
+    write: bool,
+}
+
+impl ContactList {
+    /// Parse the *deprecated* NIP-02 `content` relay map.
+    ///
+    /// NIP-02 originally stored a JSON object inside an event's `content`
+    /// to advertise the user's preferred relays; that responsibility has
+    /// since moved to NIP-65 (`kind: 10002`). This helper exists for
+    /// backward-compatibility tools that still need to migrate or display
+    /// the legacy data.
+    ///
+    /// The wire format is:
+    ///
+    /// ```jsonc
+    /// {
+    ///   "wss://relay.example": { "read": true, "write": true }
+    /// }
+    /// ```
+    ///
+    /// Each entry is mapped to the closest [`RelayMarker`] equivalent:
+    ///
+    /// | read | write | marker |
+    /// |------|-------|--------|
+    /// | true | true  | [`RelayMarker::ReadWrite`] |
+    /// | true | false | [`RelayMarker::Read`] |
+    /// | false| true  | [`RelayMarker::Write`] |
+    /// | false| false | skipped (no useful marker) |
+    ///
+    /// Outer iteration order follows [`BTreeMap`] for deterministic
+    /// downstream processing.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ContactListError::InvalidLegacyJson`] if `content` is
+    /// neither empty nor a JSON object of the documented shape, or
+    /// [`ContactListError::InvalidRelay`] if a key is not a valid
+    /// `ws://`/`wss://` URL.
+    pub fn legacy_relays(content: &str) -> Result<BTreeMap<RelayUrl, RelayMarker>, ContactListError>
+    {
+        let trimmed = content.trim();
+        if trimmed.is_empty() {
+            return Ok(BTreeMap::new());
+        }
+        let raw: BTreeMap<String, LegacyRelayEntry> = serde_json::from_str(trimmed)
+            .map_err(|err| ContactListError::InvalidLegacyJson(err.to_string()))?;
+        let mut out = BTreeMap::new();
+        for (url, entry) in raw {
+            let marker = match (entry.read, entry.write) {
+                (true, true) => RelayMarker::ReadWrite,
+                (true, false) => RelayMarker::Read,
+                (false, true) => RelayMarker::Write,
+                (false, false) => continue,
+            };
+            let parsed = RelayUrl::parse(&url)?;
+            out.insert(parsed, marker);
+        }
+        Ok(out)
+    }
 }
 
 #[cfg(test)]
@@ -293,5 +370,48 @@ mod tests {
             .unwrap();
         let err = ContactList::from_event(&event).unwrap_err();
         assert!(matches!(err, ContactListError::MissingPubkey));
+    }
+
+    #[test]
+    fn legacy_relays_empty_content_returns_empty_map() {
+        let map = ContactList::legacy_relays("").unwrap();
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn legacy_relays_round_trip_full_matrix() {
+        let json = r#"{
+            "wss://both.example/": {"read": true, "write": true},
+            "wss://read.example/": {"read": true, "write": false},
+            "wss://write.example/": {"read": false, "write": true},
+            "wss://muted.example/": {"read": false, "write": false}
+        }"#;
+        let map = ContactList::legacy_relays(json).unwrap();
+        assert_eq!(map.len(), 3, "skipped: muted entry has no marker");
+        assert_eq!(
+            map.get(&RelayUrl::parse("wss://both.example/").unwrap()),
+            Some(&RelayMarker::ReadWrite),
+        );
+        assert_eq!(
+            map.get(&RelayUrl::parse("wss://read.example/").unwrap()),
+            Some(&RelayMarker::Read),
+        );
+        assert_eq!(
+            map.get(&RelayUrl::parse("wss://write.example/").unwrap()),
+            Some(&RelayMarker::Write),
+        );
+    }
+
+    #[test]
+    fn legacy_relays_rejects_invalid_json() {
+        let err = ContactList::legacy_relays("not json").unwrap_err();
+        assert!(matches!(err, ContactListError::InvalidLegacyJson(_)));
+    }
+
+    #[test]
+    fn legacy_relays_rejects_invalid_relay_url() {
+        let json = r#"{"https://not-a-relay.example": {"read": true, "write": true}}"#;
+        let err = ContactList::legacy_relays(json).unwrap_err();
+        assert!(matches!(err, ContactListError::InvalidRelay(_)));
     }
 }
