@@ -16,7 +16,8 @@ use thiserror::Error;
 
 use crate::util::rng::{self, RngError};
 
-/// Maximum length permitted by NIP-01.
+/// Maximum length permitted by NIP-01, measured in **characters**
+/// (Unicode scalar values), not bytes.
 pub const MAX_LENGTH: usize = 64;
 
 /// Errors raised when constructing a [`SubscriptionId`].
@@ -25,7 +26,7 @@ pub enum SubscriptionIdError {
     /// The input was empty.
     #[error("subscription id must not be empty")]
     Empty,
-    /// The input exceeded [`MAX_LENGTH`].
+    /// The input exceeded [`MAX_LENGTH`] characters.
     #[error("subscription id too long: {0} characters (max {MAX_LENGTH})")]
     TooLong(usize),
     /// Random generation failed because the OS RNG was unavailable.
@@ -77,12 +78,16 @@ impl SubscriptionId {
         self.0
     }
 
-    const fn validate(value: &str) -> Result<(), SubscriptionIdError> {
+    fn validate(value: &str) -> Result<(), SubscriptionIdError> {
         if value.is_empty() {
             return Err(SubscriptionIdError::Empty);
         }
-        if value.len() > MAX_LENGTH {
-            return Err(SubscriptionIdError::TooLong(value.len()));
+        // NIP-01 says "max length 64 chars". Count Unicode scalar values
+        // rather than UTF-8 bytes so a multi-byte sub_id ("ñ" * 64) does
+        // not get rejected for the wrong reason.
+        let chars = value.chars().count();
+        if chars > MAX_LENGTH {
+            return Err(SubscriptionIdError::TooLong(chars));
         }
         Ok(())
     }
@@ -171,5 +176,23 @@ mod tests {
     fn from_str_works() {
         let id: SubscriptionId = "x".parse().unwrap();
         assert_eq!(id.as_str(), "x");
+    }
+
+    #[test]
+    fn accepts_multi_byte_chars_at_limit() {
+        // "ñ" is a single Unicode scalar value but two UTF-8 bytes. A
+        // 64-char ID built out of "ñ" must be accepted.
+        let value = "ñ".repeat(MAX_LENGTH);
+        assert_eq!(value.chars().count(), MAX_LENGTH);
+        assert!(value.len() > MAX_LENGTH, "byte length must exceed cap");
+        let id = SubscriptionId::new(value.clone()).unwrap();
+        assert_eq!(id.as_str(), value);
+    }
+
+    #[test]
+    fn rejects_one_char_above_limit_in_chars() {
+        let value = "x".repeat(MAX_LENGTH + 1);
+        let err = SubscriptionId::new(value).unwrap_err();
+        assert!(matches!(err, SubscriptionIdError::TooLong(n) if n == MAX_LENGTH + 1));
     }
 }
