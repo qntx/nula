@@ -190,9 +190,7 @@ impl RelayList {
 
     /// Iterate over relays the user reads from.
     pub fn read_relays(&self) -> impl Iterator<Item = &RelayUrl> {
-        self.iter()
-            .filter(|(_, m)| m.is_read())
-            .map(|(url, _)| url)
+        self.iter().filter(|(_, m)| m.is_read()).map(|(url, _)| url)
     }
 
     /// Iterate over relays the user writes to.
@@ -282,8 +280,7 @@ mod tests {
     }
 
     fn keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     #[test]

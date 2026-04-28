@@ -98,7 +98,8 @@ impl DeletionRequest {
     /// event.
     #[must_use]
     pub fn to_tags(&self) -> Vec<Tag> {
-        let mut tags = Vec::with_capacity(self.event_ids.len() + self.coordinates.len() + self.kinds.len());
+        let mut tags =
+            Vec::with_capacity(self.event_ids.len() + self.coordinates.len() + self.kinds.len());
         let e_kind = TagKind::single_letter(crate::event::SingleLetterTag::lowercase(
             crate::event::Alphabet::E,
         ));
@@ -217,7 +218,10 @@ pub enum AuthorityError {
 /// # Errors
 ///
 /// Returns [`AuthorityError::AuthorMismatch`] when the authors differ.
-pub fn validate_target_authority(deletion: &Event, target_author: &PublicKey) -> Result<(), AuthorityError> {
+pub fn validate_target_authority(
+    deletion: &Event,
+    target_author: &PublicKey,
+) -> Result<(), AuthorityError> {
     if deletion.pubkey == *target_author {
         Ok(())
     } else {
@@ -228,25 +232,21 @@ pub fn validate_target_authority(deletion: &Event, target_author: &PublicKey) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Timestamp;
     use crate::Keys;
+    use crate::types::Timestamp;
 
     fn keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     fn other_keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000005")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000005").unwrap()
     }
 
     #[test]
     fn round_trip_simple() {
         let id = EventId::from_byte_array([0xab; 32]);
-        let request = DeletionRequest::new()
-            .delete_event(id)
-            .with_reason("typo");
+        let request = DeletionRequest::new().delete_event(id).with_reason("typo");
 
         let deletion = EventBuilder::deletion(&request)
             .created_at(Timestamp::from_secs(1))
@@ -307,10 +307,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = DeletionRequest::from_event(&event).unwrap_err();
-        assert!(matches!(
-            err,
-            DeletionError::MissingTagValue { tag: "e" }
-        ));
+        assert!(matches!(err, DeletionError::MissingTagValue { tag: "e" }));
     }
 
     #[test]

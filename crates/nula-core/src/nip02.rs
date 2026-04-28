@@ -200,8 +200,7 @@ mod tests {
     use crate::types::Timestamp;
 
     fn keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     fn pk(seed: u8) -> PublicKey {
@@ -233,7 +232,9 @@ mod tests {
                     .with_petname("alice"),
             )
             .follow(Contact::new(pk(2)))
-            .follow(Contact::new(pk(3)).with_relay_hint(RelayUrl::parse("wss://r.x.com/").unwrap()));
+            .follow(
+                Contact::new(pk(3)).with_relay_hint(RelayUrl::parse("wss://r.x.com/").unwrap()),
+            );
         let event = EventBuilder::contact_list(&list)
             .created_at(Timestamp::from_secs(2))
             .sign_with_keys(&keys())

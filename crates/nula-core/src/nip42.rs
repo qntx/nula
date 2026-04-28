@@ -71,7 +71,9 @@ pub enum AuthError {
         max_age: u64,
     },
     /// `created_at` is more than `max_age` seconds in the future.
-    #[error("auth event is too far in the future: created_at {created_at} vs now {now} (max skew {max_age}s)")]
+    #[error(
+        "auth event is too far in the future: created_at {created_at} vs now {now} (max skew {max_age}s)"
+    )]
     TooFuture {
         /// `event.created_at` (seconds since the epoch).
         created_at: u64,
@@ -177,8 +179,7 @@ mod tests {
     use crate::Keys;
 
     fn keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     fn relay() -> RelayUrl {
@@ -200,12 +201,18 @@ mod tests {
             .tags
             .find_first(&TagKind::from_wire(RELAY_TAG))
             .unwrap();
-        assert_eq!(relay_tag.values().get(1).map(String::as_str), Some(relay().as_str()));
+        assert_eq!(
+            relay_tag.values().get(1).map(String::as_str),
+            Some(relay().as_str())
+        );
         let challenge_tag = event
             .tags
             .find_first(&TagKind::from_wire(CHALLENGE_TAG))
             .unwrap();
-        assert_eq!(challenge_tag.values().get(1).map(String::as_str), Some("c1"));
+        assert_eq!(
+            challenge_tag.values().get(1).map(String::as_str),
+            Some("c1")
+        );
     }
 
     #[test]
@@ -220,8 +227,8 @@ mod tests {
             .created_at(Timestamp::from_secs(1))
             .sign_with_keys(&keys())
             .unwrap();
-        let err = verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600)
-            .unwrap_err();
+        let err =
+            verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600).unwrap_err();
         assert!(matches!(err, AuthError::UnexpectedKind(1)));
     }
 
@@ -229,8 +236,8 @@ mod tests {
     fn verify_rejects_relay_mismatch() {
         let event = signed("c1", Timestamp::from_secs(1));
         let other = RelayUrl::parse("wss://other.example/").unwrap();
-        let err = verify_auth_event(&event, &other, "c1", Timestamp::from_secs(1), 600)
-            .unwrap_err();
+        let err =
+            verify_auth_event(&event, &other, "c1", Timestamp::from_secs(1), 600).unwrap_err();
         assert!(matches!(err, AuthError::RelayMismatch { .. }));
     }
 
@@ -268,8 +275,8 @@ mod tests {
             ))
             .sign_with_keys(&keys())
             .unwrap();
-        let err = verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600)
-            .unwrap_err();
+        let err =
+            verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600).unwrap_err();
         assert!(matches!(err, AuthError::MissingRelayTag));
     }
 
@@ -283,8 +290,8 @@ mod tests {
             ))
             .sign_with_keys(&keys())
             .unwrap();
-        let err = verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600)
-            .unwrap_err();
+        let err =
+            verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600).unwrap_err();
         assert!(matches!(err, AuthError::MissingChallengeTag));
     }
 }

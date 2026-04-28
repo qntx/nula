@@ -217,7 +217,10 @@ impl ThreadContext {
             {
                 context.events.push(reference);
             } else if head == p_kind
-                && let Some(pk) = tag.values().get(1).and_then(|s| s.parse::<PublicKey>().ok())
+                && let Some(pk) = tag
+                    .values()
+                    .get(1)
+                    .and_then(|s| s.parse::<PublicKey>().ok())
             {
                 context.mentioned_pubkeys.push(pk);
             }
@@ -355,8 +358,7 @@ mod tests {
     use crate::types::Timestamp;
 
     fn keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     fn event_id(seed: u8) -> EventId {

@@ -66,7 +66,12 @@ impl Coordinate {
     /// Render the colon-separated wire form.
     #[must_use]
     pub fn to_wire(&self) -> String {
-        format!("{}:{}:{}", self.kind.as_u16(), self.author.to_hex(), self.identifier)
+        format!(
+            "{}:{}:{}",
+            self.kind.as_u16(),
+            self.author.to_hex(),
+            self.identifier
+        )
     }
 }
 
@@ -122,10 +127,8 @@ mod tests {
     use crate::Keys;
 
     fn pk() -> PublicKey {
-        let keys = Keys::parse(
-            "0000000000000000000000000000000000000000000000000000000000000003",
-        )
-        .unwrap();
+        let keys = Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
+            .unwrap();
         *keys.public_key()
     }
 

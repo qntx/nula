@@ -161,7 +161,11 @@ pub fn verify_pow(event: &Event, min_difficulty: u8) -> Result<(), PowError> {
 ///
 /// Returns [`MineError::Clock`] if the wall clock cannot be read while
 /// fixing `created_at`.
-pub fn mine(builder: &EventBuilder, pubkey: PublicKey, difficulty: u8) -> Result<PowAttempt, MineError> {
+pub fn mine(
+    builder: &EventBuilder,
+    pubkey: PublicKey,
+    difficulty: u8,
+) -> Result<PowAttempt, MineError> {
     PowAttempt::mine(builder, pubkey, difficulty)
 }
 
@@ -264,8 +268,7 @@ mod tests {
     use crate::Kind;
 
     fn keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     #[test]

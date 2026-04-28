@@ -381,8 +381,7 @@ mod tests {
     use crate::types::Timestamp;
 
     fn keys() -> Keys {
-        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
-            .unwrap()
+        Keys::parse("0000000000000000000000000000000000000000000000000000000000000003").unwrap()
     }
 
     fn pk(seed: u8) -> PublicKey {
@@ -431,10 +430,8 @@ mod tests {
     #[test]
     fn address_scope_round_trip() {
         let coord = Coordinate::new(Kind::from(30_023_u16), pk(4), "long-form-1");
-        let comment = Comment::top_level(
-            CommentScope::address(coord),
-            "first comment on the article",
-        );
+        let comment =
+            Comment::top_level(CommentScope::address(coord), "first comment on the article");
         let event = EventBuilder::comment(&comment)
             .created_at(Timestamp::from_secs(3))
             .sign_with_keys(&keys())
