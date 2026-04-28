@@ -27,7 +27,8 @@
 use thiserror::Error;
 
 use crate::event::{
-    Coordinate, CoordinateError, Event, EventBuilder, EventId, EventIdError, Kind, Tag, TagKind,
+    Alphabet, Coordinate, CoordinateError, Event, EventBuilder, EventId, EventIdError, Kind,
+    SingleLetterTag, Tag, TagKind,
 };
 use crate::key::PublicKey;
 
@@ -100,21 +101,14 @@ impl DeletionRequest {
     pub fn to_tags(&self) -> Vec<Tag> {
         let mut tags =
             Vec::with_capacity(self.event_ids.len() + self.coordinates.len() + self.kinds.len());
-        let e_kind = TagKind::single_letter(crate::event::SingleLetterTag::lowercase(
-            crate::event::Alphabet::E,
-        ));
-        let a_kind = TagKind::single_letter(crate::event::SingleLetterTag::lowercase(
-            crate::event::Alphabet::A,
-        ));
-        let k_kind = TagKind::from_wire(KIND_TAG);
         for id in &self.event_ids {
-            tags.push(Tag::with(&e_kind, [id.to_hex()]));
+            tags.push(Tag::e(*id));
         }
         for coord in &self.coordinates {
-            tags.push(Tag::with(&a_kind, [coord.to_wire()]));
+            tags.push(Tag::a(coord));
         }
         for kind in &self.kinds {
-            tags.push(Tag::with(&k_kind, [kind.as_u16().to_string()]));
+            tags.push(Tag::k(*kind));
         }
         tags
     }
@@ -134,12 +128,8 @@ impl DeletionRequest {
             return Err(DeletionError::UnexpectedKind(event.kind.as_u16()));
         }
         let mut request = Self::new().with_reason(event.content.clone());
-        let e_kind = TagKind::single_letter(crate::event::SingleLetterTag::lowercase(
-            crate::event::Alphabet::E,
-        ));
-        let a_kind = TagKind::single_letter(crate::event::SingleLetterTag::lowercase(
-            crate::event::Alphabet::A,
-        ));
+        let e_kind = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
+        let a_kind = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::A));
         let k_kind = TagKind::from_wire(KIND_TAG);
         for tag in &event.tags {
             let head = tag.kind();

@@ -16,6 +16,11 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 use super::kind::TagKind;
+use super::single_letter::{Alphabet, SingleLetterTag};
+use crate::event::coordinate::Coordinate;
+use crate::event::id::EventId;
+use crate::event::kind::Kind;
+use crate::key::PublicKey;
 
 /// Errors raised when constructing a [`Tag`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -66,6 +71,52 @@ impl Tag {
         values.push(head.as_str().to_owned());
         values.extend(iter.map(Into::into));
         Self { values }
+    }
+
+    /// Build a NIP-01 `e` tag referencing an event id.
+    ///
+    /// Wire form: `["e", "<event-id-hex>"]`. Add relay-hint or marker
+    /// columns afterwards via [`Tag::with`] if needed.
+    #[must_use]
+    pub fn e(id: EventId) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
+        Self::with(&head, [id.to_hex()])
+    }
+
+    /// Build a NIP-01 `p` tag referencing a pubkey.
+    ///
+    /// Wire form: `["p", "<pubkey-hex>"]`.
+    #[must_use]
+    pub fn p(pubkey: PublicKey) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::P));
+        Self::with(&head, [pubkey.to_hex()])
+    }
+
+    /// Build a NIP-01 `a` tag referencing an addressable event coordinate.
+    ///
+    /// Wire form: `["a", "<kind>:<author-hex>:<identifier>"]`.
+    #[must_use]
+    pub fn a(coordinate: &Coordinate) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::A));
+        Self::with(&head, [coordinate.to_wire()])
+    }
+
+    /// Build a NIP-09 / NIP-22 `k` tag carrying a kind hint.
+    ///
+    /// Wire form: `["k", "<kind>"]`.
+    #[must_use]
+    pub fn k(kind: Kind) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::K));
+        Self::with(&head, [kind.as_u16().to_string()])
+    }
+
+    /// Build a NIP-01 / NIP-33 `d` tag carrying a parameterized identifier.
+    ///
+    /// Wire form: `["d", "<identifier>"]`.
+    #[must_use]
+    pub fn d<S: Into<String>>(identifier: S) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::D));
+        Self::with(&head, [identifier.into()])
     }
 
     /// Return the tag head as a [`TagKind`].

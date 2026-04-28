@@ -27,7 +27,7 @@
 //! Single-letter tag filter keys use the `#<letter>` form. Both lowercase and
 //! uppercase forms are supported (NIP-01 §generic tag queries).
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use serde::de::{self, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
@@ -41,14 +41,23 @@ use crate::types::Timestamp;
 ///
 /// All fields are public so consumers can read them without going through
 /// builder accessors when matching events.
+///
+/// # Wire ordering
+///
+/// `ids`, `authors`, `kinds` and the values inside `generic_tags` preserve
+/// insertion order on the wire. NIP-01 leaves the order unspecified, but
+/// every other major implementation (rust-nostr, nostr-tools, go-nostr)
+/// keeps insertion order, so byte-level interoperability requires it. We
+/// therefore use [`Vec`] rather than `BTreeSet`. Builder methods skip
+/// duplicates so the resulting `Vec` still functions as a logical set.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Filter {
-    /// Event IDs to match.
-    pub ids: Option<BTreeSet<EventId>>,
-    /// Author public keys to match.
-    pub authors: Option<BTreeSet<PublicKey>>,
-    /// Event kinds to match.
-    pub kinds: Option<BTreeSet<Kind>>,
+    /// Event IDs to match. Insertion order is preserved on the wire.
+    pub ids: Option<Vec<EventId>>,
+    /// Author public keys to match. Insertion order is preserved on the wire.
+    pub authors: Option<Vec<PublicKey>>,
+    /// Event kinds to match. Insertion order is preserved on the wire.
+    pub kinds: Option<Vec<Kind>>,
     /// Inclusive lower bound on `created_at`.
     pub since: Option<Timestamp>,
     /// Inclusive upper bound on `created_at`.
@@ -58,7 +67,11 @@ pub struct Filter {
     /// Free-form search query (NIP-50).
     pub search: Option<String>,
     /// Single-letter tag filters (`#a`, `#e`, `#p`, …).
-    pub generic_tags: BTreeMap<SingleLetterTag, BTreeSet<String>>,
+    ///
+    /// Outer keys are sorted by [`BTreeMap`] for stable wire ordering of the
+    /// filter object. Inner [`Vec`] preserves insertion order to match
+    /// rust-nostr / nostr-tools / go-nostr. Duplicates are skipped on insert.
+    pub generic_tags: BTreeMap<SingleLetterTag, Vec<String>>,
 }
 
 impl Filter {
@@ -71,7 +84,10 @@ impl Filter {
     /// Add a single event id.
     #[must_use]
     pub fn id(mut self, id: EventId) -> Self {
-        self.ids.get_or_insert_with(BTreeSet::new).insert(id);
+        let bucket = self.ids.get_or_insert_with(Vec::new);
+        if !bucket.contains(&id) {
+            bucket.push(id);
+        }
         self
     }
 
@@ -81,16 +97,22 @@ impl Filter {
     where
         I: IntoIterator<Item = EventId>,
     {
-        self.ids.get_or_insert_with(BTreeSet::new).extend(ids);
+        let bucket = self.ids.get_or_insert_with(Vec::new);
+        for id in ids {
+            if !bucket.contains(&id) {
+                bucket.push(id);
+            }
+        }
         self
     }
 
     /// Add a single author.
     #[must_use]
     pub fn author(mut self, pubkey: PublicKey) -> Self {
-        self.authors
-            .get_or_insert_with(BTreeSet::new)
-            .insert(pubkey);
+        let bucket = self.authors.get_or_insert_with(Vec::new);
+        if !bucket.contains(&pubkey) {
+            bucket.push(pubkey);
+        }
         self
     }
 
@@ -100,16 +122,22 @@ impl Filter {
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        self.authors
-            .get_or_insert_with(BTreeSet::new)
-            .extend(authors);
+        let bucket = self.authors.get_or_insert_with(Vec::new);
+        for pubkey in authors {
+            if !bucket.contains(&pubkey) {
+                bucket.push(pubkey);
+            }
+        }
         self
     }
 
     /// Add a single kind.
     #[must_use]
     pub fn kind(mut self, kind: Kind) -> Self {
-        self.kinds.get_or_insert_with(BTreeSet::new).insert(kind);
+        let bucket = self.kinds.get_or_insert_with(Vec::new);
+        if !bucket.contains(&kind) {
+            bucket.push(kind);
+        }
         self
     }
 
@@ -119,7 +147,12 @@ impl Filter {
     where
         I: IntoIterator<Item = Kind>,
     {
-        self.kinds.get_or_insert_with(BTreeSet::new).extend(kinds);
+        let bucket = self.kinds.get_or_insert_with(Vec::new);
+        for kind in kinds {
+            if !bucket.contains(&kind) {
+                bucket.push(kind);
+            }
+        }
         self
     }
 
@@ -155,19 +188,23 @@ impl Filter {
     }
 
     /// Add a single value to a generic single-letter tag filter (`#<letter>`).
+    /// Duplicate values are silently dropped to keep the filter as a logical
+    /// set even though the wire form preserves insertion order.
     #[must_use]
     pub fn custom_tag<S>(mut self, letter: SingleLetterTag, value: S) -> Self
     where
         S: Into<String>,
     {
-        self.generic_tags
-            .entry(letter)
-            .or_default()
-            .insert(value.into());
+        let bucket = self.generic_tags.entry(letter).or_default();
+        let value: String = value.into();
+        if !bucket.iter().any(|v| v == &value) {
+            bucket.push(value);
+        }
         self
     }
 
     /// Add several values to a generic single-letter tag filter.
+    /// Duplicates are silently dropped (see [`Self::custom_tag`]).
     #[must_use]
     pub fn custom_tags<I, S>(mut self, letter: SingleLetterTag, values: I) -> Self
     where
@@ -176,7 +213,10 @@ impl Filter {
     {
         let bucket = self.generic_tags.entry(letter).or_default();
         for v in values {
-            bucket.insert(v.into());
+            let value: String = v.into();
+            if !bucket.iter().any(|x| x == &value) {
+                bucket.push(value);
+            }
         }
         self
     }
@@ -256,13 +296,13 @@ impl Filter {
 fn any_tag_value_matches(
     tags: &crate::event::Tags,
     letter: SingleLetterTag,
-    expected: &BTreeSet<String>,
+    expected: &[String],
 ) -> bool {
     let kind = TagKind::single_letter(letter);
     tags.iter()
         .filter(|tag| tag.kind() == kind)
         .filter_map(Tag::content)
-        .any(|value| expected.contains(value))
+        .any(|value| expected.iter().any(|e| e == value))
 }
 
 /// Compose `#<letter>` from a [`SingleLetterTag`].
@@ -271,6 +311,20 @@ fn tag_filter_key(letter: SingleLetterTag) -> String {
     s.push('#');
     s.push(letter.as_char());
     s
+}
+
+/// Drop duplicate entries while preserving the first occurrence's index.
+///
+/// Used during deserialization so a relay sending a duplicate-tolerant wire
+/// form still ends up with a logically-deduplicated [`Filter`].
+fn dedup_preserving_order<T: PartialEq>(values: Vec<T>) -> Vec<T> {
+    let mut seen: Vec<T> = Vec::with_capacity(values.len());
+    for v in values {
+        if !seen.iter().any(|existing| existing == &v) {
+            seen.push(v);
+        }
+    }
+    seen
 }
 
 impl Serialize for Filter {
@@ -345,8 +399,8 @@ where
         let letter = letter_str
             .parse::<SingleLetterTag>()
             .map_err(de::Error::custom)?;
-        let values: BTreeSet<String> = map.next_value()?;
-        filter.generic_tags.insert(letter, values);
+        let values: Vec<String> = map.next_value()?;
+        filter.generic_tags.insert(letter, dedup_preserving_order(values));
         return Ok(());
     }
     match key {
@@ -501,9 +555,28 @@ mod tests {
     }
 
     #[test]
-    fn ids_filter_dedupes_via_btreeset() {
+    fn ids_filter_dedupes_on_insert() {
         let id = EventId::from_byte_array([1; 32]);
         let filter = Filter::new().ids([id, id, id]);
-        assert_eq!(filter.ids.as_ref().map(BTreeSet::len), Some(1));
+        assert_eq!(filter.ids.as_ref().map(Vec::len), Some(1));
+    }
+
+    #[test]
+    fn ids_preserve_insertion_order_on_the_wire() {
+        // rust-nostr, nostr-tools and go-nostr all preserve insertion
+        // order. Pick three ids that would *swap* under BTreeSet sorting
+        // to prove the wire form respects insertion.
+        let high = EventId::from_byte_array([0xff; 32]);
+        let mid = EventId::from_byte_array([0x80; 32]);
+        let low = EventId::from_byte_array([0x01; 32]);
+        let filter = Filter::new().ids([high, mid, low]);
+        let json = serde_json::to_string(&filter).unwrap();
+        let high_pos = json.find(&high.to_hex()).unwrap();
+        let mid_pos = json.find(&mid.to_hex()).unwrap();
+        let low_pos = json.find(&low.to_hex()).unwrap();
+        assert!(
+            high_pos < mid_pos && mid_pos < low_pos,
+            "ids must appear in insertion order on the wire: {json}"
+        );
     }
 }
