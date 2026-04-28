@@ -33,7 +33,7 @@ use serde::de::{self, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::event::{Event, EventId, Kind, SingleLetterTag, Tag, TagKind};
+use crate::event::{Alphabet, Event, EventId, Kind, SingleLetterTag, Tag, TagKind};
 use crate::key::PublicKey;
 use crate::types::Timestamp;
 
@@ -224,19 +224,13 @@ impl Filter {
     /// Convenience for the `#e` filter key.
     #[must_use]
     pub fn event(self, id: EventId) -> Self {
-        self.custom_tag(
-            SingleLetterTag::lowercase(crate::event::Alphabet::E),
-            id.to_hex(),
-        )
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::E), id.to_hex())
     }
 
     /// Convenience for the `#p` filter key.
     #[must_use]
     pub fn pubkey(self, pubkey: PublicKey) -> Self {
-        self.custom_tag(
-            SingleLetterTag::lowercase(crate::event::Alphabet::P),
-            pubkey.to_hex(),
-        )
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkey.to_hex())
     }
 
     /// True when the filter has no constraints.
@@ -327,6 +321,44 @@ fn dedup_preserving_order<T: PartialEq>(values: Vec<T>) -> Vec<T> {
     seen
 }
 
+/// True when `value` is exactly 64 lowercase hex characters (NIP-01 §filters
+/// requirement for `#e` and `#p` entries).
+fn is_lowercase_hex_64(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+/// Enforce the NIP-01 hex constraint on `#e` and `#p` filter values. No-op
+/// for any other letter.
+fn validate_hex_filter_values<'de, M>(
+    letter: SingleLetterTag,
+    values: &[String],
+) -> Result<(), M::Error>
+where
+    M: MapAccess<'de>,
+{
+    let needs_hex = matches!(
+        letter,
+        SingleLetterTag {
+            character: Alphabet::E | Alphabet::P,
+            uppercase: false,
+        }
+    );
+    if !needs_hex {
+        return Ok(());
+    }
+    for value in values {
+        if !is_lowercase_hex_64(value) {
+            return Err(de::Error::custom(format!(
+                "`#{letter}` filter value `{value}` must be 64 lowercase hex chars"
+            )));
+        }
+    }
+    Ok(())
+}
+
 impl Serialize for Filter {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -400,6 +432,11 @@ where
             .parse::<SingleLetterTag>()
             .map_err(de::Error::custom)?;
         let values: Vec<String> = map.next_value()?;
+        // NIP-01: '#e' and '#p' filter lists MUST contain exact 64-char
+        // lowercase hex values. Reject any non-conforming entry up front
+        // so downstream Filter::matches never has to defend against
+        // malformed input.
+        validate_hex_filter_values::<M>(letter, &values)?;
         filter.generic_tags.insert(letter, dedup_preserving_order(values));
         return Ok(());
     }
@@ -559,6 +596,55 @@ mod tests {
         let id = EventId::from_byte_array([1; 32]);
         let filter = Filter::new().ids([id, id, id]);
         assert_eq!(filter.ids.as_ref().map(Vec::len), Some(1));
+    }
+
+    #[test]
+    fn rejects_non_hex_e_filter_value() {
+        // NIP-01: '#e' filter MUST contain 64-char lowercase hex only.
+        let json = r##"{"#e":["not-a-hex"]}"##;
+        let err = serde_json::from_str::<Filter>(json).unwrap_err();
+        assert!(err.to_string().contains("must be 64 lowercase hex"));
+    }
+
+    #[test]
+    fn rejects_short_hex_p_filter_value() {
+        let json = r##"{"#p":["abcdef"]}"##;
+        let err = serde_json::from_str::<Filter>(json).unwrap_err();
+        assert!(err.to_string().contains("must be 64 lowercase hex"));
+    }
+
+    #[test]
+    fn rejects_uppercase_hex_e_filter_value() {
+        let value = "A".repeat(64);
+        let json = format!(r##"{{"#e":["{value}"]}}"##);
+        let err = serde_json::from_str::<Filter>(&json).unwrap_err();
+        assert!(err.to_string().contains("must be 64 lowercase hex"));
+    }
+
+    #[test]
+    fn accepts_valid_hex_e_filter_value() {
+        let value = "0".repeat(64);
+        let json = format!(r##"{{"#e":["{value}"]}}"##);
+        let filter: Filter = serde_json::from_str(&json).unwrap();
+        let bucket = filter
+            .generic_tags
+            .get(&SingleLetterTag::lowercase(Alphabet::E))
+            .unwrap();
+        assert_eq!(bucket.len(), 1);
+        assert_eq!(bucket[0], value);
+    }
+
+    #[test]
+    fn non_e_p_letters_skip_hex_validation() {
+        // NIP-01 only mandates the hex format for 'e' and 'p'. Other
+        // letters carry arbitrary string values such as topic tags.
+        let json = r##"{"#t":["rust","not-hex","🦀"]}"##;
+        let filter: Filter = serde_json::from_str(json).unwrap();
+        let bucket = filter
+            .generic_tags
+            .get(&SingleLetterTag::lowercase(Alphabet::T))
+            .unwrap();
+        assert_eq!(bucket.len(), 3);
     }
 
     #[test]
