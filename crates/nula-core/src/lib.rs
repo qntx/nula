@@ -43,9 +43,11 @@ pub mod nip10;
 pub mod nip11;
 pub mod nip13;
 pub mod nip19;
+pub mod nip22;
 pub mod nip40;
 pub mod nip42;
 pub mod nip65;
+pub mod nip70;
 pub mod signer;
 pub mod types;
 pub mod util;
@@ -73,6 +75,7 @@ pub use self::nip19::{
     FromBech32, FromBech32Error, Nip19Coordinate, Nip19Entity, Nip19Event, Nip19Profile, ToBech32,
     ToBech32Error,
 };
+pub use self::nip22::{Comment, CommentError, CommentScope};
 pub use self::nip40::{ExpirationError, IsExpiredError};
 pub use self::nip42::AuthError;
 pub use self::nip65::{RelayList, RelayListError, RelayMarker, RelayMarkerError};
