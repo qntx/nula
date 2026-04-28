@@ -137,9 +137,9 @@ impl Event {
     ///
     /// # Errors
     ///
-    /// Returns [`crate::nip40::Error`] if the `expiration` tag
+    /// Returns [`crate::nip40::ExpirationError`] if the `expiration` tag
     /// is present but malformed.
-    pub fn expiration(&self) -> Result<Option<Timestamp>, crate::nip40::Error> {
+    pub fn expiration(&self) -> Result<Option<Timestamp>, crate::nip40::ExpirationError> {
         crate::nip40::parse_expiration(self)
     }
 
@@ -149,9 +149,9 @@ impl Event {
     ///
     /// # Errors
     ///
-    /// Returns [`crate::nip40::Error`] if the `expiration` tag
+    /// Returns [`crate::nip40::ExpirationError`] if the `expiration` tag
     /// is malformed.
-    pub fn is_expired(&self, now: Timestamp) -> Result<bool, crate::nip40::Error> {
+    pub fn is_expired(&self, now: Timestamp) -> Result<bool, crate::nip40::ExpirationError> {
         crate::nip40::is_expired(self, now)
     }
 }

@@ -335,7 +335,7 @@ fn parse_e_tag(tag: &Tag) -> Option<EventReference> {
 /// produce. Currently only used by [`EventReference::from_tag`].
 #[derive(Debug, Clone, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum ThreadError {
     /// The tag head was not `e`.
     #[error("expected `e` tag, got `{0}`")]
     NotEventTag(String),
@@ -363,16 +363,16 @@ impl EventReference {
     ///
     /// # Errors
     ///
-    /// Returns the matching [`Error`] for any malformed component.
-    pub fn from_tag(tag: &Tag) -> Result<Self, Error> {
+    /// Returns the matching [`ThreadError`] for any malformed component.
+    pub fn from_tag(tag: &Tag) -> Result<Self, ThreadError> {
         let e_kind = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
         if tag.kind() != e_kind {
-            return Err(Error::NotEventTag(tag.kind().as_str().to_owned()));
+            return Err(ThreadError::NotEventTag(tag.kind().as_str().to_owned()));
         }
         let mut values = tag.values().iter().skip(1);
         let id = values
             .next()
-            .ok_or(Error::MissingEventId)?
+            .ok_or(ThreadError::MissingEventId)?
             .parse::<EventId>()?;
         let relay_hint = match values.next() {
             Some(s) if !s.is_empty() => Some(RelayUrl::parse(s)?),
@@ -495,14 +495,14 @@ mod tests {
     fn from_tag_strict_returns_errors() {
         let bad = Tag::new(["e", "not-a-hex-id"]).unwrap();
         let err = EventReference::from_tag(&bad).unwrap_err();
-        assert!(matches!(err, Error::InvalidEventId(_)));
+        assert!(matches!(err, ThreadError::InvalidEventId(_)));
     }
 
     #[test]
     fn from_tag_rejects_non_e_tag() {
         let tag = Tag::new(["p", &pk(1).to_hex()]).unwrap();
         let err = EventReference::from_tag(&tag).unwrap_err();
-        assert!(matches!(err, Error::NotEventTag(_)));
+        assert!(matches!(err, ThreadError::NotEventTag(_)));
     }
 
     #[test]

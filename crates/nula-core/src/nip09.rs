@@ -117,12 +117,12 @@ impl DeletionRequest {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::UnexpectedKind`] if the event's kind is not
+    /// Returns [`DeletionError::UnexpectedKind`] if the event's kind is not
     /// `5`, plus the matching parse error if any of the recognised tags is
     /// malformed.
-    pub fn from_event(event: &Event) -> Result<Self, Error> {
+    pub fn from_event(event: &Event) -> Result<Self, DeletionError> {
         if event.kind != Kind::EVENT_DELETION {
-            return Err(Error::UnexpectedKind(event.kind.as_u16()));
+            return Err(DeletionError::UnexpectedKind(event.kind.as_u16()));
         }
         let mut request = Self::new().with_reason(event.content.clone());
         let e_kind = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
@@ -134,22 +134,22 @@ impl DeletionRequest {
                 let value = tag
                     .values()
                     .get(1)
-                    .ok_or(Error::MissingTagValue { tag: "e" })?;
+                    .ok_or(DeletionError::MissingTagValue { tag: "e" })?;
                 request.event_ids.push(value.parse::<EventId>()?);
             } else if head == a_kind {
                 let value = tag
                     .values()
                     .get(1)
-                    .ok_or(Error::MissingTagValue { tag: "a" })?;
+                    .ok_or(DeletionError::MissingTagValue { tag: "a" })?;
                 request.coordinates.push(value.parse::<Coordinate>()?);
             } else if head == k_kind {
                 let value = tag
                     .values()
                     .get(1)
-                    .ok_or(Error::MissingTagValue { tag: "k" })?;
+                    .ok_or(DeletionError::MissingTagValue { tag: "k" })?;
                 let raw: u16 = value
                     .parse()
-                    .map_err(|_| Error::InvalidKindHint(value.clone()))?;
+                    .map_err(|_| DeletionError::InvalidKindHint(value.clone()))?;
                 request.kinds.push(Kind::from(raw));
             }
         }
@@ -168,7 +168,7 @@ impl EventBuilder {
 /// Errors raised when parsing or applying a NIP-09 deletion event.
 #[derive(Debug, Clone, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum DeletionError {
     /// The event's kind was not `5`.
     #[error("expected kind 5, got {0}")]
     UnexpectedKind(u16),
@@ -285,7 +285,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = DeletionRequest::from_event(&event).unwrap_err();
-        assert!(matches!(err, Error::UnexpectedKind(1)));
+        assert!(matches!(err, DeletionError::UnexpectedKind(1)));
     }
 
     #[test]
@@ -296,7 +296,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = DeletionRequest::from_event(&event).unwrap_err();
-        assert!(matches!(err, Error::MissingTagValue { tag: "e" }));
+        assert!(matches!(err, DeletionError::MissingTagValue { tag: "e" }));
     }
 
     #[test]

@@ -34,7 +34,7 @@ pub const DEFAULT_MAX_AGE_SECS: u64 = 10 * 60;
 /// Errors raised when verifying a NIP-42 auth event.
 #[derive(Debug, Clone, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum AuthError {
     /// The event's kind was not `22242`.
     #[error("expected kind 22242, got {0}")]
     UnexpectedKind(u16),
@@ -114,14 +114,14 @@ pub fn auth_event(relay: &RelayUrl, challenge: impl Into<String>) -> EventBuilde
 ///
 /// # Errors
 ///
-/// Returns the matching [`Error`] variant on the first failed check.
+/// Returns the matching [`AuthError`] variant on the first failed check.
 pub fn verify_auth_event(
     event: &Event,
     relay: &RelayUrl,
     challenge: &str,
     now: Timestamp,
     max_age: u64,
-) -> Result<(), Error> {
+) -> Result<(), AuthError> {
     verify_auth_event_against(event, relay, &[challenge], now, max_age)
 }
 
@@ -134,23 +134,23 @@ pub fn verify_auth_event(
 /// window — match [`verify_auth_event`].
 ///
 /// `accepted` must be non-empty. An empty slice is treated as
-/// "accept nothing" and produces [`Error::ChallengeMismatch`].
+/// "accept nothing" and produces [`AuthError::ChallengeMismatch`].
 ///
 /// As with [`verify_auth_event`], this function does **not** verify the
 /// event's Schnorr signature; call [`Event::verify`] separately.
 ///
 /// # Errors
 ///
-/// Returns the matching [`Error`] variant on the first failed check.
+/// Returns the matching [`AuthError`] variant on the first failed check.
 pub fn verify_auth_event_against(
     event: &Event,
     relay: &RelayUrl,
     accepted: &[&str],
     now: Timestamp,
     max_age: u64,
-) -> Result<(), Error> {
+) -> Result<(), AuthError> {
     if event.kind != Kind::AUTHENTICATION {
-        return Err(Error::UnexpectedKind(event.kind.as_u16()));
+        return Err(AuthError::UnexpectedKind(event.kind.as_u16()));
     }
 
     let relay_tag = TagKind::from_wire(RELAY_TAG);
@@ -158,10 +158,10 @@ pub fn verify_auth_event_against(
         .tags
         .find_first(&relay_tag)
         .and_then(|t| t.values().get(1))
-        .ok_or(Error::MissingRelayTag)?;
+        .ok_or(AuthError::MissingRelayTag)?;
     let claimed_relay = RelayUrl::parse(claimed_relay)?;
     if claimed_relay != *relay {
-        return Err(Error::RelayMismatch {
+        return Err(AuthError::RelayMismatch {
             expected: relay.as_str().to_owned(),
             got: claimed_relay.as_str().to_owned(),
         });
@@ -173,22 +173,22 @@ pub fn verify_auth_event_against(
         .find_first(&challenge_tag)
         .and_then(|t| t.values().get(1))
         .filter(|s| !s.is_empty())
-        .ok_or(Error::MissingChallengeTag)?;
+        .ok_or(AuthError::MissingChallengeTag)?;
     if !accepted.contains(&claimed_challenge.as_str()) {
-        return Err(Error::ChallengeMismatch);
+        return Err(AuthError::ChallengeMismatch);
     }
 
     let now_secs = now.as_secs();
     let created_at = event.created_at.as_secs();
     if now_secs > created_at && now_secs.saturating_sub(created_at) > max_age {
-        return Err(Error::TooOld {
+        return Err(AuthError::TooOld {
             created_at,
             now: now_secs,
             max_age,
         });
     }
     if created_at > now_secs && created_at.saturating_sub(now_secs) > max_age {
-        return Err(Error::TooFuture {
+        return Err(AuthError::TooFuture {
             created_at,
             now: now_secs,
             max_age,
@@ -254,7 +254,7 @@ mod tests {
             .unwrap();
         let err =
             verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600).unwrap_err();
-        assert!(matches!(err, Error::UnexpectedKind(1)));
+        assert!(matches!(err, AuthError::UnexpectedKind(1)));
     }
 
     #[test]
@@ -263,7 +263,7 @@ mod tests {
         let other = RelayUrl::parse("wss://other.example/").unwrap();
         let err =
             verify_auth_event(&event, &other, "c1", Timestamp::from_secs(1), 600).unwrap_err();
-        assert!(matches!(err, Error::RelayMismatch { .. }));
+        assert!(matches!(err, AuthError::RelayMismatch { .. }));
     }
 
     #[test]
@@ -271,7 +271,7 @@ mod tests {
         let event = signed("c1", Timestamp::from_secs(1));
         let err = verify_auth_event(&event, &relay(), "different", Timestamp::from_secs(1), 600)
             .unwrap_err();
-        assert!(matches!(err, Error::ChallengeMismatch));
+        assert!(matches!(err, AuthError::ChallengeMismatch));
     }
 
     #[test]
@@ -279,7 +279,7 @@ mod tests {
         let event = signed("c1", Timestamp::from_secs(100));
         let err = verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1_000), 100)
             .unwrap_err();
-        assert!(matches!(err, Error::TooOld { .. }));
+        assert!(matches!(err, AuthError::TooOld { .. }));
     }
 
     #[test]
@@ -287,7 +287,7 @@ mod tests {
         let event = signed("c1", Timestamp::from_secs(2_000));
         let err = verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1_000), 100)
             .unwrap_err();
-        assert!(matches!(err, Error::TooFuture { .. }));
+        assert!(matches!(err, AuthError::TooFuture { .. }));
     }
 
     #[test]
@@ -302,7 +302,7 @@ mod tests {
             .unwrap();
         let err =
             verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600).unwrap_err();
-        assert!(matches!(err, Error::MissingRelayTag));
+        assert!(matches!(err, AuthError::MissingRelayTag));
     }
 
     #[test]
@@ -317,7 +317,7 @@ mod tests {
             .unwrap();
         let err =
             verify_auth_event(&event, &relay(), "c1", Timestamp::from_secs(1), 600).unwrap_err();
-        assert!(matches!(err, Error::MissingChallengeTag));
+        assert!(matches!(err, AuthError::MissingChallengeTag));
     }
 
     #[test]
@@ -345,7 +345,7 @@ mod tests {
             600,
         )
         .unwrap_err();
-        assert!(matches!(err, Error::ChallengeMismatch));
+        assert!(matches!(err, AuthError::ChallengeMismatch));
     }
 
     #[test]
@@ -353,6 +353,6 @@ mod tests {
         let event = signed("c1", Timestamp::from_secs(1));
         let err = verify_auth_event_against(&event, &relay(), &[], Timestamp::from_secs(1), 600)
             .unwrap_err();
-        assert!(matches!(err, Error::ChallengeMismatch));
+        assert!(matches!(err, AuthError::ChallengeMismatch));
     }
 }

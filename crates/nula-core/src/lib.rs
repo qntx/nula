@@ -70,10 +70,10 @@ pub mod util;
 // implemented.
 #[cfg(feature = "nip04")]
 use aes as _;
-#[cfg(feature = "nip04")]
-use cbc as _;
 #[cfg(feature = "nip06")]
 use bip39 as _;
+#[cfg(feature = "nip04")]
+use cbc as _;
 #[cfg(feature = "nip05")]
 use reqwest as _;
 // `zeroize` is consumed by NIP-44 today; an unconditional placeholder
@@ -85,9 +85,12 @@ use zeroize as _;
 // for *by name* on every interaction with Nostr (events, keys, filters,
 // messages, the JSON helper, the signer trait). Everything else lives one
 // explicit `use` away inside its module — in particular, every `*Error`
-// stays under its module path (`nula_core::nip02::Error`, etc.) so error
-// names cannot collide and so adding a new error variant is not a breaking
-// change. See `prelude` for the curated import-everything view.
+// stays under its module path with a descriptive prefix
+// (`nula_core::nip02::ContactListError`, `nula_core::signer::SignerError`,
+// …). The prefix matches the v0.1 convention and avoids the
+// `clippy::error_impl_error` warning while keeping the error names
+// disambiguated when callers `use nula_core::*Error`.
+// See `prelude` for the curated import-everything view.
 pub use self::event::{
     Coordinate, Event, EventBuilder, EventId, Kind, SingleLetterTag, Tag, TagKind, Tags,
     UnsignedEvent, compute_event_id,

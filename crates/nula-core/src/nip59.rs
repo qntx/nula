@@ -64,7 +64,7 @@ const TWO_DAYS_SECS: u64 = 2 * 24 * 60 * 60;
 /// Errors raised by the gift-wrap pipeline.
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum Nip59Error {
     /// Wall clock could not be read.
     #[error(transparent)]
     Clock(#[from] TimestampError),
@@ -73,7 +73,7 @@ pub enum Error {
     Rng(#[from] RngError),
     /// NIP-44 encryption / decryption failed.
     #[error(transparent)]
-    Nip44(#[from] nip44::Error),
+    Nip44(#[from] nip44::Nip44Error),
     /// JSON encoding / decoding failed.
     #[error("JSON serialization failed: {0}")]
     Json(String),
@@ -126,27 +126,27 @@ pub fn build_rumor(
 ///
 /// # Errors
 ///
-/// See [`Error`].
+/// See [`Nip59Error`].
 pub fn create_seal(
     sender: &Keys,
     recipient: &PublicKey,
     rumor: &UnsignedEvent,
     seal_created_at: Timestamp,
-) -> Result<Event, Error> {
+) -> Result<Event, Nip59Error> {
     let rumor_json = rumor
         .try_to_json()
-        .map_err(|e| Error::Json(e.to_string()))?;
+        .map_err(|e| Nip59Error::Json(e.to_string()))?;
     let ciphertext = nip44::encrypt(sender.secret_key(), recipient, &rumor_json)?;
     let seal = EventBuilder::new(Kind::SEAL, ciphertext)
         .created_at(seal_created_at)
         .sign_with_keys(sender)
         .map_err(|e| match e {
-            crate::event::EventBuilderError::Clock(c) => Error::Clock(c),
+            crate::event::EventBuilderError::Clock(c) => Nip59Error::Clock(c),
             crate::event::EventBuilderError::Signer(s) => {
                 // SignerMismatch from a Keys signer is unreachable, but
                 // surface it as a JSON error rather than panic so the
                 // function stays total.
-                Error::Json(format!("seal signing failed unexpectedly: {s}"))
+                Nip59Error::Json(format!("seal signing failed unexpectedly: {s}"))
             }
         })?;
     Ok(seal)
@@ -161,21 +161,23 @@ pub fn create_seal(
 ///
 /// # Errors
 ///
-/// See [`Error`].
+/// See [`Nip59Error`].
 pub fn create_gift_wrap(
     seal: &Event,
     recipient: &PublicKey,
     relay_hint: Option<&RelayUrl>,
     wrap_created_at: Timestamp,
-) -> Result<Event, Error> {
+) -> Result<Event, Nip59Error> {
     let ephemeral = Keys::generate().map_err(|e| match e {
-        crate::key::SecretKeyError::Rng(r) => Error::Rng(r),
+        crate::key::SecretKeyError::Rng(r) => Nip59Error::Rng(r),
         // Other variants from `SecretKey::generate` never surface in the
         // happy path; collapse them into Json/format for completeness.
-        other => Error::Json(format!("ephemeral key generation failed: {other}")),
+        other => Nip59Error::Json(format!("ephemeral key generation failed: {other}")),
     })?;
 
-    let seal_json = seal.try_to_json().map_err(|e| Error::Json(e.to_string()))?;
+    let seal_json = seal
+        .try_to_json()
+        .map_err(|e| Nip59Error::Json(e.to_string()))?;
     let ciphertext = nip44::encrypt(ephemeral.secret_key(), recipient, &seal_json)?;
 
     let p_tag = Tag::with(
@@ -191,9 +193,9 @@ pub fn create_gift_wrap(
         .tag(p_tag)
         .sign_with_keys(&ephemeral)
         .map_err(|e| match e {
-            crate::event::EventBuilderError::Clock(c) => Error::Clock(c),
+            crate::event::EventBuilderError::Clock(c) => Nip59Error::Clock(c),
             crate::event::EventBuilderError::Signer(s) => {
-                Error::Json(format!("wrap signing failed unexpectedly: {s}"))
+                Nip59Error::Json(format!("wrap signing failed unexpectedly: {s}"))
             }
         })?;
     Ok(wrap)
@@ -207,7 +209,7 @@ pub fn create_gift_wrap(
 ///
 /// # Errors
 ///
-/// See [`Error`]. Both the seal and wrap stages share the same error
+/// See [`Nip59Error`]. Both the seal and wrap stages share the same error
 /// channel.
 pub fn wrap(
     sender: &Keys,
@@ -217,7 +219,7 @@ pub fn wrap(
     rumor_content: impl Into<String>,
     rumor_created_at: Timestamp,
     relay_hint: Option<&RelayUrl>,
-) -> Result<Event, Error> {
+) -> Result<Event, Nip59Error> {
     let rumor = build_rumor(
         sender,
         rumor_kind,
@@ -265,9 +267,9 @@ impl Timestamps {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::Clock`] / [`Error::Rng`] if the wall clock or
+    /// Returns [`Nip59Error::Clock`] / [`Nip59Error::Rng`] if the wall clock or
     /// OS RNG is unavailable.
-    pub fn random_past() -> Result<Self, Error> {
+    pub fn random_past() -> Result<Self, Nip59Error> {
         Ok(Self {
             rumor: Timestamp::now()?,
             seal: random_past_timestamp()?,
@@ -283,7 +285,7 @@ impl Timestamps {
 ///
 /// # Errors
 ///
-/// See [`Error`].
+/// See [`Nip59Error`].
 pub fn wrap_with_timestamps(
     sender: &Keys,
     recipient: &PublicKey,
@@ -292,7 +294,7 @@ pub fn wrap_with_timestamps(
     rumor_content: impl Into<String>,
     timestamps: Timestamps,
     relay_hint: Option<&RelayUrl>,
-) -> Result<Event, Error> {
+) -> Result<Event, Nip59Error> {
     let rumor = build_rumor(
         sender,
         rumor_kind,
@@ -329,14 +331,14 @@ pub fn wrap_with_timestamps(
 ///
 /// # Errors
 ///
-/// See [`Error`]. Returns [`Error::Nip44`] on tampered ciphertext,
-/// [`Error::UnexpectedKind`] when either layer is wrong, [`Error::Event`]
+/// See [`Nip59Error`]. Returns [`Nip59Error::Nip44`] on tampered ciphertext,
+/// [`Nip59Error::UnexpectedKind`] when either layer is wrong, [`Nip59Error::Event`]
 /// when the seal's signature does not verify, and
-/// [`Error::PubkeyMismatch`] when the rumor's author was rewritten by a
+/// [`Nip59Error::PubkeyMismatch`] when the rumor's author was rewritten by a
 /// malicious sender.
-pub fn unwrap(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Error> {
+pub fn unwrap(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Nip59Error> {
     if gift_wrap.kind != Kind::GIFT_WRAP {
-        return Err(Error::UnexpectedKind {
+        return Err(Nip59Error::UnexpectedKind {
             expected: Kind::GIFT_WRAP.as_u16(),
             got: gift_wrap.kind.as_u16(),
         });
@@ -348,9 +350,9 @@ pub fn unwrap(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Erro
         &gift_wrap.pubkey,
         &gift_wrap.content,
     )?;
-    let seal: Event = Event::from_json(seal_json).map_err(|e| Error::Json(e.to_string()))?;
+    let seal: Event = Event::from_json(seal_json).map_err(|e| Nip59Error::Json(e.to_string()))?;
     if seal.kind != Kind::SEAL {
-        return Err(Error::UnexpectedKind {
+        return Err(Nip59Error::UnexpectedKind {
             expected: Kind::SEAL.as_u16(),
             got: seal.kind.as_u16(),
         });
@@ -363,13 +365,13 @@ pub fn unwrap(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Erro
     // Layer 2: peel the seal.
     let rumor_json = nip44::decrypt(recipient.secret_key(), &seal.pubkey, &seal.content)?;
     let rumor: UnsignedEvent =
-        UnsignedEvent::from_json(rumor_json).map_err(|e| Error::Json(e.to_string()))?;
+        UnsignedEvent::from_json(rumor_json).map_err(|e| Nip59Error::Json(e.to_string()))?;
 
     // Spec defence: the rumor must claim authorship by the same key
     // that signed the seal. Otherwise the sender could re-pubkey the
     // rumor at will.
     if rumor.pubkey != seal.pubkey {
-        return Err(Error::PubkeyMismatch);
+        return Err(Nip59Error::PubkeyMismatch);
     }
 
     Ok(rumor)
@@ -379,9 +381,9 @@ pub fn unwrap(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Erro
 ///
 /// # Errors
 ///
-/// Returns [`Error::Clock`] if the wall clock cannot be read or
-/// [`Error::Rng`] if the OS RNG is unavailable.
-pub fn random_past_timestamp() -> Result<Timestamp, Error> {
+/// Returns [`Nip59Error::Clock`] if the wall clock cannot be read or
+/// [`Nip59Error::Rng`] if the OS RNG is unavailable.
+pub fn random_past_timestamp() -> Result<Timestamp, Nip59Error> {
     let now = Timestamp::now()?;
     let mut bytes = [0u8; 8];
     rng::fill_bytes(&mut bytes)?;
@@ -467,7 +469,7 @@ mod tests {
         let err = unwrap(&bob, &bogus).unwrap_err();
         assert!(matches!(
             err,
-            Error::UnexpectedKind {
+            Nip59Error::UnexpectedKind {
                 expected: 1059,
                 got: 1
             }
@@ -496,7 +498,7 @@ mod tests {
 
         // Carol cannot decrypt — the NIP-44 MAC catches it.
         let err = unwrap(&carol, &wrap_for_bob).unwrap_err();
-        assert!(matches!(err, Error::Nip44(_)));
+        assert!(matches!(err, Nip59Error::Nip44(_)));
     }
 
     #[test]
@@ -533,7 +535,7 @@ mod tests {
         let wrap_evt = create_gift_wrap(&seal, bob.public_key(), None, now).unwrap();
 
         let err = unwrap(&bob, &wrap_evt).unwrap_err();
-        assert!(matches!(err, Error::PubkeyMismatch));
+        assert!(matches!(err, Nip59Error::PubkeyMismatch));
     }
 
     #[test]

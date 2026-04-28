@@ -56,8 +56,8 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use chacha20::ChaCha20;
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use hkdf::Hkdf;
-use hmac::{Hmac, Mac};
 use hmac::digest::KeyInit;
+use hmac::{Hmac, Mac};
 use secp256k1::{Parity, ecdh};
 use sha2::Sha256;
 use thiserror::Error;
@@ -101,7 +101,7 @@ const MESSAGE_KEY_HMAC_OFFSET: usize = CHACHA_KEY_BYTES + CHACHA_NONCE_BYTES;
 /// Errors raised by [`encrypt`], [`decrypt`], and [`ConversationKey::derive`].
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum Nip44Error {
     /// Plaintext is empty (NIP-44 v2 requires at least 1 byte).
     #[error("plaintext is empty")]
     EmptyPlaintext,
@@ -275,14 +275,14 @@ impl Drop for MessageKeys {
 ///
 /// # Errors
 ///
-/// Returns [`Error::EmptyPlaintext`] for an empty input,
-/// [`Error::PlaintextTooLong`] for inputs above 65 535 bytes, or
-/// [`Error::Rng`] if the OS RNG is unavailable.
+/// Returns [`Nip44Error::EmptyPlaintext`] for an empty input,
+/// [`Nip44Error::PlaintextTooLong`] for inputs above 65 535 bytes, or
+/// [`Nip44Error::Rng`] if the OS RNG is unavailable.
 pub fn encrypt(
     secret: &SecretKey,
     peer_public_key: &PublicKey,
     plaintext: &str,
-) -> Result<String, Error> {
+) -> Result<String, Nip44Error> {
     let mut nonce = [0u8; NONCE_BYTES];
     rng::fill_bytes(&mut nonce)?;
     let conversation_key = ConversationKey::derive(secret, peer_public_key);
@@ -298,13 +298,13 @@ pub fn encrypt(
 ///
 /// # Errors
 ///
-/// Same as [`encrypt`]: [`Error::EmptyPlaintext`] /
-/// [`Error::PlaintextTooLong`].
+/// Same as [`encrypt`]: [`Nip44Error::EmptyPlaintext`] /
+/// [`Nip44Error::PlaintextTooLong`].
 pub fn encrypt_with_nonce(
     conversation_key: &ConversationKey,
     plaintext: &str,
     nonce: &[u8; NONCE_BYTES],
-) -> Result<String, Error> {
+) -> Result<String, Nip44Error> {
     encrypt_inner(conversation_key, plaintext, nonce)
 }
 
@@ -312,7 +312,7 @@ fn encrypt_inner(
     conversation_key: &ConversationKey,
     plaintext: &str,
     nonce: &[u8; NONCE_BYTES],
-) -> Result<String, Error> {
+) -> Result<String, Nip44Error> {
     let mks = MessageKeys::derive(conversation_key, nonce);
 
     // Pad. The padded buffer is `prefix(2) || plaintext || zeros`.
@@ -342,16 +342,16 @@ fn encrypt_inner(
 ///
 /// # Errors
 ///
-/// Returns [`Error::InvalidMac`] when the payload was tampered with or
-/// when the conversation key is wrong, [`Error::UnsupportedVersion`]
-/// for any byte other than `0x02`, [`Error::InvalidPadding`] for a
-/// malformed padded plaintext, and [`Error::InvalidUtf8`] when the
+/// Returns [`Nip44Error::InvalidMac`] when the payload was tampered with or
+/// when the conversation key is wrong, [`Nip44Error::UnsupportedVersion`]
+/// for any byte other than `0x02`, [`Nip44Error::InvalidPadding`] for a
+/// malformed padded plaintext, and [`Nip44Error::InvalidUtf8`] when the
 /// plaintext is not valid UTF-8.
 pub fn decrypt(
     secret: &SecretKey,
     peer_public_key: &PublicKey,
     payload: &str,
-) -> Result<String, Error> {
+) -> Result<String, Nip44Error> {
     let conversation_key = ConversationKey::derive(secret, peer_public_key);
     decrypt_with_conversation_key(&conversation_key, payload)
 }
@@ -373,29 +373,29 @@ pub fn decrypt(
 pub fn decrypt_with_conversation_key(
     conversation_key: &ConversationKey,
     payload: &str,
-) -> Result<String, Error> {
+) -> Result<String, Nip44Error> {
     let plen = payload.len();
     if plen < MIN_PAYLOAD_CHARS {
-        return Err(Error::PayloadTooShort(plen));
+        return Err(Nip44Error::PayloadTooShort(plen));
     }
     if plen > MAX_PAYLOAD_CHARS {
-        return Err(Error::PayloadTooLong(plen));
+        return Err(Nip44Error::PayloadTooLong(plen));
     }
 
     // NIP-44 §Decryption step 1: a leading `#` flags a future
     // non-base64 framing. Surface it as `UnsupportedVersion` so callers
     // can distinguish it from a corrupted base64 string.
     if payload.starts_with('#') {
-        return Err(Error::UnsupportedVersion(b'#'));
+        return Err(Nip44Error::UnsupportedVersion(b'#'));
     }
 
     let bytes = BASE64.decode(payload)?;
     let blen = bytes.len();
     if blen < MIN_PAYLOAD_BYTES {
-        return Err(Error::DecodedTooShort(blen));
+        return Err(Nip44Error::DecodedTooShort(blen));
     }
     if blen > MAX_PAYLOAD_BYTES {
-        return Err(Error::DecodedTooLong(blen));
+        return Err(Nip44Error::DecodedTooLong(blen));
     }
 
     // Carve `version || nonce || ciphertext || mac` from the buffer
@@ -406,7 +406,7 @@ pub fn decrypt_with_conversation_key(
         .first()
         .expect("VERSION_BYTE = 1, slice is non-empty after MIN_PAYLOAD_BYTES check");
     if version != VERSION {
-        return Err(Error::UnsupportedVersion(version));
+        return Err(Nip44Error::UnsupportedVersion(version));
     }
 
     let (nonce_slice, body_with_mac) = rest.split_at(NONCE_BYTES);
@@ -423,7 +423,7 @@ pub fn decrypt_with_conversation_key(
     // state machine.
     let computed_mac = compute_hmac(mks.hmac_key(), &nonce, ciphertext);
     if !hmac_eq(&computed_mac, mac) {
-        return Err(Error::InvalidMac);
+        return Err(Nip44Error::InvalidMac);
     }
 
     // Decrypt and unpad.
@@ -432,16 +432,16 @@ pub fn decrypt_with_conversation_key(
     cipher.apply_keystream(&mut buffer);
 
     let unpadded = unpad(&buffer)?;
-    String::from_utf8(unpadded.to_vec()).map_err(|_| Error::InvalidUtf8)
+    String::from_utf8(unpadded.to_vec()).map_err(|_| Nip44Error::InvalidUtf8)
 }
 
-fn pad(plaintext: &[u8]) -> Result<Vec<u8>, Error> {
+fn pad(plaintext: &[u8]) -> Result<Vec<u8>, Nip44Error> {
     let len = plaintext.len();
     if len < MIN_PLAINTEXT_BYTES {
-        return Err(Error::EmptyPlaintext);
+        return Err(Nip44Error::EmptyPlaintext);
     }
     if len > MAX_PLAINTEXT_BYTES {
-        return Err(Error::PlaintextTooLong(len));
+        return Err(Nip44Error::PlaintextTooLong(len));
     }
     let padded_len = padded_length(len);
     let mut out = Vec::with_capacity(2 + padded_len);
@@ -459,20 +459,22 @@ fn pad(plaintext: &[u8]) -> Result<Vec<u8>, Error> {
     Ok(out)
 }
 
-fn unpad(padded: &[u8]) -> Result<&[u8], Error> {
-    let header: &[u8; 2] = padded.first_chunk::<2>().ok_or(Error::InvalidPadding)?;
+fn unpad(padded: &[u8]) -> Result<&[u8], Nip44Error> {
+    let header: &[u8; 2] = padded
+        .first_chunk::<2>()
+        .ok_or(Nip44Error::InvalidPadding)?;
     let prefix = u16::from_be_bytes(*header) as usize;
     if prefix < MIN_PLAINTEXT_BYTES {
-        return Err(Error::InvalidPadding);
+        return Err(Nip44Error::InvalidPadding);
     }
     if prefix > MAX_PLAINTEXT_BYTES {
-        return Err(Error::InvalidPadding);
+        return Err(Nip44Error::InvalidPadding);
     }
     let expected_len = 2 + padded_length(prefix);
     if padded.len() != expected_len {
-        return Err(Error::InvalidPadding);
+        return Err(Nip44Error::InvalidPadding);
     }
-    padded.get(2..2 + prefix).ok_or(Error::InvalidPadding)
+    padded.get(2..2 + prefix).ok_or(Nip44Error::InvalidPadding)
 }
 
 /// Compute padded length per NIP-44 v2 spec.
@@ -575,7 +577,7 @@ mod tests {
         let a = key_pair_a();
         let b = key_pair_b();
         let err = encrypt(a.secret_key(), b.public_key(), "").unwrap_err();
-        assert!(matches!(err, Error::EmptyPlaintext));
+        assert!(matches!(err, Nip44Error::EmptyPlaintext));
     }
 
     #[test]
@@ -584,7 +586,7 @@ mod tests {
         let b = key_pair_b();
         let plaintext = "a".repeat(MAX_PLAINTEXT_BYTES + 1);
         let err = encrypt(a.secret_key(), b.public_key(), &plaintext).unwrap_err();
-        assert!(matches!(err, Error::PlaintextTooLong(_)));
+        assert!(matches!(err, Nip44Error::PlaintextTooLong(_)));
     }
 
     #[test]
@@ -610,7 +612,10 @@ mod tests {
         let err = decrypt(b.secret_key(), a.public_key(), &tampered).unwrap_err();
         // Either the base64 still parses but HMAC fails, or base64 itself
         // chokes — either way the tamper is caught.
-        assert!(matches!(err, Error::InvalidMac | Error::InvalidBase64(_)));
+        assert!(matches!(
+            err,
+            Nip44Error::InvalidMac | Nip44Error::InvalidBase64(_)
+        ));
     }
 
     #[test]
@@ -630,7 +635,7 @@ mod tests {
         let s = BASE64.encode(&bogus);
         let key = ConversationKey::from_byte_array([0u8; 32]);
         let err = decrypt_with_conversation_key(&key, &s).unwrap_err();
-        assert!(matches!(err, Error::UnsupportedVersion(0x01)));
+        assert!(matches!(err, Nip44Error::UnsupportedVersion(0x01)));
     }
 
     #[test]
@@ -660,7 +665,7 @@ mod tests {
     fn payload_too_short_is_rejected() {
         let key = ConversationKey::from_byte_array([0u8; 32]);
         let err = decrypt_with_conversation_key(&key, "AAAA").unwrap_err();
-        assert!(matches!(err, Error::PayloadTooShort(_)));
+        assert!(matches!(err, Nip44Error::PayloadTooShort(_)));
     }
 
     #[test]
@@ -670,12 +675,12 @@ mod tests {
         // before even looking at the `#` framing marker.
         let oversize = format!("#{}", "A".repeat(MAX_PAYLOAD_CHARS));
         let err = decrypt_with_conversation_key(&key, &oversize).unwrap_err();
-        assert!(matches!(err, Error::PayloadTooLong(_)));
+        assert!(matches!(err, Nip44Error::PayloadTooLong(_)));
         // Second check: a payload that *fits* the length window but
         // starts with the future-framing marker surfaces as
         // `UnsupportedVersion(b'#')`.
         let in_range = format!("#{}", "A".repeat(MIN_PAYLOAD_CHARS - 1));
         let err_in_range = decrypt_with_conversation_key(&key, &in_range).unwrap_err();
-        assert!(matches!(err_in_range, Error::UnsupportedVersion(b'#')));
+        assert!(matches!(err_in_range, Nip44Error::UnsupportedVersion(b'#')));
     }
 }

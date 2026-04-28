@@ -208,12 +208,12 @@ impl Comment {
     ///
     /// # Errors
     ///
-    /// Returns the matching [`Error`] when the event is the wrong
+    /// Returns the matching [`CommentError`] when the event is the wrong
     /// kind, missing one of the required scope tags, or carries malformed
     /// values.
-    pub fn from_event(event: &Event) -> Result<Self, Error> {
+    pub fn from_event(event: &Event) -> Result<Self, CommentError> {
         if event.kind != Kind::from(1111_u16) {
-            return Err(Error::UnexpectedKind(event.kind.as_u16()));
+            return Err(CommentError::UnexpectedKind(event.kind.as_u16()));
         }
 
         let mut root: Option<CommentScope> = None;
@@ -241,10 +241,10 @@ impl Comment {
         }
 
         Ok(Self {
-            root: root.ok_or(Error::MissingRoot)?,
+            root: root.ok_or(CommentError::MissingRoot)?,
             root_kind,
             root_author,
-            parent: parent.ok_or(Error::MissingParent)?,
+            parent: parent.ok_or(CommentError::MissingParent)?,
             parent_kind,
             parent_author,
             content: event.content.clone(),
@@ -293,11 +293,11 @@ fn push_scope_tags(out: &mut Vec<Tag>, scope: &CommentScope, root: bool) {
     }
 }
 
-fn parse_event_scope(tag: &Tag) -> Result<CommentScope, Error> {
+fn parse_event_scope(tag: &Tag) -> Result<CommentScope, CommentError> {
     let mut args = tag.values().iter().skip(1);
     let id = args
         .next()
-        .ok_or(Error::MissingValue { tag: "E/e" })?
+        .ok_or(CommentError::MissingValue { tag: "E/e" })?
         .parse::<EventId>()?;
     let relay_hint = match args.next() {
         Some(s) if !s.is_empty() => Some(RelayUrl::parse(s)?),
@@ -306,11 +306,11 @@ fn parse_event_scope(tag: &Tag) -> Result<CommentScope, Error> {
     Ok(CommentScope::Event { id, relay_hint })
 }
 
-fn parse_address_scope(tag: &Tag) -> Result<CommentScope, Error> {
+fn parse_address_scope(tag: &Tag) -> Result<CommentScope, CommentError> {
     let mut args = tag.values().iter().skip(1);
     let coordinate = args
         .next()
-        .ok_or(Error::MissingValue { tag: "A/a" })?
+        .ok_or(CommentError::MissingValue { tag: "A/a" })?
         .parse::<Coordinate>()?;
     let relay_hint = match args.next() {
         Some(s) if !s.is_empty() => Some(RelayUrl::parse(s)?),
@@ -322,11 +322,11 @@ fn parse_address_scope(tag: &Tag) -> Result<CommentScope, Error> {
     })
 }
 
-fn parse_external_scope(tag: &Tag) -> Result<CommentScope, Error> {
+fn parse_external_scope(tag: &Tag) -> Result<CommentScope, CommentError> {
     let mut args = tag.values().iter().skip(1);
     let value = args
         .next()
-        .ok_or(Error::MissingValue { tag: "I/i" })?
+        .ok_or(CommentError::MissingValue { tag: "I/i" })?
         .clone();
     let context = match args.next() {
         Some(s) if !s.is_empty() => Some(s.clone()),
@@ -335,29 +335,29 @@ fn parse_external_scope(tag: &Tag) -> Result<CommentScope, Error> {
     Ok(CommentScope::External { value, context })
 }
 
-fn parse_kind(tag: &Tag, name: &'static str) -> Result<Kind, Error> {
+fn parse_kind(tag: &Tag, name: &'static str) -> Result<Kind, CommentError> {
     let value = tag
         .values()
         .get(1)
-        .ok_or(Error::MissingValue { tag: name })?;
+        .ok_or(CommentError::MissingValue { tag: name })?;
     let raw: u16 = value
         .parse()
-        .map_err(|_| Error::InvalidKind(value.clone()))?;
+        .map_err(|_| CommentError::InvalidKind(value.clone()))?;
     Ok(Kind::from(raw))
 }
 
-fn parse_pubkey(tag: &Tag, name: &'static str) -> Result<PublicKey, Error> {
+fn parse_pubkey(tag: &Tag, name: &'static str) -> Result<PublicKey, CommentError> {
     let value = tag
         .values()
         .get(1)
-        .ok_or(Error::MissingValue { tag: name })?;
+        .ok_or(CommentError::MissingValue { tag: name })?;
     Ok(value.parse::<PublicKey>()?)
 }
 
 /// Errors raised when parsing a NIP-22 comment event.
 #[derive(Debug, Clone, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum CommentError {
     /// The event's kind was not `1111`.
     #[error("expected kind 1111, got {0}")]
     UnexpectedKind(u16),
@@ -477,7 +477,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = Comment::from_event(&event).unwrap_err();
-        assert!(matches!(err, Error::UnexpectedKind(1)));
+        assert!(matches!(err, CommentError::UnexpectedKind(1)));
     }
 
     #[test]
@@ -488,7 +488,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = Comment::from_event(&event).unwrap_err();
-        assert!(matches!(err, Error::MissingRoot));
+        assert!(matches!(err, CommentError::MissingRoot));
     }
 
     #[test]
@@ -499,6 +499,6 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = Comment::from_event(&event).unwrap_err();
-        assert!(matches!(err, Error::MissingParent));
+        assert!(matches!(err, CommentError::MissingParent));
     }
 }

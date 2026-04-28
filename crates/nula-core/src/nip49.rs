@@ -40,8 +40,8 @@
 
 use bech32::Bech32;
 use bech32::primitives::decode::{CheckedHrpstring, CheckedHrpstringError};
-use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::XChaCha20Poly1305;
+use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use scrypt::{Params as ScryptParams, scrypt};
 use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
@@ -101,14 +101,14 @@ impl KeySecurity {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::InvalidKeySecurity`] for any byte outside
+    /// Returns [`Nip49Error::InvalidKeySecurity`] for any byte outside
     /// `0x00..=0x02`.
-    pub const fn from_byte(byte: u8) -> Result<Self, Error> {
+    pub const fn from_byte(byte: u8) -> Result<Self, Nip49Error> {
         match byte {
             0x00 => Ok(Self::Weak),
             0x01 => Ok(Self::Strong),
             0x02 => Ok(Self::Untracked),
-            _ => Err(Error::InvalidKeySecurity(byte)),
+            _ => Err(Nip49Error::InvalidKeySecurity(byte)),
         }
     }
 }
@@ -116,7 +116,7 @@ impl KeySecurity {
 /// Errors raised by NIP-49 helpers.
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum Nip49Error {
     /// scrypt rejected the requested parameters (typically `log_n` too
     /// large for the running architecture, or memory exhaustion on the
     /// host).
@@ -218,15 +218,15 @@ impl EncryptedSecretKey {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::LogNTooLarge`] / [`Error::InvalidParams`] when
-    /// scrypt rejects the cost, or [`Error::Rng`] when the OS RNG is
+    /// Returns [`Nip49Error::LogNTooLarge`] / [`Nip49Error::InvalidParams`] when
+    /// scrypt rejects the cost, or [`Nip49Error::Rng`] when the OS RNG is
     /// unavailable.
     pub fn encrypt(
         secret: &SecretKey,
         password: &str,
         log_n: u8,
         security: KeySecurity,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, Nip49Error> {
         let mut salt = [0u8; SALT_BYTES];
         let mut nonce = [0u8; NONCE_BYTES];
         rng::fill_bytes(&mut salt)?;
@@ -250,9 +250,9 @@ impl EncryptedSecretKey {
         security: KeySecurity,
         salt: [u8; SALT_BYTES],
         nonce: [u8; NONCE_BYTES],
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, Nip49Error> {
         if log_n > MAX_LOG_N {
-            return Err(Error::LogNTooLarge(log_n));
+            return Err(Nip49Error::LogNTooLarge(log_n));
         }
         let sym_key = derive_symmetric_key(password, &salt, log_n)?;
         let cipher = XChaCha20Poly1305::new(&sym_key.into());
@@ -265,7 +265,7 @@ impl EncryptedSecretKey {
         };
         let ct = cipher
             .encrypt(&nonce.into(), payload)
-            .map_err(|_| Error::Aead)?;
+            .map_err(|_| Nip49Error::Aead)?;
         // Length is statically `SECRET_BYTES + TAG_BYTES`; convert to
         // the fixed-size array form.
         let ciphertext: [u8; CIPHERTEXT_BYTES] = ct
@@ -286,12 +286,12 @@ impl EncryptedSecretKey {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::Aead`] when the password is wrong or the
-    /// ciphertext / security byte was tampered with, [`Error::SecretKey`]
+    /// Returns [`Nip49Error::Aead`] when the password is wrong or the
+    /// ciphertext / security byte was tampered with, [`Nip49Error::SecretKey`]
     /// when the decrypted bytes do not encode a valid secp256k1 scalar,
-    /// or [`Error::InvalidParams`] / [`Error::Scrypt`] for derivation
+    /// or [`Nip49Error::InvalidParams`] / [`Nip49Error::Scrypt`] for derivation
     /// failures.
-    pub fn decrypt(&self, password: &str) -> Result<SecretKey, Error> {
+    pub fn decrypt(&self, password: &str) -> Result<SecretKey, Nip49Error> {
         let sym_key = derive_symmetric_key(password, &self.salt, self.log_n)?;
         let cipher = XChaCha20Poly1305::new(&sym_key.into());
         let aad_byte = [self.security as u8];
@@ -301,14 +301,15 @@ impl EncryptedSecretKey {
         };
         let plaintext = cipher
             .decrypt(&self.nonce.into(), payload)
-            .map_err(|_| Error::Aead)?;
-        let secret_array: [u8; SECRET_BYTES] = plaintext
-            .as_slice()
-            .try_into()
-            .map_err(|_| Error::InvalidLength {
-                got: plaintext.len(),
-            })?;
-        SecretKey::from_byte_array(secret_array).map_err(Error::from)
+            .map_err(|_| Nip49Error::Aead)?;
+        let secret_array: [u8; SECRET_BYTES] =
+            plaintext
+                .as_slice()
+                .try_into()
+                .map_err(|_| Nip49Error::InvalidLength {
+                    got: plaintext.len(),
+                })?;
+        SecretKey::from_byte_array(secret_array).map_err(Nip49Error::from)
     }
 
     /// Cost parameter the secret was encrypted under.
@@ -327,10 +328,10 @@ impl EncryptedSecretKey {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::Encode`] only if the underlying `bech32` crate
+    /// Returns [`Nip49Error::Encode`] only if the underlying `bech32` crate
     /// rejects the payload, which on a 91-byte buffer is statically
     /// impossible.
-    pub fn to_bech32(&self) -> Result<String, Error> {
+    pub fn to_bech32(&self) -> Result<String, Nip49Error> {
         let bytes = self.to_payload_bytes();
         let hrp = bech32::Hrp::parse(HRP).expect("HRP is statically valid");
         Ok(bech32::encode::<Bech32>(hrp, &bytes)?)
@@ -340,16 +341,16 @@ impl EncryptedSecretKey {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::Decode`] for malformed bech32, [`Error::UnexpectedHrp`]
-    /// when the HRP is not `ncryptsec`, [`Error::InvalidLength`] when
+    /// Returns [`Nip49Error::Decode`] for malformed bech32, [`Nip49Error::UnexpectedHrp`]
+    /// when the HRP is not `ncryptsec`, [`Nip49Error::InvalidLength`] when
     /// the decoded payload is not exactly [`PAYLOAD_BYTES`] long, and
-    /// [`Error::UnsupportedVersion`] / [`Error::InvalidKeySecurity`]
+    /// [`Nip49Error::UnsupportedVersion`] / [`Nip49Error::InvalidKeySecurity`]
     /// when the payload header is malformed.
-    pub fn from_bech32(input: &str) -> Result<Self, Error> {
+    pub fn from_bech32(input: &str) -> Result<Self, Nip49Error> {
         let parsed = CheckedHrpstring::new::<Bech32>(input)?;
         let hrp = parsed.hrp().to_lowercase();
         if hrp != HRP {
-            return Err(Error::UnexpectedHrp(hrp));
+            return Err(Nip49Error::UnexpectedHrp(hrp));
         }
         let bytes: Vec<u8> = parsed.byte_iter().collect();
         Self::from_payload_bytes(&bytes)
@@ -369,15 +370,15 @@ impl EncryptedSecretKey {
         buf
     }
 
-    fn from_payload_bytes(bytes: &[u8]) -> Result<Self, Error> {
+    fn from_payload_bytes(bytes: &[u8]) -> Result<Self, Nip49Error> {
         if bytes.len() != PAYLOAD_BYTES {
-            return Err(Error::InvalidLength { got: bytes.len() });
+            return Err(Nip49Error::InvalidLength { got: bytes.len() });
         }
         // Length is statically `PAYLOAD_BYTES`, so every fixed-offset
         // index below is in-range.
         let version = bytes[0];
         if version != VERSION_BYTE {
-            return Err(Error::UnsupportedVersion(version));
+            return Err(Nip49Error::UnsupportedVersion(version));
         }
         let log_n = bytes[1];
         let salt: [u8; SALT_BYTES] = bytes[2..2 + SALT_BYTES]
@@ -407,7 +408,7 @@ fn derive_symmetric_key(
     password: &str,
     salt: &[u8; SALT_BYTES],
     log_n: u8,
-) -> Result<[u8; SYM_KEY_BYTES], Error> {
+) -> Result<[u8; SYM_KEY_BYTES], Nip49Error> {
     // Spec § Symmetric Encryption Key derivation: NFKC-normalise the
     // password before scrypt. This guarantees that visually-identical
     // strings entered on different OS / IME stacks produce the same
@@ -418,12 +419,13 @@ fn derive_symmetric_key(
     // `scrypt::scrypt`). The previous (log_n, r, p, len) signature is
     // gone.
     let params =
-        ScryptParams::new(log_n, SCRYPT_R, SCRYPT_P).map_err(|err| Error::InvalidParams {
+        ScryptParams::new(log_n, SCRYPT_R, SCRYPT_P).map_err(|err| Nip49Error::InvalidParams {
             log_n,
             message: err.to_string(),
         })?;
     let mut key = [0u8; SYM_KEY_BYTES];
-    scrypt(normalized.as_bytes(), salt, &params, &mut key).map_err(|err| Error::Scrypt(err.to_string()))?;
+    scrypt(normalized.as_bytes(), salt, &params, &mut key)
+        .map_err(|err| Nip49Error::Scrypt(err.to_string()))?;
     Ok(key)
 }
 
@@ -446,8 +448,8 @@ mod tests {
         let secret = fixture_secret();
         // Use log_n=4 (16 iterations) — fastest possible — so tests run
         // in milliseconds instead of seconds.
-        let encrypted = EncryptedSecretKey::encrypt(&secret, "correct horse", 4, KeySecurity::Weak)
-            .unwrap();
+        let encrypted =
+            EncryptedSecretKey::encrypt(&secret, "correct horse", 4, KeySecurity::Weak).unwrap();
         let recovered = encrypted.decrypt("correct horse").unwrap();
         assert_eq!(recovered.to_byte_array(), secret.to_byte_array());
     }
@@ -458,7 +460,7 @@ mod tests {
         let encrypted =
             EncryptedSecretKey::encrypt(&secret, "right password", 4, KeySecurity::Strong).unwrap();
         let err = encrypted.decrypt("WRONG password").unwrap_err();
-        assert!(matches!(err, Error::Aead));
+        assert!(matches!(err, Nip49Error::Aead));
     }
 
     #[test]
@@ -470,7 +472,10 @@ mod tests {
         assert!(s.starts_with("ncryptsec1"));
         let parsed = EncryptedSecretKey::from_bech32(&s).unwrap();
         assert_eq!(parsed, encrypted);
-        assert_eq!(parsed.decrypt("p").unwrap().to_byte_array(), secret.to_byte_array());
+        assert_eq!(
+            parsed.decrypt("p").unwrap().to_byte_array(),
+            secret.to_byte_array()
+        );
     }
 
     #[test]
@@ -479,7 +484,7 @@ mod tests {
         let hrp = bech32::Hrp::parse("nsec").unwrap();
         let bogus = bech32::encode::<Bech32>(hrp, &[0u8; PAYLOAD_BYTES]).unwrap();
         let err = EncryptedSecretKey::from_bech32(&bogus).unwrap_err();
-        assert!(matches!(err, Error::UnexpectedHrp(s) if s == "nsec"));
+        assert!(matches!(err, Nip49Error::UnexpectedHrp(s) if s == "nsec"));
     }
 
     #[test]
@@ -492,7 +497,7 @@ mod tests {
         let hrp = bech32::Hrp::parse(HRP).unwrap();
         let bogus = bech32::encode::<Bech32>(hrp, &payload).unwrap();
         let err = EncryptedSecretKey::from_bech32(&bogus).unwrap_err();
-        assert!(matches!(err, Error::UnsupportedVersion(0x01)));
+        assert!(matches!(err, Nip49Error::UnsupportedVersion(0x01)));
     }
 
     #[test]
@@ -505,7 +510,7 @@ mod tests {
         let hrp = bech32::Hrp::parse(HRP).unwrap();
         let bogus = bech32::encode::<Bech32>(hrp, &payload).unwrap();
         let err = EncryptedSecretKey::from_bech32(&bogus).unwrap_err();
-        assert!(matches!(err, Error::InvalidKeySecurity(0x09)));
+        assert!(matches!(err, Nip49Error::InvalidKeySecurity(0x09)));
     }
 
     #[test]
@@ -544,7 +549,7 @@ mod tests {
         let secret = fixture_secret();
         let err = EncryptedSecretKey::encrypt(&secret, "p", MAX_LOG_N + 1, KeySecurity::Weak)
             .unwrap_err();
-        assert!(matches!(err, Error::LogNTooLarge(_)));
+        assert!(matches!(err, Nip49Error::LogNTooLarge(_)));
     }
 
     /// NIP-49 spec § Test Data fixture.

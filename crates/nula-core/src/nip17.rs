@@ -48,7 +48,7 @@ const REPLY_MARKER: &str = "reply";
 /// Errors raised by the NIP-17 helpers.
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum Nip17Error {
     /// Caller supplied an empty recipient list.
     ///
     /// NIP-17 only makes sense with at least one peer; even a "self
@@ -67,7 +67,7 @@ pub enum Error {
     InvalidRelayUrl(#[from] crate::types::RelayUrlError),
     /// Forwarded gift-wrap error.
     #[error(transparent)]
-    Wrap(#[from] nip59::Error),
+    Wrap(#[from] nip59::Nip59Error),
 }
 
 /// Recipient of a private message: a public key plus an optional relay
@@ -182,16 +182,16 @@ pub fn build_chat_message_rumor(
 ///
 /// # Errors
 ///
-/// Returns [`Error::NoRecipients`] if `recipients` is empty, or
-/// [`Error::Wrap`] for any underlying NIP-59 / NIP-44 failure.
+/// Returns [`Nip17Error::NoRecipients`] if `recipients` is empty, or
+/// [`Nip17Error::Wrap`] for any underlying NIP-59 / NIP-44 failure.
 pub fn wrap_for_many(
     sender: &Keys,
     recipients: &[Recipient<'_>],
     rumor: &UnsignedEvent,
     timestamps: nip59::Timestamps,
-) -> Result<Vec<Event>, Error> {
+) -> Result<Vec<Event>, Nip17Error> {
     if recipients.is_empty() {
-        return Err(Error::NoRecipients);
+        return Err(Nip17Error::NoRecipients);
     }
 
     let mut wraps = Vec::with_capacity(recipients.len() + 1);
@@ -234,7 +234,7 @@ pub fn wrap_for(
     recipient: &Recipient<'_>,
     rumor: &UnsignedEvent,
     timestamps: nip59::Timestamps,
-) -> Result<Event, Error> {
+) -> Result<Event, Nip17Error> {
     let seal = nip59::create_seal(sender, &recipient.public_key, rumor, timestamps.seal)?;
     Ok(nip59::create_gift_wrap(
         &seal,
@@ -252,12 +252,15 @@ pub fn wrap_for(
 ///
 /// # Errors
 ///
-/// Returns [`Error::UnexpectedKind`] when the rumor is not kind 14;
+/// Returns [`Nip17Error::UnexpectedKind`] when the rumor is not kind 14;
 /// otherwise see [`nip59::unwrap`].
-pub fn unwrap_chat_message(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Error> {
-    let rumor = nip59::unwrap(recipient, gift_wrap).map_err(Error::Wrap)?;
+pub fn unwrap_chat_message(
+    recipient: &Keys,
+    gift_wrap: &Event,
+) -> Result<UnsignedEvent, Nip17Error> {
+    let rumor = nip59::unwrap(recipient, gift_wrap).map_err(Nip17Error::Wrap)?;
     if rumor.kind != Kind::PRIVATE_DIRECT_MESSAGE {
-        return Err(Error::UnexpectedKind(rumor.kind.as_u16()));
+        return Err(Nip17Error::UnexpectedKind(rumor.kind.as_u16()));
     }
     Ok(rumor)
 }
@@ -274,8 +277,8 @@ pub fn unwrap_chat_message(recipient: &Keys, gift_wrap: &Event) -> Result<Unsign
 /// See [`nip59::unwrap`]. Unlike [`unwrap_chat_message`] this function
 /// does not assert the rumor's kind; callers should match on
 /// `rumor.kind` themselves.
-pub fn unwrap_dm_payload(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Error> {
-    nip59::unwrap(recipient, gift_wrap).map_err(Error::Wrap)
+pub fn unwrap_dm_payload(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Nip17Error> {
+    nip59::unwrap(recipient, gift_wrap).map_err(Nip17Error::Wrap)
 }
 
 /// Build a [`Kind::DM_RELAYS`] (10050) replaceable event listing the
@@ -301,18 +304,18 @@ pub fn build_dm_relays_event(relays: &[RelayUrl]) -> EventBuilder {
 /// advertises for NIP-17 delivery.
 ///
 /// `relay` tags whose URL fails to parse are surfaced as
-/// [`Error::InvalidRelayUrl`] rather than silently dropped — relay
+/// [`Nip17Error::InvalidRelayUrl`] rather than silently dropped — relay
 /// lists are a privacy-sensitive signal and silent corruption could
 /// route DMs to the wrong server.
 ///
 /// # Errors
 ///
-/// Returns [`Error::UnexpectedKind`] if the event is not kind 10050
-/// and [`Error::InvalidRelayUrl`] / [`Error::MissingRelayUrl`] for
+/// Returns [`Nip17Error::UnexpectedKind`] if the event is not kind 10050
+/// and [`Nip17Error::InvalidRelayUrl`] / [`Nip17Error::MissingRelayUrl`] for
 /// malformed `relay` tags.
-pub fn parse_dm_relays_event(event: &Event) -> Result<Vec<RelayUrl>, Error> {
+pub fn parse_dm_relays_event(event: &Event) -> Result<Vec<RelayUrl>, Nip17Error> {
     if event.kind != Kind::DM_RELAYS {
-        return Err(Error::UnexpectedKind(event.kind.as_u16()));
+        return Err(Nip17Error::UnexpectedKind(event.kind.as_u16()));
     }
     let relay_kind = TagKind::from_wire("relay");
     let mut out = Vec::new();
@@ -321,7 +324,7 @@ pub fn parse_dm_relays_event(event: &Event) -> Result<Vec<RelayUrl>, Error> {
             // Forward-compat: ignore non-`relay` tags.
             continue;
         }
-        let value = tag.values().get(1).ok_or(Error::MissingRelayUrl)?;
+        let value = tag.values().get(1).ok_or(Nip17Error::MissingRelayUrl)?;
         out.push(RelayUrl::parse(value)?);
     }
     Ok(out)
@@ -464,7 +467,7 @@ mod tests {
         let now = Timestamp::from_secs(1_700_000_000);
         let rumor = build_chat_message_rumor(&alice, &[], "ghost", now, None, None);
         let err = wrap_for_many(&alice, &[], &rumor, nip59::Timestamps::all_at(now)).unwrap_err();
-        assert!(matches!(err, Error::NoRecipients));
+        assert!(matches!(err, Nip17Error::NoRecipients));
     }
 
     #[test]
@@ -485,7 +488,7 @@ mod tests {
         let wrap = nip59::create_gift_wrap(&seal, bob.public_key(), None, now).unwrap();
 
         let err = unwrap_chat_message(&bob, &wrap).unwrap_err();
-        assert!(matches!(err, Error::UnexpectedKind(1)));
+        assert!(matches!(err, Nip17Error::UnexpectedKind(1)));
 
         // The same payload survives the more permissive entry point.
         let recovered = unwrap_dm_payload(&bob, &wrap).unwrap();
@@ -516,7 +519,7 @@ mod tests {
             .sign_with_keys(&alice)
             .unwrap();
         let err = parse_dm_relays_event(&event).unwrap_err();
-        assert!(matches!(err, Error::UnexpectedKind(1)));
+        assert!(matches!(err, Nip17Error::UnexpectedKind(1)));
     }
 
     #[test]
@@ -528,6 +531,6 @@ mod tests {
             .sign_with_keys(&alice)
             .unwrap();
         let err = parse_dm_relays_event(&event).unwrap_err();
-        assert!(matches!(err, Error::MissingRelayUrl));
+        assert!(matches!(err, Nip17Error::MissingRelayUrl));
     }
 }

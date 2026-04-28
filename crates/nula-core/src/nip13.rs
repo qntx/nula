@@ -31,7 +31,7 @@ pub const NONCE_TAG: &str = "nonce";
 /// Errors raised by [`verify_pow`] and [`verify_pow_strict`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 #[non_exhaustive]
-pub enum Error {
+pub enum PowError {
     /// The event's id has fewer leading zero bits than required.
     #[error("event id has {actual} leading zero bits, need {expected}")]
     InsufficientWork {
@@ -118,9 +118,9 @@ pub fn event_id_difficulty(id: &EventId) -> u8 {
 ///
 /// # Errors
 ///
-/// Returns [`Error::InvalidCommitment`] when the third element exists
+/// Returns [`PowError::InvalidCommitment`] when the third element exists
 /// but is not a non-negative integer that fits in `u8`.
-pub fn committed_difficulty(event: &Event) -> Result<Option<u8>, Error> {
+pub fn committed_difficulty(event: &Event) -> Result<Option<u8>, PowError> {
     let kind = TagKind::from_wire(NONCE_TAG);
     let Some(tag) = event.tags.find_first(&kind) else {
         return Ok(None);
@@ -131,7 +131,7 @@ pub fn committed_difficulty(event: &Event) -> Result<Option<u8>, Error> {
     commitment
         .parse::<u8>()
         .map(Some)
-        .map_err(|_| Error::InvalidCommitment)
+        .map_err(|_| PowError::InvalidCommitment)
 }
 
 /// Verify that `event` satisfies `min_difficulty` according to NIP-13.
@@ -144,13 +144,13 @@ pub fn committed_difficulty(event: &Event) -> Result<Option<u8>, Error> {
 ///
 /// # Errors
 ///
-/// Returns [`Error::InsufficientWork`] when the id is below the bar,
-/// [`Error::InsufficientCommitment`] when the commitment falls short,
-/// or [`Error::InvalidCommitment`] when the commitment is malformed.
-pub fn verify_pow(event: &Event, min_difficulty: u8) -> Result<(), Error> {
+/// Returns [`PowError::InsufficientWork`] when the id is below the bar,
+/// [`PowError::InsufficientCommitment`] when the commitment falls short,
+/// or [`PowError::InvalidCommitment`] when the commitment is malformed.
+pub fn verify_pow(event: &Event, min_difficulty: u8) -> Result<(), PowError> {
     let actual = event_id_difficulty(&event.id);
     if actual < min_difficulty {
-        return Err(Error::InsufficientWork {
+        return Err(PowError::InsufficientWork {
             actual,
             expected: min_difficulty,
         });
@@ -158,7 +158,7 @@ pub fn verify_pow(event: &Event, min_difficulty: u8) -> Result<(), Error> {
     if let Some(commitment) = committed_difficulty(event)?
         && commitment < min_difficulty
     {
-        return Err(Error::InsufficientCommitment {
+        return Err(PowError::InsufficientCommitment {
             actual: commitment,
             expected: min_difficulty,
         });
@@ -177,13 +177,13 @@ pub fn verify_pow(event: &Event, min_difficulty: u8) -> Result<(), Error> {
 ///
 /// # Errors
 ///
-/// Returns the matching [`Error`] variant; in particular,
-/// [`Error::MissingCommitment`] when the event has no usable `nonce`
+/// Returns the matching [`PowError`] variant; in particular,
+/// [`PowError::MissingCommitment`] when the event has no usable `nonce`
 /// commitment column.
-pub fn verify_pow_strict(event: &Event, min_difficulty: u8) -> Result<(), Error> {
+pub fn verify_pow_strict(event: &Event, min_difficulty: u8) -> Result<(), PowError> {
     verify_pow(event, min_difficulty)?;
     if min_difficulty > 0 && committed_difficulty(event)?.is_none() {
-        return Err(Error::MissingCommitment);
+        return Err(PowError::MissingCommitment);
     }
     Ok(())
 }
@@ -358,7 +358,7 @@ mod tests {
             .unwrap();
         // Difficulty 32 is virtually impossible without mining.
         let err = verify_pow(&event, 32).unwrap_err();
-        assert!(matches!(err, Error::InsufficientWork { .. }));
+        assert!(matches!(err, PowError::InsufficientWork { .. }));
     }
 
     #[test]
@@ -371,7 +371,7 @@ mod tests {
         let err = verify_pow(&event, 16).unwrap_err();
         assert!(matches!(
             err,
-            Error::InsufficientWork { .. } | Error::InsufficientCommitment { actual: 8, .. }
+            PowError::InsufficientWork { .. } | PowError::InsufficientCommitment { actual: 8, .. }
         ));
     }
 
@@ -392,7 +392,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = committed_difficulty(&event).unwrap_err();
-        assert!(matches!(err, Error::InvalidCommitment));
+        assert!(matches!(err, PowError::InvalidCommitment));
     }
 
     #[test]
@@ -405,7 +405,7 @@ mod tests {
             .sign_with_keys(&keys())
             .unwrap();
         let err = verify_pow_strict(&event, 1).unwrap_err();
-        assert!(matches!(err, Error::MissingCommitment));
+        assert!(matches!(err, PowError::MissingCommitment));
         // min_difficulty == 0 means "no PoW required" so strict mode
         // accepts even unmined events for parity with verify_pow.
         verify_pow_strict(&event, 0).unwrap();
@@ -420,7 +420,7 @@ mod tests {
         let err = verify_pow_strict(&event, 7).unwrap_err();
         assert!(matches!(
             err,
-            Error::InsufficientWork { .. } | Error::InsufficientCommitment { actual: 6, .. }
+            PowError::InsufficientWork { .. } | PowError::InsufficientCommitment { actual: 6, .. }
         ));
     }
 
@@ -470,7 +470,7 @@ mod tests {
         let commitment_short = verify_pow(&event, 21).unwrap_err();
         assert!(matches!(
             commitment_short,
-            Error::InsufficientCommitment {
+            PowError::InsufficientCommitment {
                 actual: 20,
                 expected: 21,
             }
@@ -480,7 +480,7 @@ mod tests {
         let id_short = verify_pow(&event, 22).unwrap_err();
         assert!(matches!(
             id_short,
-            Error::InsufficientWork {
+            PowError::InsufficientWork {
                 actual: 21,
                 expected: 22,
             }
