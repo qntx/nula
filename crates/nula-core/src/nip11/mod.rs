@@ -43,6 +43,13 @@ pub struct RelayInformation {
     /// Operator's public key (typically used for moderation messages).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pubkey: Option<PublicKey>,
+    /// Relay's own public key (NIP-11 §Self).
+    ///
+    /// Distinct from [`Self::pubkey`]: NIP-11 allows a relay to maintain a
+    /// machine identity independent from its administrator's pubkey, which
+    /// it uses to publish events on its own behalf.
+    #[serde(rename = "self", skip_serializing_if = "Option::is_none")]
+    pub self_pubkey: Option<PublicKey>,
     /// Free-form contact string (email, Nostr profile, …).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub contact: Option<String>,
@@ -55,6 +62,13 @@ pub struct RelayInformation {
     /// Software version string.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
+    /// Visual representation of the relay (NIP-11 §Banner).
+    ///
+    /// Distinct from [`Self::icon`]: a banner is the wide visual used in
+    /// relay descriptions and onboarding screens, while the icon is the
+    /// compact representation used in relay-list rows.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub banner: Option<Url>,
     /// Optional icon URL (PNG/SVG).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<Url>,
@@ -121,10 +135,12 @@ mod tests {
             name: Some("Nula Relay".to_owned()),
             description: Some("A reliable Nostr relay.".to_owned()),
             pubkey: Some(fixture_pubkey()),
+            self_pubkey: Some(fixture_pubkey()),
             contact: Some("ops@nula.example".to_owned()),
             supported_nips: vec![1, 9, 11, 19, 42],
             software: Some(Url::parse("https://github.com/qntx/nula").unwrap()),
             version: Some("0.1.0".to_owned()),
+            banner: Some(Url::parse("https://nula.example/banner.png").unwrap()),
             icon: Some(Url::parse("https://nula.example/icon.png").unwrap()),
             limitation: Some(RelayLimitation {
                 max_message_length: Some(16_384),
@@ -153,6 +169,24 @@ mod tests {
             }],
         };
         let json = serde_json::to_string(&info).unwrap();
+        // Wire-form sanity check: spec field names are emitted verbatim.
+        assert!(json.contains(r#""banner":"https://nula.example/banner.png""#));
+        assert!(json.contains(r#""self":""#));
+        let parsed: RelayInformation = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, info);
+    }
+
+    #[test]
+    fn self_field_round_trips_independently_from_pubkey() {
+        // NIP-11 §Self: the relay machine pubkey may be set without the
+        // administrator pubkey and vice versa.
+        let info = RelayInformation {
+            self_pubkey: Some(fixture_pubkey()),
+            ..RelayInformation::default()
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        assert!(json.contains(r#""self":""#));
+        assert!(!json.contains(r#""pubkey""#));
         let parsed: RelayInformation = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed, info);
     }
