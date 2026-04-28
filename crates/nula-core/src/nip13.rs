@@ -360,4 +360,68 @@ mod tests {
         let err = committed_difficulty(&event).unwrap_err();
         assert!(matches!(err, PowError::InvalidCommitment));
     }
+
+    /// NIP-13 §"Example mined note" reference vector. The leading bytes of
+    /// the published id (`000006d8…`) encode 5 nibbles of zeroes plus the
+    /// upper bit of `6 = 0b0110`, for a total of 21 leading zero bits. The
+    /// author's nonce tag commits to difficulty 20.
+    ///
+    /// This regression test exercises every public verification path so
+    /// the spec example would catch any drift in `count_leading_zero_bits`,
+    /// `event_id_difficulty`, `committed_difficulty`, or the commitment vs.
+    /// id-difficulty interplay inside `verify_pow`.
+    #[test]
+    fn nip13_spec_example_difficulty_and_commitment() {
+        let id_hex = "000006d8c378af1779d2feebc7603a125d99eca0ccf1085959b307f64e5dd358";
+        let id = id_hex.parse::<EventId>().unwrap();
+
+        // The spec calls out 21 leading zero bits for this id.
+        assert_eq!(event_id_difficulty(&id), 21);
+
+        // Build the synthetic event the spec would have produced. The
+        // signature is a placeholder: verify_pow only inspects `id` and
+        // the `nonce` tag, never the signature.
+        let pubkey = PublicKey::parse(
+            "a48380f4cfcc1ad5378294fcac36439770f9c878dd880ffa94bb74ea54a6f243",
+        )
+        .unwrap();
+        let event = Event::from_parts(
+            id,
+            pubkey,
+            Timestamp::from_secs(1_651_794_653),
+            Kind::TEXT_NOTE,
+            Tags::from_vec(vec![Tag::new(["nonce", "776797", "20"]).unwrap()]),
+            "It's just me mining my own business".to_owned(),
+            keys().sign_schnorr(&[0u8; 32]),
+        );
+
+        // The committed difficulty advertised by the author is 20.
+        assert_eq!(committed_difficulty(&event).unwrap(), Some(20));
+
+        // verify against ≤ 20 must pass: id has 21 zero bits, commitment is 20.
+        verify_pow(&event, 0).unwrap();
+        verify_pow(&event, 20).unwrap();
+
+        // NIP-13 anti-grinding rule: even though the id happens to satisfy
+        // 21 zero bits, the *committed* difficulty is only 20, so a
+        // verifier asking for 21 must reject with InsufficientCommitment.
+        let commitment_short = verify_pow(&event, 21).unwrap_err();
+        assert!(matches!(
+            commitment_short,
+            PowError::InsufficientCommitment {
+                actual: 20,
+                expected: 21,
+            }
+        ));
+
+        // Asking for 22 hits the id-difficulty check first.
+        let id_short = verify_pow(&event, 22).unwrap_err();
+        assert!(matches!(
+            id_short,
+            PowError::InsufficientWork {
+                actual: 21,
+                expected: 22,
+            }
+        ));
+    }
 }
