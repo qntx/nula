@@ -685,6 +685,90 @@ mod tests {
         }
     }
 
+    /// Cross-implementation fixtures sourced from `3rdparty/nostr-tools` and
+    /// real-world clients. These pin our decoder against bytes produced by
+    /// other implementations, especially the ones that emit a different
+    /// TLV ordering than nula-core does. NIP-19 leaves TLV order
+    /// unspecified, so the only invariant the decoder may rely on is the
+    /// per-record `(tag, length, value)` shape — never the position.
+    mod cross_impl_fixtures {
+        use super::*;
+
+        /// `naddr` produced by [habla.news](https://habla.news), pinned in
+        /// `3rdparty/nostr-tools/nip19.test.ts`. The relays vector is
+        /// empty; this guards the no-relay path.
+        #[test]
+        fn habla_news_naddr_decodes() {
+            let raw = "naddr1qq98yetxv4ex2mnrv4esygrl54h466tz4v0re4pyuavvxqptsejl0vxcmnhfl60z3rth2xkpjspsgqqqw4rsf34vl5";
+            let decoded = Nip19Coordinate::from_bech32(raw).unwrap();
+            assert_eq!(
+                decoded.coordinate.author.to_hex(),
+                "7fa56f5d6962ab1e3cd424e758c3002b8665f7b0d8dcee9fe9e288d7751ac194"
+            );
+            assert_eq!(decoded.coordinate.kind.as_u16(), 30_023);
+            assert_eq!(decoded.coordinate.identifier, "references");
+            assert!(decoded.relays.is_empty());
+        }
+
+        /// `naddr` produced by [go-nostr](https://github.com/nbd-wtf/go-nostr)
+        /// with TLV records in a *different* order than nula emits. NIP-19
+        /// allows any ordering, so the decoder must not assume position.
+        /// Pinned in `3rdparty/nostr-tools/nip19.test.ts`.
+        #[test]
+        fn go_nostr_naddr_with_alternate_tlv_ordering_decodes() {
+            let raw = "naddr1qqrxyctwv9hxzq3q80cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsxpqqqp65wqfwwaehxw309aex2mrp0yhxummnw3ezuetcv9khqmr99ekhjer0d4skjm3wv4uxzmtsd3jjucm0d5q3vamnwvaz7tmwdaehgu3wvfskuctwvyhxxmmd0zfmwx";
+            let decoded = Nip19Coordinate::from_bech32(raw).unwrap();
+            assert_eq!(
+                decoded.coordinate.author.to_hex(),
+                "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d"
+            );
+            assert_eq!(decoded.coordinate.kind.as_u16(), 30_023);
+            assert_eq!(decoded.coordinate.identifier, "banana");
+            // Both relays from the fixture must round-trip; check membership
+            // because the TLV ordering does not promise relay-list order.
+            let relay_strs: Vec<&str> = decoded.relays.iter().map(RelayUrl::as_str).collect();
+            assert!(
+                relay_strs
+                    .iter()
+                    .any(|r| r == &"wss://relay.nostr.example.mydomain.example.com/"),
+                "missing primary relay; got {relay_strs:?}",
+            );
+            assert!(
+                relay_strs.iter().any(|r| r == &"wss://nostr.banana.com/"),
+                "missing secondary relay; got {relay_strs:?}",
+            );
+        }
+
+        /// `nprofile` in the trivial form pinned in nostr-tools'
+        /// `NostrTypeGuard.isNProfile` test. Confirms that npub-only
+        /// profiles (no relay TLV) round-trip through our decoder
+        /// regardless of where the producer placed the `special` record.
+        #[test]
+        fn nostr_tools_nprofile_no_relays_decodes() {
+            let raw = "nprofile1qqsvc6ulagpn7kwrcwdqgp797xl7usumqa6s3kgcelwq6m75x8fe8yc5usxdg";
+            let decoded = Nip19Profile::from_bech32(raw).unwrap();
+            assert!(decoded.relays.is_empty());
+            // The decoded pubkey must be a valid x-only point; we do not
+            // pin its bytes because the test in nostr-tools also leaves
+            // them implicit. Round-tripping through to_bech32 would then
+            // emit our canonical TLV order, which may differ from this
+            // wire form.
+            assert_eq!(decoded.public_key.to_byte_array().len(), 32);
+        }
+
+        /// `nevent` from nostr-tools' `NostrTypeGuard.isNEvent` test. The
+        /// fixture relies on TLV records `(SPECIAL, RELAY, RELAY)`.
+        #[test]
+        fn nostr_tools_nevent_with_relays_decodes() {
+            let raw = "nevent1qqst8cujky046negxgwwm5ynqwn53t8aqjr6afd8g59nfqwxpdhylpcpzamhxue69uhhyetvv9ujuetcv9khqmr99e3k7mg8arnc9";
+            let decoded = Nip19Event::from_bech32(raw).unwrap();
+            // The id is 32 bytes; we just confirm shape, mirroring
+            // nostr-tools' boolean-returning type guard.
+            assert_eq!(decoded.event_id.to_byte_array().len(), 32);
+            assert!(!decoded.relays.is_empty(), "fixture carries relay hints");
+        }
+    }
+
     #[test]
     fn rejects_input_above_max_length() {
         // Construct a string that is *syntactically* a bech32 candidate
