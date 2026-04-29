@@ -125,34 +125,34 @@ impl Event {
 
     /// True when the event carries the NIP-70 `["-"]` protected marker.
     ///
-    /// Convenience wrapper around [`crate::nip70::is_protected`].
+    /// Convenience wrapper around [`crate::nips::nip70::is_protected`].
     #[must_use]
     pub fn is_protected(&self) -> bool {
-        crate::nip70::is_protected(self)
+        crate::nips::nip70::is_protected(self)
     }
 
     /// Read the NIP-40 deadline carried by this event, if any.
     ///
-    /// Convenience wrapper around [`crate::nip40::parse_expiration`].
+    /// Convenience wrapper around [`crate::nips::nip40::parse_expiration`].
     ///
     /// # Errors
     ///
-    /// Returns [`crate::nip40::ExpirationError`] if the `expiration` tag
+    /// Returns [`crate::nips::nip40::ExpirationError`] if the `expiration` tag
     /// is present but malformed.
-    pub fn expiration(&self) -> Result<Option<Timestamp>, crate::nip40::ExpirationError> {
-        crate::nip40::parse_expiration(self)
+    pub fn expiration(&self) -> Result<Option<Timestamp>, crate::nips::nip40::ExpirationError> {
+        crate::nips::nip40::parse_expiration(self)
     }
 
     /// Whether this event's NIP-40 deadline (if any) has passed at `now`.
     ///
-    /// Convenience wrapper around [`crate::nip40::is_expired`].
+    /// Convenience wrapper around [`crate::nips::nip40::is_expired`].
     ///
     /// # Errors
     ///
-    /// Returns [`crate::nip40::ExpirationError`] if the `expiration` tag
+    /// Returns [`crate::nips::nip40::ExpirationError`] if the `expiration` tag
     /// is malformed.
-    pub fn is_expired(&self, now: Timestamp) -> Result<bool, crate::nip40::ExpirationError> {
-        crate::nip40::is_expired(self, now)
+    pub fn is_expired(&self, now: Timestamp) -> Result<bool, crate::nips::nip40::ExpirationError> {
+        crate::nips::nip40::is_expired(self, now)
     }
 }
 

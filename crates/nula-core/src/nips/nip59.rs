@@ -51,9 +51,9 @@
 
 use thiserror::Error;
 
+use super::nip44;
 use crate::event::{Event, EventBuilder, EventError, Kind, Tag, TagKind, Tags, UnsignedEvent};
 use crate::key::{Keys, PublicKey};
-use crate::nip44;
 use crate::types::{RelayUrl, Timestamp, TimestampError};
 use crate::util::JsonUtil;
 use crate::util::rng::{self, RngError};

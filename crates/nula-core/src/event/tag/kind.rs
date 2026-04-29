@@ -30,6 +30,7 @@ pub enum TagKindError {
 
 /// Tag head identifier.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum TagKind {
     /// A single ASCII-letter tag (`a`–`z`, `A`–`Z`).
     ///

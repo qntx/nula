@@ -34,21 +34,26 @@
 //!
 //! [NIP-44]: https://github.com/nostr-protocol/nips/blob/master/44.md
 
+// `expect` and `unwrap_in_result` are gated at the module level because
+// each `expect` here guards a length-only invariant that the
+// surrounding code has *already proved* — e.g. a 32-byte slice fed
+// into `[u8; 32]: TryFrom<&[u8]>` after a length check, or
+// `Hkdf::from_prk` over a 32-byte PRK. Spelling out an `#[allow]` per
+// call site would add ~15 lines of noise; the trade-off is that any
+// new `expect` in this module needs to come with a comment proving its
+// own infallibility (the convention is enforced by code review).
+//
+// `clippy::panic` and `clippy::missing_panics_doc` are *not* lifted at
+// module scope: the only `panic!`s are local to `MessageKeys::*` const
+// fn accessors (where `?`/`expect` are not const-stable). Those
+// methods carry their own targeted `#[allow]`.
 #![allow(
     clippy::expect_used,
     clippy::unwrap_in_result,
-    clippy::panic,
-    clippy::missing_panics_doc,
-    reason = "every `expect` / `panic!` in this module guards a precondition \
-              that the surrounding code has just *proved* (e.g. a 32-byte \
-              slice fed into a `[u8; 32]: TryFrom<&[u8]>`, or `first_chunk` \
-              over a fixed-size buffer). The clippy lints are tuned for \
-              application code, but cryptographic primitives cannot avoid \
-              `expect` without sacrificing the spec-mandated `Result`-only \
-              signatures of `hmac::Mac::new_from_slice` and \
-              `hkdf::Hkdf::from_prk`, and `const fn` accessors must use \
-              `panic!` because `?` and `expect` are not `const`-stable. \
-              Each call carries a comment documenting the guarantee."
+    reason = "see module-level comment above the attribute: every expect \
+              guards a precondition the surrounding code has already \
+              checked; replacing them with `?` would force every caller \
+              to handle errors that cannot occur in practice."
 )]
 
 use base64::Engine;
@@ -234,20 +239,38 @@ impl MessageKeys {
         Self(okm)
     }
 
+    /// `ChaCha20` key slice (bytes 0..32 of the 76-byte OKM).
+    ///
+    /// # Panics
+    ///
+    /// Statically unreachable: [`Self`]'s inner buffer is exactly
+    /// `MESSAGE_KEYS_BYTES` long by construction, so `first_chunk::<32>`
+    /// always returns `Some`. The `panic!` is there because `?` and
+    /// `expect` are not yet `const`-stable, and we want this accessor
+    /// to be `const` for use inside other `const fn`.
+    #[allow(
+        clippy::panic,
+        clippy::missing_panics_doc,
+        reason = "panic guard for a const fn that operates on a fixed-size buffer; the # Panics doc explains the guarantee"
+    )]
     const fn chacha_key(&self) -> &[u8; CHACHA_KEY_BYTES] {
-        // `first_chunk` returns `Option<&[u8; N]>` directly — no
-        // `try_into().expect(...)` round-trip needed. The result is
-        // `Some` because the OKM is statically `MESSAGE_KEYS_BYTES`
-        // long (76) and we ask for the first 32.
         match self.0.first_chunk::<CHACHA_KEY_BYTES>() {
             Some(arr) => arr,
             None => panic!("OKM is 76 bytes; first 32 always present"),
         }
     }
 
+    /// `ChaCha20` nonce slice (bytes 32..44 of the 76-byte OKM).
+    ///
+    /// # Panics
+    ///
+    /// Statically unreachable for the same reason as [`Self::chacha_key`].
+    #[allow(
+        clippy::panic,
+        clippy::missing_panics_doc,
+        reason = "panic guard for a const fn that operates on a fixed-size buffer; the # Panics doc explains the guarantee"
+    )]
     const fn chacha_nonce(&self) -> &[u8; CHACHA_NONCE_BYTES] {
-        // Skip the chacha key, then take the next 12 bytes as a fixed
-        // array reference.
         let (_, tail) = self.0.split_at(CHACHA_KEY_BYTES);
         match tail.first_chunk::<CHACHA_NONCE_BYTES>() {
             Some(arr) => arr,
@@ -255,6 +278,7 @@ impl MessageKeys {
         }
     }
 
+    /// HMAC key slice (bytes 44..76 of the 76-byte OKM).
     const fn hmac_key(&self) -> &[u8] {
         let (_, tail) = self.0.split_at(MESSAGE_KEY_HMAC_OFFSET);
         tail

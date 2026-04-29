@@ -32,6 +32,7 @@ use crate::types::{RelayUrl, RelayUrlError};
 
 /// NIP-10 marker for an `e` tag.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum NoteMarker {
     /// Top of the thread.
     Root,
@@ -246,7 +247,8 @@ impl ThreadContext {
     ///
     /// The parser is tolerant: malformed `e`/`p` tags are skipped instead
     /// of failing the whole event, since real-world clients have produced
-    /// many variations over the years.
+    /// many variations over the years. Use [`EventReference::from_tag`]
+    /// directly for the strict, fail-fast version.
     #[must_use]
     pub fn from_event(event: &Event) -> Self {
         let e_kind = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
@@ -256,7 +258,7 @@ impl ThreadContext {
         for tag in &event.tags {
             let head = tag.kind();
             if head == e_kind
-                && let Some(reference) = parse_e_tag(tag)
+                && let Ok(reference) = EventReference::from_tag(tag)
             {
                 context.events.push(reference);
             } else if head == p_kind
@@ -306,29 +308,6 @@ fn build_e_tag(e_kind: &TagKind, reference: &EventReference) -> Tag {
     } else {
         Tag::with(e_kind, [event_id])
     }
-}
-
-fn parse_e_tag(tag: &Tag) -> Option<EventReference> {
-    let mut values = tag.values().iter().skip(1);
-    let id = values.next()?.parse::<EventId>().ok()?;
-    let relay_hint = match values.next() {
-        Some(s) if !s.is_empty() => RelayUrl::parse(s).ok(),
-        _ => None,
-    };
-    let marker = match values.next() {
-        Some(s) if !s.is_empty() => s.parse::<NoteMarker>().ok(),
-        _ => None,
-    };
-    let author_hint = match values.next() {
-        Some(s) if !s.is_empty() => s.parse::<PublicKey>().ok(),
-        _ => None,
-    };
-    Some(EventReference {
-        event_id: id,
-        relay_hint,
-        marker,
-        author_hint,
-    })
 }
 
 /// Errors that decoding strict-mode (i.e. fail-fast) NIP-10 references can

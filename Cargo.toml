@@ -29,7 +29,11 @@ zeroize = { version = "1.8.2", default-features = false, features = ["zeroize_de
 
 # Cryptography (NIP-04 / NIP-44 / NIP-49 - feature-gated)
 aes = "0.9.0"
-cbc = "0.2.0"
+# `alloc` enables the `encrypt_padded_vec` / `decrypt_padded_vec`
+# helpers on `cbc::Encryptor` / `cbc::Decryptor`. NIP-04 ciphertexts
+# already require allocation for the wire payload, so there is no
+# `no_std` use case to preserve here.
+cbc = { version = "0.2.0", features = ["alloc"] }
 chacha20 = "0.10.0"
 chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc"] }
 hkdf = "0.13.0"

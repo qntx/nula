@@ -19,7 +19,7 @@
 //! # Example
 //!
 //! ```
-//! use nula_core::nip65::{RelayList, RelayMarker};
+//! use nula_core::nips::nip65::{RelayList, RelayMarker};
 //! use nula_core::{Keys, RelayUrl};
 //!
 //! let mut list = RelayList::new();
@@ -45,6 +45,7 @@ use crate::types::{RelayUrl, RelayUrlError};
 
 /// Whether a NIP-65 relay entry is intended for reading, writing, or both.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum RelayMarker {
     /// The relay is used for both reading and writing (default; encoded as
     /// the absence of a third tag element).

@@ -26,7 +26,7 @@ pub use crate::filter::Filter;
 pub use crate::key::{Keys, PublicKey, SecretKey};
 pub use crate::message::{ClientMessage, RelayMessage, SubscriptionId};
 pub use crate::metadata::Metadata;
-pub use crate::nip19::{FromBech32, Nip19Entity, ToBech32};
+pub use crate::nips::nip19::{FromBech32, Nip19Entity, ToBech32};
 pub use crate::signer::NostrSigner;
 pub use crate::types::{RelayUrl, Timestamp, Url};
 pub use crate::util::JsonUtil;

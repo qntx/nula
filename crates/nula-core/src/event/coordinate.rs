@@ -61,6 +61,20 @@ impl Coordinate {
         }
     }
 
+    /// Parse the colon-separated wire form `<kind>:<author>:<identifier>`.
+    ///
+    /// Equivalent to `s.parse::<Coordinate>()` but matches the
+    /// `Type::parse` naming convention used elsewhere in the crate
+    /// ([`PublicKey::parse`], [`crate::types::RelayUrl::parse`],
+    /// [`crate::nips::nip46::Uri::parse`]).
+    ///
+    /// # Errors
+    ///
+    /// See [`CoordinateError`].
+    pub fn parse(input: impl AsRef<str>) -> Result<Self, CoordinateError> {
+        input.as_ref().parse()
+    }
+
     /// Render the colon-separated wire form.
     #[must_use]
     pub fn to_wire(&self) -> String {
@@ -162,6 +176,19 @@ mod tests {
         let value = format!("not-a-number:{}:foo", pk().to_hex());
         let err: CoordinateError = value.parse::<Coordinate>().unwrap_err();
         assert!(matches!(err, CoordinateError::InvalidKind(_)));
+    }
+
+    #[test]
+    fn parse_method_matches_fromstr() {
+        // Inherent `parse` and the FromStr impl must produce identical
+        // results — they share the same code path, but pin the
+        // contract with a regression test to guard future refactors.
+        let coord = Coordinate::new(Kind::from(30_023_u16), pk(), "alpha");
+        let wire = coord.to_string();
+        let via_inherent = Coordinate::parse(&wire).unwrap();
+        let via_fromstr: Coordinate = wire.parse().unwrap();
+        assert_eq!(via_inherent, via_fromstr);
+        assert_eq!(via_inherent, coord);
     }
 
     #[test]

@@ -18,6 +18,7 @@ use crate::event::coordinate::Coordinate;
 use crate::event::id::EventId;
 use crate::event::kind::Kind;
 use crate::key::PublicKey;
+use crate::types::RelayUrl;
 
 /// Errors raised when constructing a [`Tag`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -74,11 +75,36 @@ impl Tag {
     /// Build a NIP-01 `e` tag referencing an event id.
     ///
     /// Wire form: `["e", "<event-id-hex>"]`. Add relay-hint or marker
-    /// columns afterwards via [`Tag::with`] if needed.
+    /// columns afterwards via [`Tag::with`] if needed; for the common
+    /// shapes use [`Tag::e_with_relay`] or [`Tag::e_marker`].
     #[must_use]
     pub fn e(id: EventId) -> Self {
         let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
         Self::with(&head, [id.to_hex()])
+    }
+
+    /// Build a NIP-01 `e` tag with a relay hint.
+    ///
+    /// Wire form: `["e", "<event-id-hex>", "<relay-url>"]`. The
+    /// optional fourth marker (`reply` / `root` / `mention`) goes via
+    /// [`Tag::e_marker`].
+    #[must_use]
+    pub fn e_with_relay(id: EventId, relay: &RelayUrl) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
+        Self::with(&head, [id.to_hex(), relay.as_str().to_owned()])
+    }
+
+    /// Build a NIP-10 `e` tag with relay hint and marker.
+    ///
+    /// Wire form: `["e", "<event-id-hex>", "<relay-url>", "<marker>"]`.
+    /// `marker` is one of `"reply"`, `"root"`, or `"mention"` per
+    /// NIP-10's threading rules; pass an empty `relay` if no hint is
+    /// available (the marker stays at index 3 in that case, as the
+    /// spec requires).
+    #[must_use]
+    pub fn e_marker(id: EventId, relay: &str, marker: &str) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
+        Self::with(&head, [id.to_hex(), relay.to_owned(), marker.to_owned()])
     }
 
     /// Build a NIP-01 `p` tag referencing a pubkey.
@@ -90,6 +116,15 @@ impl Tag {
         Self::with(&head, [pubkey.to_hex()])
     }
 
+    /// Build a NIP-01 `p` tag with a relay hint.
+    ///
+    /// Wire form: `["p", "<pubkey-hex>", "<relay-url>"]`.
+    #[must_use]
+    pub fn p_with_relay(pubkey: PublicKey, relay: &RelayUrl) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::P));
+        Self::with(&head, [pubkey.to_hex(), relay.as_str().to_owned()])
+    }
+
     /// Build a NIP-01 `a` tag referencing an addressable event coordinate.
     ///
     /// Wire form: `["a", "<kind>:<author-hex>:<identifier>"]`.
@@ -97,6 +132,15 @@ impl Tag {
     pub fn a(coordinate: &Coordinate) -> Self {
         let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::A));
         Self::with(&head, [coordinate.to_wire()])
+    }
+
+    /// Build a NIP-01 `a` tag with a relay hint.
+    ///
+    /// Wire form: `["a", "<coordinate>", "<relay-url>"]`.
+    #[must_use]
+    pub fn a_with_relay(coordinate: &Coordinate, relay: &RelayUrl) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::A));
+        Self::with(&head, [coordinate.to_wire(), relay.as_str().to_owned()])
     }
 
     /// Build a NIP-09 / NIP-22 `k` tag carrying a kind hint.
@@ -278,5 +322,65 @@ mod tests {
     fn deserialize_rejects_empty_array() {
         let err = serde_json::from_str::<Tag>("[]").unwrap_err();
         assert!(err.to_string().contains("at least one element"));
+    }
+
+    fn fixture_event_id() -> EventId {
+        EventId::from_byte_array([0x11; 32])
+    }
+
+    fn fixture_pubkey() -> PublicKey {
+        *crate::Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
+            .unwrap()
+            .public_key()
+    }
+
+    fn fixture_relay() -> RelayUrl {
+        RelayUrl::parse("wss://relay.example/").unwrap()
+    }
+
+    #[test]
+    fn e_with_relay_carries_url_at_index_2() {
+        let tag = Tag::e_with_relay(fixture_event_id(), &fixture_relay());
+        assert_eq!(tag.values().len(), 3);
+        assert_eq!(tag.get(0), Some("e"));
+        assert_eq!(tag.get(1).unwrap().len(), 64);
+        assert_eq!(tag.get(2), Some("wss://relay.example/"));
+    }
+
+    #[test]
+    fn e_marker_keeps_marker_at_index_3() {
+        let tag = Tag::e_marker(fixture_event_id(), "wss://r.example/", "reply");
+        assert_eq!(tag.values().len(), 4);
+        assert_eq!(tag.get(0), Some("e"));
+        assert_eq!(tag.get(2), Some("wss://r.example/"));
+        assert_eq!(tag.get(3), Some("reply"));
+    }
+
+    #[test]
+    fn e_marker_with_empty_relay_still_holds_index_3() {
+        // NIP-10: when no relay hint is available, the relay slot
+        // stays an empty string so the marker can occupy index 3.
+        let tag = Tag::e_marker(fixture_event_id(), "", "root");
+        assert_eq!(tag.values().len(), 4);
+        assert_eq!(tag.get(2), Some(""));
+        assert_eq!(tag.get(3), Some("root"));
+    }
+
+    #[test]
+    fn p_with_relay_carries_url_at_index_2() {
+        let tag = Tag::p_with_relay(fixture_pubkey(), &fixture_relay());
+        assert_eq!(tag.values().len(), 3);
+        assert_eq!(tag.get(0), Some("p"));
+        assert_eq!(tag.get(2), Some("wss://relay.example/"));
+    }
+
+    #[test]
+    fn a_with_relay_carries_url_at_index_2() {
+        let coord = Coordinate::new(Kind::from(30_023_u16), fixture_pubkey(), "alpha");
+        let tag = Tag::a_with_relay(&coord, &fixture_relay());
+        assert_eq!(tag.values().len(), 3);
+        assert_eq!(tag.get(0), Some("a"));
+        assert!(tag.get(1).unwrap().starts_with("30023:"));
+        assert_eq!(tag.get(2), Some("wss://relay.example/"));
     }
 }

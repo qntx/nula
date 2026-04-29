@@ -33,9 +33,17 @@
 #![allow(
     clippy::expect_used,
     clippy::unwrap_in_result,
-    reason = "every `expect` here guards a length invariant the caller \
-              has just proved (e.g. a 48-byte ciphertext fed into \
-              `[u8; 48]: TryFrom<&[u8]>`); see comments at each site."
+    clippy::missing_panics_doc,
+    reason = "every `expect` here guards a length invariant the surrounding \
+              code has just *proved* (e.g. an `if bytes.len() != \
+              PAYLOAD_BYTES { return Err(...) }` directly above a chain \
+              of `split_first_chunk::<N>` calls whose total fixed sizes \
+              add up to `PAYLOAD_BYTES`). The clippy lints are tuned for \
+              application code; cryptographic primitives cannot avoid \
+              `expect` without giving up the spec-mandated `Result`-only \
+              signatures of `XChaCha20Poly1305::encrypt`, \
+              `bech32::Hrp::parse`, and friends. Each call carries a \
+              comment that documents the exact guarantee it relies on."
 )]
 
 use bech32::Bech32;
@@ -45,6 +53,7 @@ use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use scrypt::{Params as ScryptParams, scrypt};
 use thiserror::Error;
 use unicode_normalization::UnicodeNormalization;
+use zeroize::Zeroize;
 
 use crate::key::{SecretKey, SecretKeyError};
 use crate::util::rng::{self, RngError};
@@ -71,7 +80,12 @@ pub const PAYLOAD_BYTES: usize =
 
 /// scrypt's published soft maximum for `log_n` on a 64-bit host. Going
 /// past this risks `Params::new` returning `Err(InvalidParams)`.
-const MAX_LOG_N: u8 = 30;
+///
+/// Exposed so the [`Nip49Error::LogNTooLarge`] doc-link resolves in
+/// the public rustdoc tree, and so callers wiring a UI cost slider
+/// have the value to bound it against without having to redefine it
+/// downstream.
+pub const MAX_LOG_N: u8 = 30;
 
 /// scrypt parallelism factor (`p`). Spec § Symmetric Encryption Key
 /// derivation says `p = 1`.
@@ -206,6 +220,25 @@ impl core::fmt::Debug for EncryptedSecretKey {
             .field("nonce", &"<redacted>")
             .field("ciphertext", &"<redacted>")
             .finish()
+    }
+}
+
+impl Drop for EncryptedSecretKey {
+    /// Best-effort zeroize on drop.
+    ///
+    /// `ciphertext` is encrypted, but `salt` and `nonce` are
+    /// privacy-relevant inputs to the scrypt KDF — wiping them
+    /// reduces the chance that a freed allocation hands them to
+    /// the next allocator caller. The compiler may still elide
+    /// some writes under aggressive optimisation; the
+    /// [`zeroize`](https://docs.rs/zeroize) crate's volatile-write
+    /// implementation is the best portable mitigation we have.
+    fn drop(&mut self) {
+        self.salt.zeroize();
+        self.nonce.zeroize();
+        self.ciphertext.zeroize();
+        // `log_n` and `security` are `Copy` enums/integers; nothing
+        // we can do about them, and they're not sensitive on their own.
     }
 }
 
@@ -357,47 +390,58 @@ impl EncryptedSecretKey {
     }
 
     fn to_payload_bytes(&self) -> [u8; PAYLOAD_BYTES] {
-        let mut buf = [0u8; PAYLOAD_BYTES];
-        buf[0] = VERSION_BYTE;
-        buf[1] = self.log_n;
-        buf[2..2 + SALT_BYTES].copy_from_slice(&self.salt);
-        let nonce_start = 2 + SALT_BYTES;
-        buf[nonce_start..nonce_start + NONCE_BYTES].copy_from_slice(&self.nonce);
-        let aad_idx = nonce_start + NONCE_BYTES;
-        buf[aad_idx] = self.security as u8;
-        let ct_start = aad_idx + 1;
-        buf[ct_start..ct_start + CIPHERTEXT_BYTES].copy_from_slice(&self.ciphertext);
-        buf
+        // Build the 91-byte payload by concatenation. We accumulate
+        // into a `Vec` and convert at the end so the layout reads as
+        // a list of fields (no offset arithmetic), avoiding the
+        // `clippy::indexing_slicing` lint while keeping the wire
+        // layout obvious.
+        let mut buf: Vec<u8> = Vec::with_capacity(PAYLOAD_BYTES);
+        buf.push(VERSION_BYTE);
+        buf.push(self.log_n);
+        buf.extend_from_slice(&self.salt);
+        buf.extend_from_slice(&self.nonce);
+        buf.push(self.security as u8);
+        buf.extend_from_slice(&self.ciphertext);
+        // The pushes above sum to exactly `PAYLOAD_BYTES`; the
+        // `try_into` cannot fail.
+        buf.try_into()
+            .expect("PAYLOAD_BYTES = 1 + 1 + SALT_BYTES + NONCE_BYTES + 1 + CIPHERTEXT_BYTES")
     }
 
     fn from_payload_bytes(bytes: &[u8]) -> Result<Self, Nip49Error> {
         if bytes.len() != PAYLOAD_BYTES {
             return Err(Nip49Error::InvalidLength { got: bytes.len() });
         }
-        // Length is statically `PAYLOAD_BYTES`, so every fixed-offset
-        // index below is in-range.
-        let version = bytes[0];
+        // Walk the buffer with `split_first_chunk::<N>` so every slice
+        // is a fixed-size array reference. The length check above
+        // proves each split below has enough bytes left, so the
+        // subsequent `expect`s are statically unreachable.
+        let (head, rest) = bytes
+            .split_first_chunk::<2>()
+            .expect("PAYLOAD_BYTES >= 2 (version + log_n)");
+        let &[version, log_n] = head;
         if version != VERSION_BYTE {
             return Err(Nip49Error::UnsupportedVersion(version));
         }
-        let log_n = bytes[1];
-        let salt: [u8; SALT_BYTES] = bytes[2..2 + SALT_BYTES]
-            .try_into()
-            .expect("16-byte slice from a 91-byte buffer");
-        let nonce_start = 2 + SALT_BYTES;
-        let nonce: [u8; NONCE_BYTES] = bytes[nonce_start..nonce_start + NONCE_BYTES]
-            .try_into()
-            .expect("24-byte slice from a 91-byte buffer");
-        let aad_idx = nonce_start + NONCE_BYTES;
-        let security = KeySecurity::from_byte(bytes[aad_idx])?;
-        let ct_start = aad_idx + 1;
-        let ciphertext: [u8; CIPHERTEXT_BYTES] = bytes[ct_start..ct_start + CIPHERTEXT_BYTES]
-            .try_into()
-            .expect("48-byte slice from a 91-byte buffer");
+        let (salt, rest) = rest
+            .split_first_chunk::<SALT_BYTES>()
+            .expect("PAYLOAD_BYTES leaves SALT_BYTES after the 2-byte header");
+        let (nonce, rest) = rest
+            .split_first_chunk::<NONCE_BYTES>()
+            .expect("PAYLOAD_BYTES leaves NONCE_BYTES after the salt");
+        let (aad_chunk, ciphertext_slice) = rest
+            .split_first_chunk::<1>()
+            .expect("PAYLOAD_BYTES leaves >= 1 byte after the nonce");
+        let &[aad_byte] = aad_chunk;
+        let security = KeySecurity::from_byte(aad_byte)?;
+        let ciphertext = ciphertext_slice
+            .first_chunk::<CIPHERTEXT_BYTES>()
+            .copied()
+            .expect("PAYLOAD_BYTES leaves CIPHERTEXT_BYTES after the AAD byte");
         Ok(Self {
             log_n,
-            salt,
-            nonce,
+            salt: *salt,
+            nonce: *nonce,
             security,
             ciphertext,
         })
@@ -555,7 +599,7 @@ mod tests {
     /// NIP-49 spec § Test Data fixture.
     ///
     /// `ncryptsec1qgg9947rlpvqu76pj5ecreduf9jxhselq2nae2kghhvd5g7dgjtcxfqtd67p9m0w57lspw8gsq6yphnm8623nsl8xn9j4jdzz84zm3frztj3z7s35vpzmqf6ksu8r89qk5z2zxfmu5gv8th8wclt0h4p`
-    /// password=`nostr`, log_n=16 → secret hex
+    /// password=`nostr`, `log_n=16` → secret hex
     /// `3501454135014541350145413501453fefb02227e449e57cf4d3a3ce05378683`.
     ///
     /// We pin this one as a regression because every other implementation

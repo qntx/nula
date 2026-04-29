@@ -34,51 +34,23 @@ pub mod filter;
 pub mod key;
 pub mod message;
 pub mod metadata;
-pub mod nip02;
-pub mod nip09;
-pub mod nip10;
-pub mod nip11;
-pub mod nip13;
-#[cfg(feature = "nip17")]
-#[cfg_attr(docsrs, doc(cfg(feature = "nip17")))]
-pub mod nip17;
-pub mod nip19;
-pub mod nip22;
-pub mod nip40;
-pub mod nip42;
-#[cfg(feature = "nip44")]
-#[cfg_attr(docsrs, doc(cfg(feature = "nip44")))]
-pub mod nip44;
-#[cfg(feature = "nip49")]
-#[cfg_attr(docsrs, doc(cfg(feature = "nip49")))]
-pub mod nip49;
-#[cfg(feature = "nip59")]
-#[cfg_attr(docsrs, doc(cfg(feature = "nip59")))]
-pub mod nip59;
-pub mod nip65;
-pub mod nip70;
+pub mod nips;
 pub mod prelude;
 pub mod signer;
 pub mod types;
 pub mod util;
 
-// Phase-0 placeholder dependencies. These crates ship with the v0.2 base
-// dependency set so we can land NIP-04 / NIP-05 / NIP-06 / NIP-49 in the
-// next phases without touching `Cargo.toml` again. Each `use … as _;`
-// silences the `unused_crate_dependencies` lint until the corresponding
-// `nipNN` module lights it up. Remove the matching line as each NIP is
-// implemented.
-#[cfg(feature = "nip04")]
-use aes as _;
-#[cfg(feature = "nip06")]
-use bip39 as _;
-#[cfg(feature = "nip04")]
-use cbc as _;
+// Placeholder import for crates that are declared in `Cargo.toml` but
+// not yet pulled in by any `nipNN` module: silences
+// `unused-crate-dependencies` so we can stage the dep graph ahead of
+// the implementation. Remove the corresponding line as each NIP lights
+// up its own real `use … ::*;`.
 #[cfg(feature = "nip05")]
 use reqwest as _;
-// `zeroize` is consumed by NIP-44 today; an unconditional placeholder
-// keeps `--no-default-features` warning-clean and is harmless when the
-// crate is also pulled in through a real `use zeroize::...;` elsewhere.
+// `zeroize` is consumed across NIP-44, NIP-49 and the `Keys` Drop
+// impls; the unconditional placeholder keeps `--no-default-features`
+// warning-clean even when only [`SecretKey`]'s zeroize call site is
+// active.
 use zeroize as _;
 
 // Crate-root re-exports: only the small set of types that callers reach
@@ -99,7 +71,7 @@ pub use self::filter::Filter;
 pub use self::key::{Keys, PublicKey, SecretKey};
 pub use self::message::{ClientMessage, RelayMessage, SubscriptionId};
 pub use self::metadata::Metadata;
-pub use self::nip19::{FromBech32, Nip19Entity, ToBech32};
+pub use self::nips::nip19::{FromBech32, Nip19Entity, ToBech32};
 pub use self::signer::NostrSigner;
 pub use self::types::{ImageDimensions, RelayUrl, Timestamp, Url};
 pub use self::util::JsonUtil;

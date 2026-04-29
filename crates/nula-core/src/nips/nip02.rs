@@ -18,9 +18,9 @@ use std::collections::BTreeMap;
 use serde::Deserialize;
 use thiserror::Error;
 
+use super::nip65::RelayMarker;
 use crate::event::{Alphabet, Event, EventBuilder, Kind, SingleLetterTag, Tag, TagKind};
 use crate::key::{PublicKey, PublicKeyError};
-use crate::nip65::RelayMarker;
 use crate::types::{RelayUrl, RelayUrlError};
 
 /// A single follow entry inside a NIP-02 contact list.

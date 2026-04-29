@@ -56,7 +56,7 @@ use hex_literal as _;
 use hkdf as _;
 use hmac as _;
 use indexmap as _;
-use nula_core::nip44::{self, ConversationKey};
+use nula_core::nips::nip44::{self, ConversationKey};
 use nula_core::{Keys, PublicKey, SecretKey};
 #[cfg(feature = "nip05")]
 use reqwest as _;

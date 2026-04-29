@@ -133,9 +133,28 @@ impl SignerError {
 
 /// Universal signer trait.
 ///
-/// Object-safe by design: every method returns a [`SignerFuture`]. Add new
-/// methods only when every implementor can support them; encryption helpers
-/// (NIP-04, NIP-44) live on derived traits in their respective NIP crates.
+/// Object-safe by design: every method returns a [`SignerFuture`]. The
+/// trait covers two responsibility levels:
+///
+/// 1. **Mandatory**: [`Self::get_public_key`] and [`Self::sign_event`].
+///    Every signer can answer these — that's the whole point of a
+///    signer.
+/// 2. **Optional encryption capabilities** (NIP-04 / NIP-44 v2). The
+///    four `*_encrypt` / `*_decrypt` methods carry default
+///    implementations that return [`SignerError::Unsupported`].
+///    Concrete signers override them when the underlying backend can
+///    perform the operation:
+///
+///    | Signer        | NIP-04 | NIP-44 v2 |
+///    |---------------|:------:|:---------:|
+///    | [`Keys`]      |   ✅   |    ✅     |
+///    | NIP-07        |   ✅   |    ✅     |
+///    | NIP-46        |   ✅   |    ✅     |
+///    | Hardware-only |   ❌   |    ❌     |
+///
+/// The opt-out style keeps the trait `dyn`-safe (capability supertraits
+/// would require dynamic downcasts) and gives downstream code a single
+/// import path instead of `where S: NostrSigner + Nip04Cipher + Nip44Cipher`.
 pub trait NostrSigner: fmt::Debug + Send + Sync {
     /// Return the signer's public key.
     ///
@@ -149,6 +168,60 @@ pub trait NostrSigner: fmt::Debug + Send + Sync {
     /// Implementations must reject events whose `pubkey` does not match the
     /// signer's own public key.
     fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, SignerError>>;
+
+    /// NIP-04 (legacy) encrypt to `peer`.
+    ///
+    /// # Errors
+    ///
+    /// Default impl returns [`SignerError::Unsupported`]; override in
+    /// signers that can produce NIP-04 ciphertexts.
+    fn nip04_encrypt<'a>(
+        &'a self,
+        _peer: &'a PublicKey,
+        _plaintext: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        boxed_signer_future(async { Err(SignerError::Unsupported("nip04_encrypt")) })
+    }
+
+    /// NIP-04 (legacy) decrypt from `peer`.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::nip04_encrypt`].
+    fn nip04_decrypt<'a>(
+        &'a self,
+        _peer: &'a PublicKey,
+        _ciphertext: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        boxed_signer_future(async { Err(SignerError::Unsupported("nip04_decrypt")) })
+    }
+
+    /// NIP-44 v2 encrypt to `peer`.
+    ///
+    /// # Errors
+    ///
+    /// Default impl returns [`SignerError::Unsupported`]; override in
+    /// signers that can produce NIP-44 ciphertexts.
+    fn nip44_encrypt<'a>(
+        &'a self,
+        _peer: &'a PublicKey,
+        _plaintext: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        boxed_signer_future(async { Err(SignerError::Unsupported("nip44_encrypt")) })
+    }
+
+    /// NIP-44 v2 decrypt from `peer`.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::nip44_encrypt`].
+    fn nip44_decrypt<'a>(
+        &'a self,
+        _peer: &'a PublicKey,
+        _payload: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        boxed_signer_future(async { Err(SignerError::Unsupported("nip44_decrypt")) })
+    }
 }
 
 impl NostrSigner for Keys {
@@ -163,6 +236,54 @@ impl NostrSigner for Keys {
             Ok(event)
         })
     }
+
+    #[cfg(feature = "nip04")]
+    fn nip04_encrypt<'a>(
+        &'a self,
+        peer: &'a PublicKey,
+        plaintext: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        boxed_signer_future(async move {
+            crate::nips::nip04::encrypt(self.secret_key(), peer, plaintext)
+                .map_err(SignerError::backend)
+        })
+    }
+
+    #[cfg(feature = "nip04")]
+    fn nip04_decrypt<'a>(
+        &'a self,
+        peer: &'a PublicKey,
+        ciphertext: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        boxed_signer_future(async move {
+            crate::nips::nip04::decrypt(self.secret_key(), peer, ciphertext)
+                .map_err(SignerError::backend)
+        })
+    }
+
+    #[cfg(feature = "nip44")]
+    fn nip44_encrypt<'a>(
+        &'a self,
+        peer: &'a PublicKey,
+        plaintext: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        boxed_signer_future(async move {
+            crate::nips::nip44::encrypt(self.secret_key(), peer, plaintext)
+                .map_err(SignerError::backend)
+        })
+    }
+
+    #[cfg(feature = "nip44")]
+    fn nip44_decrypt<'a>(
+        &'a self,
+        peer: &'a PublicKey,
+        payload: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        boxed_signer_future(async move {
+            crate::nips::nip44::decrypt(self.secret_key(), peer, payload)
+                .map_err(SignerError::backend)
+        })
+    }
 }
 
 impl<S> NostrSigner for Arc<S>
@@ -175,6 +296,38 @@ where
 
     fn sign_event(&self, unsigned: UnsignedEvent) -> SignerFuture<'_, Result<Event, SignerError>> {
         (**self).sign_event(unsigned)
+    }
+
+    fn nip04_encrypt<'a>(
+        &'a self,
+        peer: &'a PublicKey,
+        plaintext: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        (**self).nip04_encrypt(peer, plaintext)
+    }
+
+    fn nip04_decrypt<'a>(
+        &'a self,
+        peer: &'a PublicKey,
+        ciphertext: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        (**self).nip04_decrypt(peer, ciphertext)
+    }
+
+    fn nip44_encrypt<'a>(
+        &'a self,
+        peer: &'a PublicKey,
+        plaintext: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        (**self).nip44_encrypt(peer, plaintext)
+    }
+
+    fn nip44_decrypt<'a>(
+        &'a self,
+        peer: &'a PublicKey,
+        payload: &'a str,
+    ) -> SignerFuture<'a, Result<String, SignerError>> {
+        (**self).nip44_decrypt(peer, payload)
     }
 }
 
@@ -251,5 +404,93 @@ mod tests {
         let inner = std::io::Error::other("oops");
         let err = SignerError::backend(inner);
         assert!(err.to_string().contains("oops"));
+    }
+
+    /// Minimal sign-only signer that opts out of every encryption
+    /// capability. Used to exercise the default `Unsupported` return
+    /// values on the trait, independent of which NIP feature flags
+    /// are enabled in this build.
+    #[derive(Debug)]
+    struct SignOnlySigner(Keys);
+
+    impl NostrSigner for SignOnlySigner {
+        fn get_public_key(&self) -> SignerFuture<'_, Result<PublicKey, SignerError>> {
+            self.0.get_public_key()
+        }
+
+        fn sign_event(
+            &self,
+            unsigned: UnsignedEvent,
+        ) -> SignerFuture<'_, Result<Event, SignerError>> {
+            self.0.sign_event(unsigned)
+        }
+        // No encryption overrides — every `nipNN_*` method falls back
+        // to the trait default that returns `SignerError::Unsupported`.
+    }
+
+    #[test]
+    fn default_encryption_methods_return_unsupported() {
+        // Hardware-only signers cannot encrypt; the trait's default
+        // impls must surface that as a structured error rather than a
+        // panic, regardless of build features.
+        let alice = SignOnlySigner(fixture_keys());
+        let bob_pk =
+            *Keys::parse("0000000000000000000000000000000000000000000000000000000000000007")
+                .unwrap()
+                .public_key();
+
+        let cases: [(&str, SignerFuture<'_, _>); 4] = [
+            ("nip04_encrypt", alice.nip04_encrypt(&bob_pk, "hi")),
+            ("nip04_decrypt", alice.nip04_decrypt(&bob_pk, "")),
+            ("nip44_encrypt", alice.nip44_encrypt(&bob_pk, "hi")),
+            ("nip44_decrypt", alice.nip44_decrypt(&bob_pk, "")),
+        ];
+        for (label, fut) in cases {
+            let err = block_on(fut).unwrap_err();
+            assert!(
+                matches!(err, SignerError::Unsupported(name) if name == label),
+                "expected Unsupported({label}), got {err:?}",
+            );
+        }
+    }
+
+    #[cfg(feature = "nip04")]
+    #[test]
+    fn keys_nip04_round_trip_through_signer_trait() {
+        let alice = fixture_keys();
+        let bob = Keys::parse("0000000000000000000000000000000000000000000000000000000000000007")
+            .unwrap();
+        let payload = block_on(alice.nip04_encrypt(bob.public_key(), "legacy hi")).unwrap();
+        let recovered = block_on(bob.nip04_decrypt(alice.public_key(), &payload)).unwrap();
+        assert_eq!(recovered, "legacy hi");
+    }
+
+    #[cfg(feature = "nip44")]
+    #[test]
+    fn keys_nip44_round_trip_through_signer_trait() {
+        // Two-party round trip using the `NostrSigner` trait surface.
+        // This proves the trait wires the underlying `nips::nip44`
+        // helpers correctly without leaking the secret key.
+        let alice = fixture_keys();
+        let bob = Keys::parse("0000000000000000000000000000000000000000000000000000000000000007")
+            .unwrap();
+        let payload = block_on(alice.nip44_encrypt(bob.public_key(), "secret")).unwrap();
+        let recovered = block_on(bob.nip44_decrypt(alice.public_key(), &payload)).unwrap();
+        assert_eq!(recovered, "secret");
+    }
+
+    #[cfg(feature = "nip44")]
+    #[test]
+    fn arc_dyn_signer_forwards_nip44_methods() {
+        // Object-safe path: `Arc<dyn NostrSigner>` must transparently
+        // delegate every encryption method to the wrapped signer.
+        let alice: Arc<dyn NostrSigner> = Arc::new(fixture_keys());
+        let bob = Keys::parse("0000000000000000000000000000000000000000000000000000000000000007")
+            .unwrap();
+        let payload = block_on(alice.nip44_encrypt(bob.public_key(), "via dyn")).unwrap();
+        let recovered =
+            block_on(bob.nip44_decrypt(&block_on(alice.get_public_key()).unwrap(), &payload))
+                .unwrap();
+        assert_eq!(recovered, "via dyn");
     }
 }

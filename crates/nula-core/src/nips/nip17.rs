@@ -33,11 +33,11 @@
 
 use thiserror::Error;
 
+use super::nip59;
 use crate::event::{
     Alphabet, Event, EventBuilder, Kind, SingleLetterTag, Tag, TagKind, Tags, UnsignedEvent,
 };
 use crate::key::{Keys, PublicKey};
-use crate::nip59;
 use crate::types::{RelayUrl, Timestamp};
 
 /// Wire name of the conversation-title tag (NIP-17 §Chat Message).
@@ -71,16 +71,24 @@ pub enum Nip17Error {
 }
 
 /// Recipient of a private message: a public key plus an optional relay
-/// hint that gets baked into the inner rumor's `p` tag.
-#[derive(Debug, Clone)]
-pub struct Recipient<'a> {
+/// hint that gets baked into the inner rumor's `p` tag and reused on
+/// the outer gift wrap's `p` tag.
+///
+/// Owned (`Option<RelayUrl>` rather than `Option<&RelayUrl>`) so
+/// callers can keep recipient lists in `Vec` / `HashMap` /
+/// configuration files without juggling lifetimes. [`RelayUrl`]
+/// internally wraps a single [`url::Url`], so cloning costs ~one
+/// heap allocation; perfectly cheap on the message-send path.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Recipient {
     /// Recipient's BIP-340 x-only public key.
     pub public_key: PublicKey,
-    /// Optional relay hint surfaced as the third element of the `p` tag.
-    pub relay_hint: Option<&'a RelayUrl>,
+    /// Optional relay hint surfaced as the third element of the `p`
+    /// tag (both on the inner rumor and on the outer gift wrap).
+    pub relay_hint: Option<RelayUrl>,
 }
 
-impl<'a> Recipient<'a> {
+impl Recipient {
     /// Build a recipient with no relay hint.
     #[must_use]
     pub const fn new(public_key: PublicKey) -> Self {
@@ -92,19 +100,27 @@ impl<'a> Recipient<'a> {
 
     /// Attach a relay hint.
     #[must_use]
-    pub const fn with_relay_hint(mut self, relay: &'a RelayUrl) -> Self {
+    pub fn with_relay_hint(mut self, relay: RelayUrl) -> Self {
         self.relay_hint = Some(relay);
         self
     }
 }
 
+impl From<PublicKey> for Recipient {
+    fn from(public_key: PublicKey) -> Self {
+        Self::new(public_key)
+    }
+}
+
 /// Optional reply pointer: a NIP-10 `e` tag value built into the rumor.
-#[derive(Debug, Clone)]
-pub struct ReplyTo<'a> {
+///
+/// Owned for the same reasons as [`Recipient`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ReplyTo {
     /// Event id this message is a reply to.
     pub event_id: crate::event::EventId,
     /// Optional relay hint surfaced as the third element of the `e` tag.
-    pub relay_hint: Option<&'a RelayUrl>,
+    pub relay_hint: Option<RelayUrl>,
 }
 
 /// Build the kind-14 chat-message *rumor* (per [NIP-17 §Chat Message]).
@@ -122,11 +138,11 @@ pub struct ReplyTo<'a> {
 #[must_use]
 pub fn build_chat_message_rumor(
     sender: &Keys,
-    recipients: &[Recipient<'_>],
+    recipients: &[Recipient],
     message: impl Into<String>,
     created_at: Timestamp,
     subject: Option<&str>,
-    reply_to: Option<&ReplyTo<'_>>,
+    reply_to: Option<&ReplyTo>,
 ) -> UnsignedEvent {
     let p_kind = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::P));
     let e_kind = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::E));
@@ -137,7 +153,7 @@ pub fn build_chat_message_rumor(
     );
 
     for recipient in recipients {
-        let values = recipient.relay_hint.map_or_else(
+        let values = recipient.relay_hint.as_ref().map_or_else(
             || vec![recipient.public_key.to_hex()],
             |url| vec![recipient.public_key.to_hex(), url.as_str().to_owned()],
         );
@@ -150,6 +166,7 @@ pub fn build_chat_message_rumor(
         // index 3.
         let relay = reply
             .relay_hint
+            .as_ref()
             .map_or_else(String::new, |url| url.as_str().to_owned());
         tags.push(Tag::with(
             &e_kind,
@@ -186,7 +203,7 @@ pub fn build_chat_message_rumor(
 /// [`Nip17Error::Wrap`] for any underlying NIP-59 / NIP-44 failure.
 pub fn wrap_for_many(
     sender: &Keys,
-    recipients: &[Recipient<'_>],
+    recipients: &[Recipient],
     rumor: &UnsignedEvent,
     timestamps: nip59::Timestamps,
 ) -> Result<Vec<Event>, Nip17Error> {
@@ -212,7 +229,7 @@ pub fn wrap_for_many(
         wraps.push(nip59::create_gift_wrap(
             &seal,
             &recipient.public_key,
-            recipient.relay_hint,
+            recipient.relay_hint.as_ref(),
             timestamps.wrap,
         )?);
     }
@@ -231,7 +248,7 @@ pub fn wrap_for_many(
 /// See [`wrap_for_many`].
 pub fn wrap_for(
     sender: &Keys,
-    recipient: &Recipient<'_>,
+    recipient: &Recipient,
     rumor: &UnsignedEvent,
     timestamps: nip59::Timestamps,
 ) -> Result<Event, Nip17Error> {
@@ -239,7 +256,7 @@ pub fn wrap_for(
     Ok(nip59::create_gift_wrap(
         &seal,
         &recipient.public_key,
-        recipient.relay_hint,
+        recipient.relay_hint.as_ref(),
         timestamps.wrap,
     )?)
 }
@@ -392,13 +409,13 @@ mod tests {
 
         let rumor = build_chat_message_rumor(
             &alice,
-            &[Recipient::new(*bob.public_key()).with_relay_hint(&relay)],
+            &[Recipient::new(*bob.public_key()).with_relay_hint(relay.clone())],
             "thread reply",
             now,
             Some("daily standup"),
             Some(&ReplyTo {
                 event_id: parent,
-                relay_hint: Some(&relay),
+                relay_hint: Some(relay.clone()),
             }),
         );
 

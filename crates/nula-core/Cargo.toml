@@ -17,15 +17,22 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
+# Default to the cryptographic + identity + remote-signing stack that's
+# actually shipping today: NIP-04 legacy DM, NIP-06 BIP-39 derivation,
+# NIP-17 private DM, NIP-44 v2 encrypted payloads, NIP-46 Nostr Connect
+# protocol primitives, NIP-49 ncryptsec, NIP-59 gift wrap. NIP-05 (DNS
+# identifier) and NIP-11 fetching stay opt-in until they ship —
+# pre-shipping defaults that compile away would mislead callers about
+# the feature surface.
 default = ["nip04", "nip06", "nip17", "nip44", "nip46", "nip49", "nip59"]
 
-# Encryption primitives (bring in optional crypto deps).
+# Encryption primitives (each brings in its own optional crypto deps).
 nip04 = ["dep:aes", "dep:cbc", "dep:base64"]
 nip06 = ["dep:bip39"]
 nip44 = ["dep:chacha20", "dep:hkdf", "dep:hmac", "dep:base64"]
 nip49 = ["dep:chacha20poly1305", "dep:scrypt", "dep:unicode-normalization"]
 
-# Composite NIPs (pure additions on top of crypto features).
+# Composite NIPs that ride on top of an encryption layer.
 nip17 = ["nip44", "nip59"]
 nip46 = ["nip44"]
 nip59 = ["nip44"]
