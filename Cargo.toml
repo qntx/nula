@@ -35,7 +35,7 @@ url = { version = "2.5.8", default-features = false, features = ["serde"] }
 thiserror = { version = "2.0.18", default-features = false }
 
 # Random number generation
-getrandom = { version = "0.3", default-features = false, features = ["std"] }
+getrandom = { version = "0.4", default-features = false, features = ["std"] }
 
 # Testing
 hex-literal = "1.1.0"
