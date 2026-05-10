@@ -299,8 +299,20 @@ macro_rules! impl_from_nostr_uri_via_bech32 {
     };
 }
 
-impl_to_nostr_uri_via_bech32!(PublicKey, EventId, Nip19Profile, Nip19Event, Nip19Coordinate);
-impl_from_nostr_uri_via_bech32!(PublicKey, EventId, Nip19Profile, Nip19Event, Nip19Coordinate);
+impl_to_nostr_uri_via_bech32!(
+    PublicKey,
+    EventId,
+    Nip19Profile,
+    Nip19Event,
+    Nip19Coordinate
+);
+impl_from_nostr_uri_via_bech32!(
+    PublicKey,
+    EventId,
+    Nip19Profile,
+    Nip19Event,
+    Nip19Coordinate
+);
 
 impl ToNostrUri for Nip21 {
     fn to_nostr_uri(&self) -> Result<String, Nip21Error> {
@@ -360,10 +372,8 @@ mod tests {
 
     #[test]
     fn event_round_trip_preserves_discriminator_accessors() {
-        let id = EventId::parse(
-            "b2f61aa5ce66cef9f9e3dcbfa9a17b16b6b9d43f7e0a8e2b7c5f1e6f80a7f123",
-        )
-        .expect("fixture event id parses");
+        let id = EventId::parse("b2f61aa5ce66cef9f9e3dcbfa9a17b16b6b9d43f7e0a8e2b7c5f1e6f80a7f123")
+            .expect("fixture event id parses");
         let nevent = Nip19Event::new(id)
             .with_author(fixture_pubkey())
             .with_kind(Kind::TEXT_NOTE)
@@ -399,8 +409,8 @@ mod tests {
             );
         }
 
-        let trait_err = PublicKey::from_nostr_uri("bolt11:lnbc1…")
-            .expect_err("foreign scheme is not NIP-21");
+        let trait_err =
+            PublicKey::from_nostr_uri("bolt11:lnbc1…").expect_err("foreign scheme is not NIP-21");
         assert!(matches!(trait_err, Nip21Error::InvalidUri));
     }
 

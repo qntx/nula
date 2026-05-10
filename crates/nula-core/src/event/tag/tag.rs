@@ -239,6 +239,49 @@ impl Tag {
         Self::with(&TagKind::Custom("alt".to_owned()), [summary.into()])
     }
 
+    /// Build a NIP-14 `subject` tag for a `kind: 1` text note.
+    ///
+    /// Wire form: `["subject", "<text>"]`. NIP-14 recommends keeping
+    /// the subject under 80 chars; the helper does not enforce that
+    /// because some clients legitimately ship longer subjects and
+    /// trimming behaviour is a UI concern. See
+    /// [`crate::nips::nip14`] for the read side and reply-replication
+    /// helpers.
+    #[must_use]
+    pub fn subject<S: Into<String>>(subject: S) -> Self {
+        Self::with(&TagKind::Custom("subject".to_owned()), [subject.into()])
+    }
+
+    /// Build a NIP-18 `q` quote-repost tag for a regular event.
+    ///
+    /// Wire form: `["q", "<event-id-hex>", "<relay-url>", "<author-hex>"]`.
+    /// The author hint is **mandatory** per the NIP-18 §Quote Reposts
+    /// schema for regular events; use [`Tag::q_addressable`] when
+    /// quoting a replaceable / addressable event by coordinate.
+    #[must_use]
+    pub fn q(event_id: EventId, relay: &RelayUrl, author: PublicKey) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::Q));
+        Self::with(
+            &head,
+            [
+                event_id.to_hex(),
+                relay.as_str().to_owned(),
+                author.to_hex(),
+            ],
+        )
+    }
+
+    /// Build a NIP-18 `q` quote-repost tag for an addressable event.
+    ///
+    /// Wire form: `["q", "<kind>:<author>:<identifier>", "<relay-url>"]`.
+    /// The author is implicit in the coordinate, so unlike [`Tag::q`]
+    /// no separate author column is appended.
+    #[must_use]
+    pub fn q_addressable(coordinate: &Coordinate, relay: &RelayUrl) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::Q));
+        Self::with(&head, [coordinate.to_wire(), relay.as_str().to_owned()])
+    }
+
     /// Return the tag head as a [`TagKind`].
     #[must_use]
     pub fn kind(&self) -> TagKind {
