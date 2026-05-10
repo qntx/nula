@@ -52,7 +52,6 @@ use reqwest as _;
 // warning-clean even when only [`SecretKey`]'s zeroize call site is
 // active.
 use zeroize as _;
-
 // `criterion` is wired in `dev-dependencies` for the `benches/`
 // targets only; lib unit tests never reach for it. `base64` is a
 // dev-dependency for the `nip44_vectors` integration test (and an

@@ -72,7 +72,9 @@ fn fixture_event(content_size: usize, tag_count: usize) -> Event {
     for tag in make_tags(tag_count).into_iter() {
         builder = builder.tag(tag);
     }
-    builder.sign_with_keys(&keys).expect("signing is infallible")
+    builder
+        .sign_with_keys(&keys)
+        .expect("signing is infallible")
 }
 
 fn bench_canonical(c: &mut Criterion) {
@@ -114,7 +116,9 @@ fn bench_sign(c: &mut Criterion) {
                     for tag in make_tags(tag_count).into_iter() {
                         builder = builder.tag(tag);
                     }
-                    let event = builder.sign_with_keys(&keys).expect("signing is infallible");
+                    let event = builder
+                        .sign_with_keys(&keys)
+                        .expect("signing is infallible");
                     std::hint::black_box(event);
                 });
             },

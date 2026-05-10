@@ -77,5 +77,10 @@ fn bench_decode_to_slice_32(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_encode, bench_decode, bench_decode_to_slice_32);
+criterion_group!(
+    benches,
+    bench_encode,
+    bench_decode,
+    bench_decode_to_slice_32
+);
 criterion_main!(benches);

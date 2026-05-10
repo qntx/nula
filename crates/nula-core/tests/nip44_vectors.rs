@@ -93,8 +93,8 @@ fn valid_get_conversation_key() {
             derived.as_byte_array().as_slice(),
             expected.as_slice(),
             "vector mismatch for sec1={} pub2={}",
-            &case["sec1"],
-            &case["pub2"]
+            case["sec1"],
+            case["pub2"]
         );
     }
 }

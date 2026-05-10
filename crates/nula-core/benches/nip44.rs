@@ -110,16 +110,15 @@ fn bench_decrypt(c: &mut Criterion) {
 fn bench_conversation_key_derive(c: &mut Criterion) {
     use nula_core::{PublicKey, SecretKey};
 
-    let secret = SecretKey::parse("0000000000000000000000000000000000000000000000000000000000000003")
-        .expect("BIP-340 vector key parses");
+    let secret =
+        SecretKey::parse("0000000000000000000000000000000000000000000000000000000000000003")
+            .expect("BIP-340 vector key parses");
     let peer = PublicKey::parse("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
         .expect("BIP-340 vector pubkey parses");
     c.bench_function("nip44/conversation_key/derive", |b| {
         b.iter(|| {
-            let key = ConversationKey::derive(
-                std::hint::black_box(&secret),
-                std::hint::black_box(&peer),
-            );
+            let key =
+                ConversationKey::derive(std::hint::black_box(&secret), std::hint::black_box(&peer));
             std::hint::black_box(key);
         });
     });
