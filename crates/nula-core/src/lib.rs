@@ -53,6 +53,17 @@ use reqwest as _;
 // active.
 use zeroize as _;
 
+// `criterion` is wired in `dev-dependencies` for the `benches/`
+// targets only; lib unit tests never reach for it. `base64` is a
+// dev-dependency for the `nip44_vectors` integration test (and an
+// optional production dependency behind the `nip04` / `nip44`
+// features); when both features are off, the lib's own unit-test build
+// has no use for it. Both placeholders keep `cargo build --tests`
+// warning-clean under `unused-crate-dependencies` regardless of which
+// feature subset is active.
+#[cfg(test)]
+use {base64 as _, criterion as _};
+
 // Crate-root re-exports: only the small set of types that callers reach
 // for *by name* on every interaction with Nostr (events, keys, filters,
 // messages, the JSON helper, the signer trait). Everything else lives one

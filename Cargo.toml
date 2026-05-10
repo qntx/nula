@@ -67,6 +67,9 @@ reqwest = { version = "0.13.3", default-features = false, features = ["rustls", 
 # Testing
 hex-literal = "1.1.0"
 
+# Benchmarking
+criterion = { version = "0.7.0", default-features = false, features = ["cargo_bench_support"] }
+
 [profile.release]
 codegen-units = 1
 lto = "thin"

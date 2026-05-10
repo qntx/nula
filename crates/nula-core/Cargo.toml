@@ -75,8 +75,31 @@ reqwest = { workspace = true, optional = true }
 
 [dev-dependencies]
 base64.workspace = true
+criterion.workspace = true
 hex-literal.workspace = true
 serde_json = { workspace = true, features = ["std"] }
 
 [lints]
 workspace = true
+
+[[test]]
+name = "nip44_vectors"
+path = "tests/nip44_vectors.rs"
+required-features = ["nip44"]
+
+[[bench]]
+name = "event"
+harness = false
+
+[[bench]]
+name = "hex"
+harness = false
+
+[[bench]]
+name = "nip19"
+harness = false
+
+[[bench]]
+name = "nip44"
+harness = false
+required-features = ["nip44"]

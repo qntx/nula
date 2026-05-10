@@ -24,7 +24,6 @@
 //! broken with the rest of the ecosystem and gift-wrapped events would
 //! become opaque blobs to other clients — this test is the canary.
 
-#![cfg(feature = "nip44")]
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -35,41 +34,17 @@
     clippy::cast_possible_truncation,
     clippy::tests_outside_test_module,
     unused_crate_dependencies,
-    reason = "test code may panic and index freely for brevity; the test \
-              file is itself the test module so #[cfg(test)] is implicit; \
-              the integration test inherits the crate dep set, so other \
-              feature-gated crates appear unused here."
+    reason = "integration tests inherit the crate's full dev-dep set; \
+              dev-dep crates that this particular test does not consume \
+              would otherwise trip `unused_crate_dependencies`. Test \
+              code may also panic and index freely for brevity."
 )]
 
-// Silence unused-crate-dependencies for crates the *crate* declares but
-// this particular integration test file does not consume. Each entry
-// mirrors a feature-gated dep that other tests / source files use.
 use std::str::FromStr;
 
-use base64 as _;
-use bech32 as _;
-#[cfg(feature = "nip06")]
-use bip39 as _;
-use chacha20 as _;
-use faster_hex as _;
-use hex_literal as _;
-use hkdf as _;
-use hmac as _;
-use indexmap as _;
 use nula_core::nips::nip44::{self, ConversationKey};
 use nula_core::{Keys, PublicKey, SecretKey};
-#[cfg(feature = "nip05")]
-use reqwest as _;
-use secp256k1 as _;
 use serde_json::Value;
-use sha2 as _;
-use thiserror as _;
-use url as _;
-use zeroize as _;
-#[cfg(feature = "nip04")]
-use {aes as _, cbc as _};
-#[cfg(feature = "nip49")]
-use {chacha20poly1305 as _, scrypt as _};
 
 const VECTORS: &str = include_str!("fixtures/nip44-vectors.json");
 
