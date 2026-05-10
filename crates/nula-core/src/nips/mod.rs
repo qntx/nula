@@ -28,7 +28,13 @@
 //! - [`nip02`] — Follow / contact lists (`kind 3`).
 //! - [`nip09`] — Event deletion requests (`kind 5`).
 //! - [`nip10`] — `e` / `p` tags inside text notes (threading).
+//! - [`nip14`] — `subject` tag for `kind: 1` text notes (threaded views).
+//! - [`nip18`] — Reposts (`kind 6`), generic reposts (`kind 16`), and
+//!   quote-repost `q` tags.
 //! - [`nip22`] — Comments (`kind 1111`).
+//! - [`nip25`] — Reactions (`kind 7`): like / dislike / emoji /
+//!   custom-emoji content with the prescribed `e` / `p` / `k` / `a`
+//!   tag set.
 //!
 //! ## Relay-side semantics
 //!
@@ -93,13 +99,16 @@ pub mod nip09;
 pub mod nip10;
 pub mod nip11;
 pub mod nip13;
+pub mod nip14;
 #[cfg(feature = "nip17")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip17")))]
 pub mod nip17;
+pub mod nip18;
 pub mod nip19;
 pub mod nip21;
 pub mod nip22;
 pub mod nip24;
+pub mod nip25;
 pub mod nip31;
 pub mod nip40;
 pub mod nip42;
