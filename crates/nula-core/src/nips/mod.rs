@@ -36,6 +36,14 @@
 //!   custom-emoji content with the prescribed `e` / `p` / `k` / `a`
 //!   tag set.
 //!
+//! ## DNS-bound identity
+//!
+//! - [`nip05`] *(feature `nip05`)* — DNS-based internet identifiers
+//!   `<local>@<domain>` resolved through
+//!   `/.well-known/nostr.json`. The fetch surface is abstracted as
+//!   the [`nip05::Nip05Fetcher`] trait; a redirect-disabled `reqwest`
+//!   implementation lives behind the same feature flag.
+//!
 //! ## Relay-side semantics
 //!
 //! - [`nip11`] — Relay information document (HTTP `application/nostr+json`).
@@ -61,11 +69,18 @@
 //!   (`display_name`, `bot`, `birthday`, `r` / `i` / `title` / `t`).
 //! - [`nip31`] — Human-readable `alt` fallback for unknown event kinds
 //!   so `kind: 1`-centric clients still render something sensible.
+//! - [`nip39`] — External identities (`github`, `twitter`, `mastodon`,
+//!   `telegram`, …) declared via `i` tags with platform-specific
+//!   proofs. Forward-compatible: unknown platform names round-trip.
 //!
-//! ## Key derivation
+//! ## Key derivation and delegation
 //!
 //! - [`nip06`] *(feature `nip06`)* — BIP-39 mnemonic + BIP-32 path
 //!   `m/44'/1237'/account'/chain_type/index` → Nostr [`Keys`](crate::Keys).
+//! - [`nip26`] — Delegated event signing (cold-key → hot-key
+//!   authority via the `delegation` tag). Spec marks NIP-26 as
+//!   `unrecommended`; we ship a complete implementation so existing
+//!   on-relay corpora remain decodable.
 //!
 //! ## Encryption
 //!
@@ -92,6 +107,7 @@ pub mod nip02;
 #[cfg(feature = "nip04")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip04")))]
 pub mod nip04;
+pub mod nip05;
 #[cfg(feature = "nip06")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip06")))]
 pub mod nip06;
@@ -109,7 +125,9 @@ pub mod nip21;
 pub mod nip22;
 pub mod nip24;
 pub mod nip25;
+pub mod nip26;
 pub mod nip31;
+pub mod nip39;
 pub mod nip40;
 pub mod nip42;
 #[cfg(feature = "nip44")]
