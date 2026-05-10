@@ -18,7 +18,7 @@ use crate::event::coordinate::Coordinate;
 use crate::event::id::EventId;
 use crate::event::kind::Kind;
 use crate::key::PublicKey;
-use crate::types::RelayUrl;
+use crate::types::{RelayUrl, Url};
 
 /// Errors raised when constructing a [`Tag`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -159,6 +159,84 @@ impl Tag {
     pub fn d<S: Into<String>>(identifier: S) -> Self {
         let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::D));
         Self::with(&head, [identifier.into()])
+    }
+
+    /// Build a NIP-24 `t` hashtag tag.
+    ///
+    /// NIP-24 pins the wire value to a **lowercase** string, so this
+    /// constructor applies [`str::to_lowercase`] to the input. Callers
+    /// who genuinely need the pre-normalised form can still reach for
+    /// [`Tag::new`] and pass the raw bytes explicitly.
+    ///
+    /// Wire form: `["t", "<lowercase-hashtag>"]`.
+    #[must_use]
+    pub fn t<S: AsRef<str>>(hashtag: S) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::T));
+        Self::with(&head, [hashtag.as_ref().to_lowercase()])
+    }
+
+    /// Build a NIP-24 `r` reference tag pointing at a web URL.
+    ///
+    /// The URL's lossless wire form is taken via [`Url::as_str`]; the
+    /// type guarantees it is a syntactically valid URL, which defends
+    /// downstream consumers from receiving truncated or whitespace-
+    /// polluted references.
+    ///
+    /// Wire form: `["r", "<url>"]`.
+    #[must_use]
+    pub fn r(url: &Url) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::R));
+        Self::with(&head, [url.as_str().to_owned()])
+    }
+
+    /// Build a NIP-24 / NIP-73 `i` external-id tag with no context
+    /// hint.
+    ///
+    /// The concrete external-id grammar (`podcast:guid:<uuid>`,
+    /// `isbn:<digits>`, …) lives in NIP-73; this helper only fixes the
+    /// wire shape.
+    ///
+    /// Wire form: `["i", "<external-id>"]`.
+    #[must_use]
+    pub fn i<S: Into<String>>(external_id: S) -> Self {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::I));
+        Self::with(&head, [external_id.into()])
+    }
+
+    /// Build a NIP-24 / NIP-73 `i` external-id tag with an authority
+    /// URL (e.g. a relay or resolver that understands the id scheme).
+    ///
+    /// Wire form: `["i", "<external-id>", "<context>"]`.
+    #[must_use]
+    pub fn i_with_context<I, C>(external_id: I, context: C) -> Self
+    where
+        I: Into<String>,
+        C: Into<String>,
+    {
+        let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::I));
+        Self::with(&head, [external_id.into(), context.into()])
+    }
+
+    /// Build a NIP-24 `title` tag.
+    ///
+    /// NIP-24 pins `title` as the human-readable name of NIP-51 sets,
+    /// NIP-52 calendar events, NIP-53 live events, and NIP-99 listings.
+    ///
+    /// Wire form: `["title", "<text>"]`.
+    #[must_use]
+    pub fn title<S: Into<String>>(title: S) -> Self {
+        Self::with(&TagKind::Custom("title".to_owned()), [title.into()])
+    }
+
+    /// Build a NIP-31 `alt` tag carrying a plain-text fallback
+    /// description for unknown event kinds.
+    ///
+    /// Wire form: `["alt", "<summary>"]`. See
+    /// [`crate::nips::nip31`] for the read side
+    /// ([`crate::nips::nip31::alt_description`]).
+    #[must_use]
+    pub fn alt<S: Into<String>>(summary: S) -> Self {
+        Self::with(&TagKind::Custom("alt".to_owned()), [summary.into()])
     }
 
     /// Return the tag head as a [`TagKind`].
@@ -382,5 +460,59 @@ mod tests {
         assert_eq!(tag.get(0), Some("a"));
         assert!(tag.get(1).unwrap().starts_with("30023:"));
         assert_eq!(tag.get(2), Some("wss://relay.example/"));
+    }
+
+    #[test]
+    fn t_normalises_hashtag_to_lowercase() {
+        let tag = Tag::t("RustLang");
+        assert_eq!(tag.values(), ["t", "rustlang"]);
+    }
+
+    #[test]
+    fn t_passes_already_lowercase_input_through() {
+        let tag = Tag::t("nostr");
+        assert_eq!(tag.values(), ["t", "nostr"]);
+    }
+
+    #[test]
+    fn r_takes_typed_url_and_preserves_canonical_form() {
+        let url = Url::parse("https://example.com/path?q=1").unwrap();
+        let tag = Tag::r(&url);
+        assert_eq!(tag.get(0), Some("r"));
+        assert_eq!(tag.get(1), Some("https://example.com/path?q=1"));
+    }
+
+    #[test]
+    fn i_external_id_has_two_element_shape() {
+        let tag = Tag::i("podcast:guid:c90e6b9a-1234-5678-9abc-def012345678");
+        assert_eq!(tag.values().len(), 2);
+        assert_eq!(tag.get(0), Some("i"));
+        assert_eq!(
+            tag.get(1),
+            Some("podcast:guid:c90e6b9a-1234-5678-9abc-def012345678")
+        );
+    }
+
+    #[test]
+    fn i_with_context_has_three_element_shape() {
+        let tag = Tag::i_with_context("isbn:9780306406157", "https://openlibrary.org");
+        assert_eq!(tag.values().len(), 3);
+        assert_eq!(tag.get(0), Some("i"));
+        assert_eq!(tag.get(1), Some("isbn:9780306406157"));
+        assert_eq!(tag.get(2), Some("https://openlibrary.org"));
+    }
+
+    #[test]
+    fn title_produces_custom_two_element_tag() {
+        let tag = Tag::title("My Blog Post");
+        assert_eq!(tag.values(), ["title", "My Blog Post"]);
+        assert_eq!(tag.kind(), TagKind::custom("title"));
+    }
+
+    #[test]
+    fn alt_produces_custom_two_element_tag() {
+        let tag = Tag::alt("a music playlist");
+        assert_eq!(tag.values(), ["alt", "a music playlist"]);
+        assert_eq!(tag.kind(), TagKind::custom("alt"));
     }
 }
