@@ -21,6 +21,10 @@
 //!
 //! ## Protocol foundation
 //!
+//! - [`nip01`] — Spec-to-source index for the NIP-01 core (events,
+//!   filters, wire messages); re-exports the canonical surface that
+//!   lives in [`crate::event`], [`crate::filter`], [`crate::message`],
+//!   and [`crate::key`].
 //! - [`nip02`] — Follow / contact lists (`kind 3`).
 //! - [`nip09`] — Event deletion requests (`kind 5`).
 //! - [`nip10`] — `e` / `p` tags inside text notes (threading).
@@ -68,6 +72,7 @@
 //!
 //! [Nostr Implementation Possibility]: https://github.com/nostr-protocol/nips
 
+pub mod nip01;
 pub mod nip02;
 #[cfg(feature = "nip04")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip04")))]
