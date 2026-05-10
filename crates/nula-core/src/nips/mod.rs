@@ -46,6 +46,15 @@
 //!
 //! - [`nip19`] — bech32 entities (`npub`, `nsec`, `note`, `nprofile`,
 //!   `nevent`, `naddr`).
+//! - [`nip21`] — `nostr:` URI scheme wrapping every NIP-19 entity that is
+//!   safe to expose in a URL (secret keys are refused).
+//!
+//! ## Metadata and generic conventions
+//!
+//! - [`nip24`] — Extra `kind: 0` fields and cross-kind tag conventions
+//!   (`display_name`, `bot`, `birthday`, `r` / `i` / `title` / `t`).
+//! - [`nip31`] — Human-readable `alt` fallback for unknown event kinds
+//!   so `kind: 1`-centric clients still render something sensible.
 //!
 //! ## Key derivation
 //!
@@ -88,7 +97,10 @@ pub mod nip13;
 #[cfg_attr(docsrs, doc(cfg(feature = "nip17")))]
 pub mod nip17;
 pub mod nip19;
+pub mod nip21;
 pub mod nip22;
+pub mod nip24;
+pub mod nip31;
 pub mod nip40;
 pub mod nip42;
 #[cfg(feature = "nip44")]
