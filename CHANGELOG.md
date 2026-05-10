@@ -9,6 +9,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 1 W3 — social core + observability** (`nula-core`):
+  - New opt-in `tracing` feature wires the `tracing` crate as a
+    dev-grade observability layer. The first wave instruments every
+    high-frequency hot path: `Event::verify`,
+    `UnsignedEvent::sign_with_keys`, `nip44::encrypt` /
+    `encrypt_with_nonce` / `decrypt` / `decrypt_with_conversation_key`,
+    and `Nip19Entity::from_bech32`. Every secret argument
+    (`Keys`, `SecretKey`, `ConversationKey`, plaintext bytes,
+    payloads) is `skip(...)`-ed so subscribers never receive
+    sensitive material.
+  - New `nula_core::observe` module documents the canonical
+    `nostr.<subject>.<attribute>` field schema (`nostr.event.kind`,
+    `nostr.encryption.plaintext_size`, `nostr.bech32.hrp`, …) so
+    downstream dashboards stay query-stable across crate versions.
+  - `nips::nip14` — NIP-14 `subject` tag for `kind: 1` text notes.
+    Provides `subject_of(&Tags)` for reads and `reply_subject` that
+    prepends a `Re:` prefix once (refusing to stack on an existing
+    `Re:`/`RE:`/`re:` prefix even when the conventional space is
+    missing).
+  - `nips::nip18` — NIP-18 reposts. Models all three flavours: plain
+    `kind: 6` reposts (`EventBuilder::repost`), `kind: 16` generic
+    reposts (`EventBuilder::generic_repost`, with addressable `a` tag
+    handling), and quote-repost authoring via the new `Tag::q` /
+    `Tag::q_addressable`. Read helpers
+    `reposted_event_{id, pubkey, kind, coordinate}` cover the
+    inbound side. Honours NIP-70 protected events (empty `content`).
+  - `nips::nip25` — NIP-25 reactions. Full `Reaction` enum
+    (`Like` / `Dislike` / `Emoji` / `CustomEmoji`) with
+    `is_positive` / `is_negative` polarity flags, `ReactionTarget`
+    bundle with `from_event` auto-extracting the addressable
+    coordinate, `EventBuilder::reaction` emitting the prescribed
+    `e` / `p` / `k` / `a` tag set, and `target_event_id` /
+    `target_pubkey` readers that honour NIP-25's "last-tag-wins"
+    rule for thread-context tags.
+  - Typed `Tag` constructors: `Tag::subject` (NIP-14), `Tag::q` /
+    `Tag::q_addressable` (NIP-18 quote reposts).
 - **Phase 1 W2 — protocol root completion** (`nula-core`):
   - `nips::nip21` — `nostr:` URI scheme. 5-variant `Nip21` enum
     (`Pubkey` / `EventId` / `Profile` / `Event` / `Coordinate`), sealed
