@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 1 W4 — identity & delegation** (`nula-core`):
+  - `nips::nip05` — DNS-based internet identifiers `<local>@<domain>`.
+    Two-layer architecture: a side-effect-free core (`Nip05Address`,
+    `Nip05Document`, `verify_document`) that callers can drive with
+    fixture JSON, plus a `Nip05Fetcher` async trait that abstracts
+    the `https://<domain>/.well-known/nostr.json?name=<local>` IO.
+    The trait returns a `Pin<Box<dyn Future + Send>>` so it stays
+    dyn-compatible and FFI-friendly. The core is feature-flag-free —
+    only the default `reqwest`-backed fetcher
+    (`ReqwestNip05Fetcher`) lives behind the existing `nip05` Cargo
+    feature, with `redirect::Policy::none()` enforced per NIP-05
+    §"Security Constraints" so a misbehaving server cannot launder a
+    different pubkey under the same identifier.
+  - `nips::nip26` — Delegated event signing. Provides `Conditions`
+    (typed `kind=` / `created_at>` / `created_at<` clause set with
+    order-preserving `parse` / `render` so signed strings stay
+    byte-identical), `delegation_message` / `delegation_hash` for
+    out-of-process signers, and `sign_delegation` /
+    `verify_delegation` for in-process flows. End-to-end
+    `verify_event_delegation` checks the token signature *and* that
+    `(kind, created_at)` matches the conditions. New typed tag
+    constructor: `Tag::delegation`.
+  - `nips::nip39` — External identities (GitHub / Twitter / Mastodon
+    / Telegram, plus arbitrary platform names through
+    `ExternalPlatform::Other(String)` for forward compatibility).
+    `Identity::parse_tag_values` correctly handles compound
+    identities such as Mastodon's `<instance>/@<username>`. Reader
+    `identities_from_tags` skips NIP-73 external content `i` tags
+    and tolerates future extra columns. New typed tag constructor:
+    `Tag::external_identity`.
 - **Phase 1 W3 — social core + observability** (`nula-core`):
   - New opt-in `tracing` feature wires the `tracing` crate as a
     dev-grade observability layer. The first wave instruments every
