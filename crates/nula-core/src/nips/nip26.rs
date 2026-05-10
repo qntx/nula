@@ -281,11 +281,7 @@ impl Tag {
     ) -> Self {
         Self::with(
             &TagKind::Custom(DELEGATION_TAG_KEY.to_owned()),
-            [
-                delegator.to_hex(),
-                conditions.render(),
-                token.to_string(),
-            ],
+            [delegator.to_hex(), conditions.render(), token.to_string()],
         )
     }
 }
@@ -414,7 +410,10 @@ mod tests {
             .after(Timestamp::from_secs(1_700_000_000))
             .before(Timestamp::from_secs(1_800_000_000));
         let rendered = c.render();
-        assert_eq!(rendered, "kind=1&created_at>1700000000&created_at<1800000000");
+        assert_eq!(
+            rendered,
+            "kind=1&created_at>1700000000&created_at<1800000000"
+        );
         assert_eq!(Conditions::parse(&rendered).unwrap(), c);
     }
 
@@ -505,7 +504,11 @@ mod tests {
         let token = sign_delegation(&delegator, delegatee.public_key(), &conditions);
 
         let event = EventBuilder::text_note("delegated note")
-            .tag(Tag::delegation(*delegator.public_key(), &conditions, &token))
+            .tag(Tag::delegation(
+                *delegator.public_key(),
+                &conditions,
+                &token,
+            ))
             .sign_with_keys(&delegatee)
             .unwrap();
 
@@ -526,7 +529,11 @@ mod tests {
         let token = sign_delegation(&delegator, delegatee.public_key(), &conditions);
 
         let event = EventBuilder::new(Kind::REACTION, "+")
-            .tag(Tag::delegation(*delegator.public_key(), &conditions, &token))
+            .tag(Tag::delegation(
+                *delegator.public_key(),
+                &conditions,
+                &token,
+            ))
             .sign_with_keys(&delegatee)
             .unwrap();
 

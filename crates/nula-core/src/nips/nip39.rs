@@ -214,7 +214,10 @@ impl Tag {
     #[must_use]
     pub fn external_identity(identity: &Identity) -> Self {
         let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::I));
-        Self::with(&head, [identity.platform_identity(), identity.proof.clone()])
+        Self::with(
+            &head,
+            [identity.platform_identity(), identity.proof.clone()],
+        )
     }
 }
 
@@ -277,10 +280,7 @@ mod tests {
 
     #[test]
     fn platform_parser_rejects_empty_or_colon_bearing_names() {
-        assert_eq!(
-            ExternalPlatform::parse(""),
-            Err(Nip39Error::EmptyPlatform),
-        );
+        assert_eq!(ExternalPlatform::parse(""), Err(Nip39Error::EmptyPlatform),);
         assert!(matches!(
             ExternalPlatform::parse("inva:lid"),
             Err(Nip39Error::PlatformContainsColon(s)) if s == "inva:lid"
@@ -307,7 +307,10 @@ mod tests {
         .unwrap();
         assert_eq!(id.platform, ExternalPlatform::Mastodon);
         assert_eq!(id.ident, "bitcoinhackers.org/@semisol");
-        assert_eq!(id.platform_identity(), "mastodon:bitcoinhackers.org/@semisol");
+        assert_eq!(
+            id.platform_identity(),
+            "mastodon:bitcoinhackers.org/@semisol"
+        );
     }
 
     #[test]
@@ -325,17 +328,12 @@ mod tests {
     #[test]
     fn identities_from_tags_yields_every_well_formed_entry() {
         let mut tags = Tags::new();
-        tags.push(
-            Tag::external_identity(
-                &Identity::new(ExternalPlatform::GitHub, "alice", "g1").unwrap(),
-            ),
-        );
-        tags.push(
-            Tag::external_identity(
-                &Identity::new(ExternalPlatform::Other("matrix".into()), "@a:m.org", "p1")
-                    .unwrap(),
-            ),
-        );
+        tags.push(Tag::external_identity(
+            &Identity::new(ExternalPlatform::GitHub, "alice", "g1").unwrap(),
+        ));
+        tags.push(Tag::external_identity(
+            &Identity::new(ExternalPlatform::Other("matrix".into()), "@a:m.org", "p1").unwrap(),
+        ));
         // NIP-73-style `i` (only 2 values) — must be ignored.
         tags.push(Tag::i("isbn:9780306406157"));
         // Malformed (no separator) — must be skipped, not crash.

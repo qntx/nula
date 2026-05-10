@@ -135,9 +135,7 @@ impl Nip05Address {
     ///   any character outside `a-z0-9-_.` (after case-folding).
     /// - [`Nip05Error::EmptyDomain`] if the domain is empty.
     pub fn parse(input: &str) -> Result<Self, Nip05Error> {
-        let (local, domain) = input
-            .split_once('@')
-            .ok_or(Nip05Error::MalformedAddress)?;
+        let (local, domain) = input.split_once('@').ok_or(Nip05Error::MalformedAddress)?;
         if local.contains('@') || domain.contains('@') {
             return Err(Nip05Error::MalformedAddress);
         }
@@ -187,9 +185,8 @@ impl Nip05Address {
 
 fn is_valid_local_part(s: &str) -> bool {
     !s.is_empty()
-        && s.bytes().all(|b| {
-            matches!(b, b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.')
-        })
+        && s.bytes()
+            .all(|b| matches!(b, b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.'))
 }
 
 /// The JSON document served at the well-known endpoint.
@@ -299,10 +296,9 @@ where
 {
     let body = fetcher.fetch(&address.well_known_url()).await?;
     let doc = Nip05Document::parse(&body).map_err(Nip05LookupError::Document)?;
-    let pk = doc
-        .pubkey_for(&address.local)
-        .copied()
-        .ok_or_else(|| Nip05LookupError::Document(Nip05Error::NameNotListed(address.local.clone())))?;
+    let pk = doc.pubkey_for(&address.local).copied().ok_or_else(|| {
+        Nip05LookupError::Document(Nip05Error::NameNotListed(address.local.clone()))
+    })?;
     Ok(pk)
 }
 
@@ -320,10 +316,9 @@ where
 {
     let body = fetcher.fetch(&address.well_known_url()).await?;
     let doc = Nip05Document::parse(&body).map_err(Nip05LookupError::Document)?;
-    let pk = doc
-        .pubkey_for(&address.local)
-        .copied()
-        .ok_or_else(|| Nip05LookupError::Document(Nip05Error::NameNotListed(address.local.clone())))?;
+    let pk = doc.pubkey_for(&address.local).copied().ok_or_else(|| {
+        Nip05LookupError::Document(Nip05Error::NameNotListed(address.local.clone()))
+    })?;
     let relays = doc.relays_for(&pk).to_vec();
     Ok((pk, relays))
 }
@@ -397,10 +392,7 @@ mod reqwest_impl {
         }
     }
 
-    async fn do_fetch(
-        client: &reqwest::Client,
-        url: &str,
-    ) -> Result<String, Nip05FetchError> {
+    async fn do_fetch(client: &reqwest::Client, url: &str) -> Result<String, Nip05FetchError> {
         let response = client
             .get(url)
             .send()
@@ -532,16 +524,14 @@ mod tests {
         // Different pubkey -> false (not an error: the document is
         // well-formed, the identifier just doesn't match the user we
         // have).
-        let other = PublicKey::parse(
-            "0000000000000000000000000000000000000000000000000000000000000003",
-        )
-        .unwrap();
+        let other =
+            PublicKey::parse("0000000000000000000000000000000000000000000000000000000000000003")
+                .unwrap();
         // Construct a synthetic Keys to derive a public key.
-        let some_other_pubkey = *crate::Keys::parse(
-            "0000000000000000000000000000000000000000000000000000000000000005",
-        )
-        .unwrap()
-        .public_key();
+        let some_other_pubkey =
+            *crate::Keys::parse("0000000000000000000000000000000000000000000000000000000000000005")
+                .unwrap()
+                .public_key();
         assert!(!verify_document(&address, FIXTURE_DOC, &other).unwrap());
         assert!(!verify_document(&address, FIXTURE_DOC, &some_other_pubkey).unwrap());
     }
