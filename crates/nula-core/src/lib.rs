@@ -35,6 +35,7 @@ pub mod key;
 pub mod message;
 pub mod metadata;
 pub mod nips;
+pub mod observe;
 pub mod prelude;
 pub mod signer;
 pub mod types;

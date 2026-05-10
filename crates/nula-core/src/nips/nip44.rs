@@ -302,6 +302,18 @@ impl Drop for MessageKeys {
 /// Returns [`Nip44Error::EmptyPlaintext`] for an empty input,
 /// [`Nip44Error::PlaintextTooLong`] for inputs above 65 535 bytes, or
 /// [`Nip44Error::Rng`] if the OS RNG is unavailable.
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        level = "debug",
+        name = "nula.nip44.encrypt",
+        skip(secret, peer_public_key, plaintext),
+        fields(
+            nostr.nip = 44_u16,
+            nostr.encryption.plaintext_size = plaintext.len(),
+        ),
+    )
+)]
 pub fn encrypt(
     secret: &SecretKey,
     peer_public_key: &PublicKey,
@@ -324,6 +336,18 @@ pub fn encrypt(
 ///
 /// Same as [`encrypt`]: [`Nip44Error::EmptyPlaintext`] /
 /// [`Nip44Error::PlaintextTooLong`].
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        level = "debug",
+        name = "nula.nip44.encrypt_with_nonce",
+        skip(conversation_key, plaintext, nonce),
+        fields(
+            nostr.nip = 44_u16,
+            nostr.encryption.plaintext_size = plaintext.len(),
+        ),
+    )
+)]
 pub fn encrypt_with_nonce(
     conversation_key: &ConversationKey,
     plaintext: &str,
@@ -371,6 +395,18 @@ fn encrypt_inner(
 /// for any byte other than `0x02`, [`Nip44Error::InvalidPadding`] for a
 /// malformed padded plaintext, and [`Nip44Error::InvalidUtf8`] when the
 /// plaintext is not valid UTF-8.
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        level = "debug",
+        name = "nula.nip44.decrypt",
+        skip(secret, peer_public_key, payload),
+        fields(
+            nostr.nip = 44_u16,
+            nostr.encryption.ciphertext_size = payload.len(),
+        ),
+    )
+)]
 pub fn decrypt(
     secret: &SecretKey,
     peer_public_key: &PublicKey,
@@ -394,6 +430,18 @@ pub fn decrypt(
 /// Will not panic in practice: every `expect` inside the body guards a
 /// length invariant that the surrounding bounds checks have already
 /// proved (e.g. a 32-byte slice fed into `[u8; 32]: TryFrom<&[u8]>`).
+#[cfg_attr(
+    feature = "tracing",
+    tracing::instrument(
+        level = "debug",
+        name = "nula.nip44.decrypt_with_conversation_key",
+        skip(conversation_key, payload),
+        fields(
+            nostr.nip = 44_u16,
+            nostr.encryption.ciphertext_size = payload.len(),
+        ),
+    )
+)]
 pub fn decrypt_with_conversation_key(
     conversation_key: &ConversationKey,
     payload: &str,

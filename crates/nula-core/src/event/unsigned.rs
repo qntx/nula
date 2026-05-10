@@ -93,8 +93,30 @@ impl UnsignedEvent {
     ///
     /// Returns [`UnsignedEventError::SignerMismatch`] if the signer's
     /// public key does not match `self.pubkey`.
+    ///
+    /// # Observability
+    ///
+    /// When the `tracing` feature is enabled, a `debug`-level span
+    /// `nula.event.sign` is opened for the full signing path. `keys`
+    /// is `skip`-ped so secret material never reaches a subscriber;
+    /// only the non-secret kind / content-size / tag-count appear.
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            level = "debug",
+            name = "nula.event.sign",
+            skip(self, keys),
+            fields(
+                nostr.event.kind = self.kind.as_u16(),
+                nostr.event.content_size = self.content.len(),
+                nostr.event.tag_count = self.tags.len(),
+            ),
+        )
+    )]
     pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, UnsignedEventError> {
         if keys.public_key() != &self.pubkey {
+            #[cfg(feature = "tracing")]
+            tracing::debug!("signer public key does not match unsigned event author");
             return Err(UnsignedEventError::SignerMismatch);
         }
 

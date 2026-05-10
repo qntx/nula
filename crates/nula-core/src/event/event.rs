@@ -113,11 +113,38 @@ impl Event {
     /// Returns [`EventError::InvalidId`] when the canonical hash does not
     /// match the stored id, or [`EventError::InvalidSignature`] when the
     /// Schnorr signature is not valid.
+    ///
+    /// # Observability
+    ///
+    /// When the `tracing` feature is enabled, a `debug`-level span
+    /// `nula.event.verify` is opened for the full verification path.
+    /// The span carries [`crate::observe::FIELD_EVENT_ID`],
+    /// [`crate::observe::FIELD_EVENT_KIND`] and
+    /// [`crate::observe::FIELD_EVENT_CONTENT_SIZE`]. No secret data is
+    /// recorded: only the already-public event fields.
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            level = "debug",
+            name = "nula.event.verify",
+            skip(self),
+            fields(
+                nostr.event.id = %self.id.to_hex(),
+                nostr.event.kind = self.kind.as_u16(),
+                nostr.event.content_size = self.content.len(),
+                nostr.event.tag_count = self.tags.len(),
+            ),
+        )
+    )]
     pub fn verify(&self) -> Result<(), EventError> {
         if !self.verify_id() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!("event id does not match canonical hash");
             return Err(EventError::InvalidId);
         }
         if !self.verify_signature() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!("schnorr signature verification failed");
             return Err(EventError::InvalidSignature);
         }
         Ok(())

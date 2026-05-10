@@ -219,8 +219,19 @@ impl ToBech32 for Nip19Entity {
 }
 
 impl FromBech32 for Nip19Entity {
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            level = "trace",
+            name = "nula.nip19.decode",
+            skip(s),
+            fields(nostr.nip = 19_u16, nostr.bech32.length = s.len()),
+        )
+    )]
     fn from_bech32(s: &str) -> Result<Self, FromBech32Error> {
         let (hrp_str, data) = decode_bech32(s)?;
+        #[cfg(feature = "tracing")]
+        tracing::trace!(nostr.bech32.hrp = %hrp_str, "dispatching NIP-19 variant");
         match hrp_str.as_str() {
             hrp::NPUB => Ok(Self::PublicKey(decode_pubkey(&data)?)),
             hrp::NSEC => Ok(Self::SecretKey(decode_seckey(&data)?)),

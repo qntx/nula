@@ -44,6 +44,12 @@ nip11-fetch = ["dep:reqwest"]
 # Performance toggles.
 pow-multi-thread = []
 
+# Observability: emit `tracing` spans from every hot path (event
+# signing, verification, NIP-44 encrypt/decrypt, NIP-19 bech32
+# decoding, …). Off by default so callers that do not integrate a
+# subscriber pay zero overhead.
+tracing = ["dep:tracing"]
+
 [dependencies]
 # Always-on protocol primitives.
 bech32.workspace = true
@@ -72,6 +78,9 @@ unicode-normalization = { workspace = true, optional = true }
 
 # Optional HTTP client (feature-gated).
 reqwest = { workspace = true, optional = true }
+
+# Optional observability (feature-gated).
+tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 base64.workspace = true
