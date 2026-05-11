@@ -9,6 +9,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 1 W6 — lists, search, app data, monetisation & connectivity**
+  (`nula-core`):
+  - `nips::nip51` — Lists & sets. The `List` bundle pairs public tag
+    items with NIP-44-encrypted private items inside `.content`, and
+    the `ListItem` enum spans every spec-mentioned target (pubkeys,
+    relays, events, coordinates, hashtags, words, threads, emojis,
+    Bitcoin/Lightning relays, group references). `EventBuilder::list`
+    serialises both halves; `List::from_event` reverses with optional
+    signer-driven decryption (NIP-44 preferred, NIP-04 fallback).
+    `event::kind` gains the full set of standard list/set kinds
+    (`KIND_MUTE_LIST`, `KIND_PINNED_NOTES`, `KIND_BOOKMARKS`,
+    `KIND_COMMUNITIES`, `KIND_PUBLIC_CHATS`, `KIND_BLOCKED_RELAYS`,
+    `KIND_SEARCH_RELAYS`, `KIND_SIMPLE_GROUPS`,
+    `KIND_INTERESTS`, `KIND_EMOJIS`, `KIND_DM_RELAYS`,
+    `KIND_GOOD_WIKI_AUTHORS`, `KIND_GOOD_WIKI_RELAYS`,
+    `KIND_FOLLOW_SETS`, `KIND_RELAY_SETS`, `KIND_BOOKMARK_SETS`,
+    `KIND_CURATION_SETS`, `KIND_VIDEO_SETS`, `KIND_KIND_MUTE_SETS`,
+    `KIND_INTEREST_SETS`, `KIND_EMOJI_SETS`,
+    `KIND_RELEASE_ARTIFACT_SETS`, `KIND_APP_CURATION_SETS`,
+    `KIND_CALENDAR`, `KIND_STARTER_PACKS`).
+  - `nips::nip50` — Search capability. `SearchQuery` carries a
+    free-text head plus a typed `Vec<SearchExtension>` covering every
+    extension the spec calls out (`include:spam`, `domain:`,
+    `language:`, `sentiment:`, `nsfw:`) with a forward-compatible
+    `Other { key, value }` variant. `parse_token` is strict on the
+    documented extensions but tolerant of unknown ones, and the
+    `Filter` integration mirrors NIP-01's wire shape so search and
+    classic filtering compose without copy-pasted glue.
+  - `nips::nip78` — Application-specific data. The `ApplicationData`
+    bundle binds `kind: 30078` to its `d`-identifier, free-form
+    `.content`, and a preserved `extra_tags` vector so
+    `from_event` → `to_event` round-trips never lose bespoke columns
+    apps stamp on their own events. `EventBuilder::application_data`
+    is the canonical builder.
+  - `nips::nip94` — File metadata. `FileMetadata` covers every
+    optional column from the spec (`url`, `m`, `x`, `ox`, `size`,
+    `dim`, `magnet`, `i`, `blurhash`, `summary`, `alt`, `fallback`,
+    `service`) plus the nested `FileVariant` shared by `thumb` and
+    `image` so a hosting service can attach typed previews. The
+    builder defends NIP-94's "url + x are mandatory" invariant and
+    preserves unknown columns through `extra_tags`.
+  - `nips::nip28` — Public chat. Typed `ChannelMetadata` (used by
+    `kind: 40`/`41`) and `HideReason` (`kind: 43`) JSON content
+    bundles, plus dedicated `EventBuilder` methods
+    (`channel_create`, `channel_metadata`, `channel_message_root`,
+    `channel_message_reply`, `hide_message`, `mute_user`) that stamp
+    the `e`/`p`/`relays` tag triple the spec requires. Forward
+    compatibility: unknown JSON keys round-trip through
+    `extra_metadata`.
+  - `nips::nip72` — Moderated communities. `CommunityDefinition`
+    (`kind: 34550`) groups identifier, name, description, image,
+    relay markers (`author`, `requests`, `approvals`), and moderator
+    list with optional relay hints. `PostApproval` (`kind: 4550`)
+    models both nested-event and address-only approvals, supports
+    inline JSON copies of the approved post, and exposes
+    `EventBuilder::community_post_approval`,
+    `community_top_level_post`, and `community_post_reply` for the
+    full posting flow.
+  - `nips::nip58` — Badges. `BadgeDefinition` (`kind: 30009`),
+    `BadgeAward` (`kind: 8`), and `ProfileBadges` (`kind: 30008`)
+    bundles model the full triplet: definitions carry a typed
+    `BadgeImage` (with optional `WxH` parsing) plus an unbounded
+    thumbnail list; awards bind a coordinate + recipient pubkeys; the
+    profile list pairs `(a, e)` definition/award columns into
+    `ProfileBadgeEntry` records, dropping orphaned `e` columns per
+    spec.
+  - `nips::nip57` — Lightning Zaps. `ZapRequest` (`kind: 9734`)
+    captures the spec's Appendix A invariants (`recipient`,
+    `relays`, optional `amount`/`lnurl`, optional `e`/`a`/`k`
+    targets) and `ZapReceipt` (`kind: 9735`) carries the LNURL
+    server's `bolt11`, embedded zap-request JSON, optional
+    `preimage`, and resolved `sender`. `parse_zap_split_targets`
+    surfaces NIP-57.2 split tags as a typed
+    `Vec<ZapSplitTarget>` with relay hint and weight. Validation
+    helpers (`ZapRequest::ensure_valid`,
+    `ZapReceipt::description_request`) enforce the cross-tag
+    invariants the spec hands to relays/wallets.
+  - `nips::nip98` — HTTP authentication. `HttpAuthRequest` models
+    the ephemeral `kind: 27235` event, `HttpMethod` enum covers all
+    RFC 9110 verbs plus a forward-compatible `Other`,
+    `validate_against` enforces URL canonicalisation, method match,
+    timestamp skew (default ±60 s), and optional
+    `payload`-hash verification, and `to_authorization_header` /
+    `parse_authorization_header` round-trip the spec's
+    `Nostr <base64(event_json)>` representation.
+  - `nips::nip47` — Nostr Wallet Connect. `ConnectionUri` parses
+    `nostr+walletconnect://…` URIs (wallet pubkey, relays, secret,
+    optional lud16); `InfoEvent` enumerates the wallet's advertised
+    methods, notifications, and supported encryption schemes;
+    `Encryption` (with `negotiate` helper) implements NIP-47.2's
+    encryption negotiation (NIP-44 v2 preferred, NIP-04 fallback).
+    `EventBuilder` gains `nwc_info`, `nwc_request`, `nwc_response`,
+    and `nwc_notification`, and matching decrypt helpers
+    (`decrypt_request`, `decrypt_response`, `decrypt_notification`)
+    expose the typed JSON-RPC payloads. `ErrorCode` covers every
+    spec-listed wallet error plus a forward-compatible
+    `Custom(String)`.
+
 - **Phase 1 W5 — content pipeline & long-form** (`nula-core`):
   - `nips::nip23` — Long-form content. Models the published article
     (`kind: 30023`) and its draft sibling (`kind: 30024`) through the

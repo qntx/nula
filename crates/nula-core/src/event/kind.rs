@@ -49,6 +49,37 @@ impl Kind {
     pub const REPOST: Self = Self(6);
     /// Reaction (NIP-25).
     pub const REACTION: Self = Self(7);
+    /// Wallet Connect info / capability advert (NIP-47).
+    pub const WALLET_CONNECT_INFO: Self = Self(13_194);
+    /// Wallet Connect request (NIP-47).
+    pub const WALLET_CONNECT_REQUEST: Self = Self(23_194);
+    /// Wallet Connect response (NIP-47).
+    pub const WALLET_CONNECT_RESPONSE: Self = Self(23_195);
+    /// Wallet Connect legacy NIP-04 notification (NIP-47).
+    pub const WALLET_CONNECT_NOTIFICATION_LEGACY: Self = Self(23_196);
+    /// Wallet Connect NIP-44 notification (NIP-47).
+    pub const WALLET_CONNECT_NOTIFICATION: Self = Self(23_197);
+    /// Badge award (NIP-58).
+    pub const BADGE_AWARD: Self = Self(8);
+    /// Zap request (NIP-57). Not published to relays; sent to the
+    /// recipient's LNURL callback.
+    pub const ZAP_REQUEST: Self = Self(9_734);
+    /// Zap receipt (NIP-57).
+    pub const ZAP_RECEIPT: Self = Self(9_735);
+    /// Badge definition (NIP-58).
+    pub const BADGE_DEFINITION: Self = Self(30_009);
+    /// Public-channel creation (NIP-28).
+    pub const CHANNEL_CREATION: Self = Self(40);
+    /// Public-channel metadata update (NIP-28).
+    pub const CHANNEL_METADATA: Self = Self(41);
+    /// Public-channel chat message (NIP-28).
+    pub const CHANNEL_MESSAGE: Self = Self(42);
+    /// Public-channel hide-message moderation (NIP-28).
+    pub const CHANNEL_HIDE_MESSAGE: Self = Self(43);
+    /// Public-channel mute-user moderation (NIP-28).
+    pub const CHANNEL_MUTE_USER: Self = Self(44);
+    /// File metadata (NIP-94).
+    pub const FILE_METADATA: Self = Self(1063);
     /// Generic repost (NIP-18).
     pub const GENERIC_REPOST: Self = Self(16);
     /// Reporting (NIP-56).
@@ -69,6 +100,64 @@ impl Kind {
     pub const LONG_FORM_TEXT_NOTE: Self = Self(30023);
     /// Relay list metadata (NIP-65).
     pub const RELAY_LIST: Self = Self(10002);
+    /// Mute list (NIP-51 §"Standard lists").
+    pub const MUTE_LIST: Self = Self(10_000);
+    /// Pinned-notes list (NIP-51).
+    pub const PINNED_NOTES: Self = Self(10_001);
+    /// Bookmarks list (NIP-51).
+    pub const BOOKMARKS: Self = Self(10_003);
+    /// Communities list (NIP-51 / NIP-72).
+    pub const COMMUNITIES_LIST: Self = Self(10_004);
+    /// Public-chats list (NIP-51 / NIP-28).
+    pub const PUBLIC_CHATS_LIST: Self = Self(10_005);
+    /// Blocked-relays list (NIP-51).
+    pub const BLOCKED_RELAYS: Self = Self(10_006);
+    /// Search-relays list (NIP-51).
+    pub const SEARCH_RELAYS: Self = Self(10_007);
+    /// Profile badges list (NIP-51 / NIP-58).
+    pub const PROFILE_BADGES: Self = Self(10_008);
+    /// Simple-groups list (NIP-51 / NIP-29).
+    pub const SIMPLE_GROUPS_LIST: Self = Self(10_009);
+    /// Relay feeds list (NIP-51).
+    pub const RELAY_FEEDS: Self = Self(10_012);
+    /// Interests list (NIP-51).
+    pub const INTERESTS_LIST: Self = Self(10_015);
+    /// Media-follows list (NIP-51).
+    pub const MEDIA_FOLLOWS: Self = Self(10_020);
+    /// Emojis list (NIP-51 / NIP-30).
+    pub const EMOJIS_LIST: Self = Self(10_030);
+    /// Blossom-servers list (NIP-51 / NIP-B7).
+    pub const BLOSSOM_SERVERS: Self = Self(10_063);
+    /// Follow set (NIP-51 §"Sets").
+    pub const FOLLOW_SET: Self = Self(30_000);
+    /// Relay set (NIP-51).
+    pub const RELAY_SET: Self = Self(30_002);
+    /// Bookmark set (NIP-51).
+    pub const BOOKMARK_SET: Self = Self(30_003);
+    /// Articles curation set (NIP-51).
+    pub const ARTICLES_CURATION_SET: Self = Self(30_004);
+    /// Videos curation set (NIP-51).
+    pub const VIDEOS_CURATION_SET: Self = Self(30_005);
+    /// Pictures curation set (NIP-51).
+    pub const PICTURES_CURATION_SET: Self = Self(30_006);
+    /// Kind-mute set (NIP-51).
+    pub const KIND_MUTE_SET: Self = Self(30_007);
+    /// Badge set (NIP-51 / NIP-58).
+    pub const BADGE_SET: Self = Self(30_008);
+    /// Interest set (NIP-51).
+    pub const INTEREST_SET: Self = Self(30_015);
+    /// Emoji set (NIP-51 / NIP-30).
+    pub const EMOJI_SET: Self = Self(30_030);
+    /// Release-artifact set (NIP-51).
+    pub const RELEASE_ARTIFACT_SET: Self = Self(30_063);
+    /// App-curation set (NIP-51).
+    pub const APP_CURATION_SET: Self = Self(30_267);
+    /// Calendar set (NIP-51 / NIP-52).
+    pub const CALENDAR_SET: Self = Self(31_924);
+    /// Starter pack (NIP-51).
+    pub const STARTER_PACK: Self = Self(39_089);
+    /// Media starter pack (NIP-51).
+    pub const MEDIA_STARTER_PACK: Self = Self(39_092);
 
     /// Construct a kind from a raw `u16`.
     #[must_use]
