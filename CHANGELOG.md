@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 1 W5 — content pipeline & long-form** (`nula-core`):
+  - `nips::nip23` — Long-form content. Models the published article
+    (`kind: 30023`) and its draft sibling (`kind: 30024`) through the
+    `Article` bundle, which groups the spec-pinned metadata
+    (`title`, `image`, `summary`, `published_at`) and the addressable
+    `d`-identifier in one place. `EventBuilder::long_form_article` /
+    `EventBuilder::long_form_draft` author both kinds; the reader
+    `Article::from_event` reverses the mapping, refuses wrong kinds,
+    and validates `published_at` parses as stringified unix
+    seconds.
+  - `nips::nip27` — Text note references. Differentiation vs upstream
+    (which ships nothing for NIP-27): byte-range scanner
+    `references_in` yielding `(Range<usize>, Nip21)` tuples in
+    content order, plus `tags_from_content` synthesising the
+    NIP-27 + NIP-18 implicit `p` / `q` tag bundle with
+    deduplication. The scanner refuses `nostr:nsec…` bodies via the
+    existing `Nip21::SecretKeyRefused` gate, so secret keys cannot
+    leak through a quoted note.
+  - `nips::nip30` — Custom emoji. New `Emoji` bundle plus
+    `Tag::emoji` builder, `validate_shortcode` charset gate
+    (`[A-Za-z0-9_-]`), `emojis_from_tags` forward-compatible reader
+    that tolerates unknown extra tag columns, and `shortcodes_in`
+    content scanner producing byte-offset `Range<usize>` spans for
+    in-place rendering substitution.
+  - `nips::nip38` — User statuses. `kind: 30315` addressable event
+    modelled through the `UserStatus` bundle, `StatusType` enum
+    (with forward-compatible `Custom(String)`), and `StatusLink`
+    enum that surfaces the `r` / `p` / `e` / `a` tag variants the
+    spec mentions. `EventBuilder::user_status` consolidates the `d`,
+    link, and NIP-40 `expiration` tags into a single chained call;
+    `UserStatus::from_event` reverses the mapping and surfaces the
+    spec's "empty content clears the status" signal via
+    `is_clear()`.
 - **Phase 1 W4 — identity & delegation** (`nula-core`):
   - `nips::nip05` — DNS-based internet identifiers `<local>@<domain>`.
     Two-layer architecture: a side-effect-free core (`Nip05Address`,
