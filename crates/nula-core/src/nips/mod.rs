@@ -23,18 +23,26 @@
 //!
 //! - [`nip01`] — Spec-to-source index for the NIP-01 core (events,
 //!   filters, wire messages); re-exports the canonical surface that
-//!   lives in [`crate::event`], [`crate::filter`], [`crate::message`],
-//!   and [`crate::key`].
-//! - [`nip02`] — Follow / contact lists (`kind 3`).
+//!   lives in [`crate::event`], [`crate::filter`], [`crate::message`].
+//!
+//! ## Social events
+//!
+//! - [`nip02`] — Follow list (`kind 3`).
 //! - [`nip09`] — Event deletion requests (`kind 5`).
 //! - [`nip10`] — `e` / `p` tags inside text notes (threading).
 //! - [`nip14`] — `subject` tag for `kind: 1` text notes (threaded views).
 //! - [`nip18`] — Reposts (`kind 6`), generic reposts (`kind 16`), and
 //!   quote-repost `q` tags.
 //! - [`nip22`] — Comments (`kind 1111`).
+//! - [`nip23`] — Long-form articles (`kind 30023` / draft `30024`).
 //! - [`nip25`] — Reactions (`kind 7`): like / dislike / emoji /
 //!   custom-emoji content with the prescribed `e` / `p` / `k` / `a`
 //!   tag set.
+//! - [`nip27`] — Text note references: `nostr:` URI scanner with
+//!   byte-range spans and NIP-18 `q` / NIP-01 `p` implicit tag
+//!   synthesis.
+//! - [`nip38`] — User statuses (`kind 30315`, addressable by status
+//!   type such as `general` / `music`).
 //!
 //! ## DNS-bound identity
 //!
@@ -69,6 +77,9 @@
 //!   (`display_name`, `bot`, `birthday`, `r` / `i` / `title` / `t`).
 //! - [`nip31`] — Human-readable `alt` fallback for unknown event kinds
 //!   so `kind: 1`-centric clients still render something sensible.
+//! - [`nip30`] — Custom emoji: `:shortcode:` tokens resolved through
+//!   `emoji` tags. Ships both a builder ([`Tag::emoji`](crate::event::Tag::emoji))
+//!   and a content scanner ([`nip30::shortcodes_in`]).
 //! - [`nip39`] — External identities (`github`, `twitter`, `mastodon`,
 //!   `telegram`, …) declared via `i` tags with platform-specific
 //!   proofs. Forward-compatible: unknown platform names round-trip.
@@ -123,10 +134,14 @@ pub mod nip18;
 pub mod nip19;
 pub mod nip21;
 pub mod nip22;
+pub mod nip23;
 pub mod nip24;
 pub mod nip25;
 pub mod nip26;
+pub mod nip27;
+pub mod nip30;
 pub mod nip31;
+pub mod nip38;
 pub mod nip39;
 pub mod nip40;
 pub mod nip42;
