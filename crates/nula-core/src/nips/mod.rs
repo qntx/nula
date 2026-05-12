@@ -140,10 +140,14 @@ pub mod nip25;
 pub mod nip26;
 pub mod nip27;
 pub mod nip28;
+pub mod nip29;
 pub mod nip30;
 pub mod nip31;
 pub mod nip32;
 pub mod nip36;
+#[cfg(feature = "nip44")]
+#[cfg_attr(docsrs, doc(cfg(feature = "nip44")))]
+pub mod nip37;
 pub mod nip38;
 pub mod nip39;
 pub mod nip40;
@@ -151,12 +155,14 @@ pub mod nip42;
 #[cfg(feature = "nip44")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip44")))]
 pub mod nip44;
+pub mod nip45;
 #[cfg(feature = "nip46")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip46")))]
 pub mod nip46;
 #[cfg(feature = "nip44")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip44")))]
 pub mod nip47;
+pub mod nip48;
 #[cfg(feature = "nip49")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip49")))]
 pub mod nip49;
@@ -171,17 +177,28 @@ pub mod nip58;
 #[cfg(feature = "nip59")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip59")))]
 pub mod nip59;
+pub mod nip62;
 pub mod nip65;
 pub mod nip66;
+pub mod nip68;
 pub mod nip70;
 pub mod nip71;
 pub mod nip72;
 pub mod nip73;
 pub mod nip75;
+pub mod nip77;
 pub mod nip78;
+pub mod nip7d;
 pub mod nip84;
+pub mod nip86;
+pub mod nip88;
 pub mod nip89;
 pub mod nip92;
 pub mod nip94;
 pub mod nip98;
 pub mod nip99;
+pub mod nipa0;
+pub mod nipa4;
+pub mod nipb0;
+pub mod nipc0;
+pub mod nipc7;

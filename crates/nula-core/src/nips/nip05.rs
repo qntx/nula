@@ -557,17 +557,12 @@ mod tests {
     }
 
     fn block_on<F: Future>(fut: F) -> F::Output {
-        // A 5-line in-test executor: poll the future until it's done,
-        // parking the thread between polls. Sufficient for a fetcher
-        // that finishes synchronously.
-        use std::sync::Arc;
-        use std::task::{Context, Poll, Wake, Waker};
-        struct Noop;
-        impl Wake for Noop {
-            fn wake(self: Arc<Self>) {}
-        }
-        let waker: Waker = Arc::new(Noop).into();
-        let mut cx = Context::from_waker(&waker);
+        // A tiny in-test executor: poll the future until it's done,
+        // using the standard library's no-op waker. Sufficient for a
+        // fetcher that finishes synchronously.
+        use std::task::{Context, Poll, Waker};
+        let waker = Waker::noop();
+        let mut cx = Context::from_waker(waker);
         let mut fut = Box::pin(fut);
         loop {
             if let Poll::Ready(v) = fut.as_mut().poll(&mut cx) {

@@ -62,12 +62,11 @@ use url::form_urlencoded;
 
 use crate::event::{Alphabet, Event, EventBuilder, Kind, SingleLetterTag, Tag, TagKind};
 use crate::key::{PublicKey, PublicKeyError, SecretKey, SecretKeyError};
-use crate::types::{RelayUrl, RelayUrlError, Timestamp};
-
 #[cfg(feature = "nip04")]
 use crate::nips::nip04;
 #[cfg(feature = "nip44")]
 use crate::nips::nip44;
+use crate::types::{RelayUrl, RelayUrlError, Timestamp};
 
 /// `kind: 13194` — info event.
 pub const KIND_INFO: Kind = Kind::WALLET_CONNECT_INFO;

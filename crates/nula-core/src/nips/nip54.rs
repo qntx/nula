@@ -30,7 +30,6 @@
 //! [NIP-54]: https://github.com/nostr-protocol/nips/blob/master/54.md
 
 use core::fmt;
-
 use std::borrow::Cow;
 
 use thiserror::Error;

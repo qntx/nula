@@ -209,6 +209,99 @@ impl Kind {
     /// Media starter pack (NIP-51).
     pub const MEDIA_STARTER_PACK: Self = Self(39_092);
 
+    /// Chat message (NIP-C7).
+    pub const CHAT_MESSAGE: Self = Self(9);
+    /// Thread (NIP-7D).
+    pub const THREAD: Self = Self(11);
+    /// Picture-first event (NIP-68).
+    pub const PICTURE: Self = Self(20);
+    /// Public message (NIP-A4).
+    pub const PUBLIC_MESSAGE: Self = Self(24);
+    /// Request to vanish (NIP-62).
+    pub const REQUEST_TO_VANISH: Self = Self(62);
+    /// Chess PGN game (NIP-64).
+    pub const CHESS: Self = Self(64);
+    /// Code snippet (NIP-C0).
+    pub const CODE_SNIPPET: Self = Self(1_337);
+    /// Voice root message (NIP-A0).
+    pub const VOICE_MESSAGE: Self = Self(1_222);
+    /// Voice reply message (NIP-A0).
+    pub const VOICE_MESSAGE_REPLY: Self = Self(1_244);
+    /// Auction bid (NIP-15).
+    pub const AUCTION_BID: Self = Self(1_021);
+    /// Auction bid confirmation (NIP-15).
+    pub const AUCTION_BID_CONFIRMATION: Self = Self(1_022);
+    /// Poll event (NIP-88).
+    pub const POLL: Self = Self(1_068);
+    /// Poll response (NIP-88).
+    pub const POLL_RESPONSE: Self = Self(1_018);
+    /// Patch (NIP-34).
+    pub const GIT_PATCH: Self = Self(1_617);
+    /// Pull request (NIP-34).
+    pub const GIT_PULL_REQUEST: Self = Self(1_618);
+    /// Pull request update (NIP-34).
+    pub const GIT_PULL_REQUEST_UPDATE: Self = Self(1_619);
+    /// Issue (NIP-34).
+    pub const GIT_ISSUE: Self = Self(1_621);
+    /// Status open (NIP-34).
+    pub const GIT_STATUS_OPEN: Self = Self(1_630);
+    /// Status applied / merged / resolved (NIP-34).
+    pub const GIT_STATUS_APPLIED: Self = Self(1_631);
+    /// Status closed (NIP-34).
+    pub const GIT_STATUS_CLOSED: Self = Self(1_632);
+    /// Status draft (NIP-34).
+    pub const GIT_STATUS_DRAFT: Self = Self(1_633);
+    /// Torrent (NIP-35).
+    pub const TORRENT: Self = Self(2_003);
+    /// Torrent comment (NIP-35).
+    pub const TORRENT_COMMENT: Self = Self(2_004);
+    /// Group join request (NIP-29).
+    pub const GROUP_JOIN_REQUEST: Self = Self(9_021);
+    /// Group leave request (NIP-29).
+    pub const GROUP_LEAVE_REQUEST: Self = Self(9_022);
+    /// Group "put-user" moderation (NIP-29).
+    pub const GROUP_PUT_USER: Self = Self(9_000);
+    /// Group "remove-user" moderation (NIP-29).
+    pub const GROUP_REMOVE_USER: Self = Self(9_001);
+    /// Group "edit-metadata" moderation (NIP-29).
+    pub const GROUP_EDIT_METADATA: Self = Self(9_002);
+    /// Group "delete-event" moderation (NIP-29).
+    pub const GROUP_DELETE_EVENT: Self = Self(9_005);
+    /// Group "create-group" moderation (NIP-29).
+    pub const GROUP_CREATE: Self = Self(9_007);
+    /// Group "delete-group" moderation (NIP-29).
+    pub const GROUP_DELETE: Self = Self(9_008);
+    /// Group "create-invite" moderation (NIP-29).
+    pub const GROUP_CREATE_INVITE: Self = Self(9_009);
+    /// Group metadata (NIP-29).
+    pub const GROUP_METADATA: Self = Self(39_000);
+    /// Group admins (NIP-29).
+    pub const GROUP_ADMINS: Self = Self(39_001);
+    /// Group members (NIP-29).
+    pub const GROUP_MEMBERS: Self = Self(39_002);
+    /// Group roles (NIP-29).
+    pub const GROUP_ROLES: Self = Self(39_003);
+    /// Draft wrap (NIP-37).
+    pub const DRAFT_WRAP: Self = Self(31_234);
+    /// Private storage relay list (NIP-37).
+    pub const PRIVATE_STORAGE_RELAYS: Self = Self(10_013);
+    /// Marketplace stall (NIP-15).
+    pub const MARKETPLACE_STALL: Self = Self(30_017);
+    /// Marketplace product (NIP-15).
+    pub const MARKETPLACE_PRODUCT: Self = Self(30_018);
+    /// Marketplace UI (NIP-15).
+    pub const MARKETPLACE_UI: Self = Self(30_019);
+    /// Marketplace auction product (NIP-15).
+    pub const MARKETPLACE_AUCTION: Self = Self(30_020);
+    /// Git repository announcement (NIP-34).
+    pub const GIT_REPOSITORY: Self = Self(30_617);
+    /// Git repository state (NIP-34).
+    pub const GIT_REPOSITORY_STATE: Self = Self(30_618);
+    /// User grasp list (NIP-34).
+    pub const GIT_GRASP_LIST: Self = Self(10_317);
+    /// Web bookmark (NIP-B0).
+    pub const WEB_BOOKMARK: Self = Self(39_701);
+
     /// Construct a kind from a raw `u16`.
     #[must_use]
     pub const fn new(kind: u16) -> Self {
