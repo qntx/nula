@@ -94,6 +94,46 @@ impl Kind {
     pub const APP_RECOMMENDATION: Self = Self(31_989);
     /// App handler (NIP-89).
     pub const APP_HANDLER: Self = Self(31_990);
+    /// Short video event (NIP-71).
+    pub const VIDEO_SHORT: Self = Self(22);
+    /// Normal video event (NIP-71).
+    pub const VIDEO_NORMAL: Self = Self(21);
+    /// Addressable normal video event (NIP-71).
+    pub const VIDEO_NORMAL_ADDRESSABLE: Self = Self(34_235);
+    /// Addressable short video event (NIP-71).
+    pub const VIDEO_SHORT_ADDRESSABLE: Self = Self(34_236);
+    /// Live streaming event (NIP-53).
+    pub const LIVE_STREAM: Self = Self(30_311);
+    /// Meeting-space event (NIP-53).
+    pub const MEETING_SPACE: Self = Self(30_312);
+    /// Meeting-room event (NIP-53).
+    pub const MEETING_ROOM: Self = Self(30_313);
+    /// Live-chat message (NIP-53).
+    pub const LIVE_CHAT_MESSAGE: Self = Self(1_311);
+    /// Room presence (NIP-53).
+    pub const ROOM_PRESENCE: Self = Self(10_312);
+    /// Date-based calendar event (NIP-52).
+    pub const CALENDAR_DATE_EVENT: Self = Self(31_922);
+    /// Time-based calendar event (NIP-52).
+    pub const CALENDAR_TIME_EVENT: Self = Self(31_923);
+    /// Calendar collection (NIP-52).
+    pub const CALENDAR: Self = Self(31_924);
+    /// Calendar event RSVP (NIP-52).
+    pub const CALENDAR_RSVP: Self = Self(31_925);
+    /// Classified listing (NIP-99).
+    pub const CLASSIFIED_LISTING: Self = Self(30_402);
+    /// Draft/inactive classified listing (NIP-99).
+    pub const CLASSIFIED_LISTING_DRAFT: Self = Self(30_403);
+    /// Relay discovery event (NIP-66).
+    pub const RELAY_DISCOVERY: Self = Self(30_166);
+    /// Relay monitor announcement (NIP-66).
+    pub const RELAY_MONITOR: Self = Self(10_166);
+    /// Wiki article (NIP-54).
+    pub const WIKI_ARTICLE: Self = Self(30_818);
+    /// Wiki redirect (NIP-54).
+    pub const WIKI_REDIRECT: Self = Self(30_819);
+    /// Wiki merge request (NIP-54).
+    pub const WIKI_MERGE_REQUEST: Self = Self(818);
     /// Relay authentication (NIP-42).
     pub const AUTHENTICATION: Self = Self(22242);
     /// Seal (NIP-59) — the encrypted middle layer of a gift-wrapped event.

@@ -9,6 +9,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 1 W8 — addressable surfaces & live experiences**
+  (`nula-core`):
+  - `nips::nip99` — Classified Listings (`kind: 30402` published,
+    `kind: 30403` draft). The `Listing` bundle pins the spec-required
+    `title` plus optional `summary`, `published_at`, `location`, the
+    typed `t` hashtags, multi-`g` geohashes, and the optional
+    `status` (`active`/`sold`) closure marker. The `Price`
+    sub-bundle parses the four-column `price` row (amount,
+    ISO-4217 currency, optional NIP-99 frequency token covering the
+    spec's `hour`/`day`/`week`/`month`/`year` plus a forward-compatible
+    `Custom`). `Image` carries the optional `WxH` dimensions, and the
+    `EventReference` / `AddressReference` rows surface `e` / `a`
+    cross-references for catalog-style listings. `EventBuilder::classified_listing`
+    enforces "at least one image" per spec invariants.
+  - `nips::nip54` — Wiki (`kind: 30818` article, `kind: 30819`
+    redirect, `kind: 818` merge request). `WikiArticle` exposes the
+    spec's normalized-`d` slug (lowercased, hyphenated,
+    punctuation-stripped via the dedicated `normalize_slug` helper),
+    typed `RelationRef` with `Relation::{Fork, Defer, NormalizedTo,
+    SourceCode}`, and a list of `WikiSource` references covering
+    `e`/`a`/`r` source markers. `WikiRedirect` re-uses the typed
+    `Coordinate` for the redirect target. `MergeRequest` enforces the
+    spec example's tag order (destination `a`, base `e`, destination
+    `p`, source `e` with `source` marker) and tracks the source
+    revision invariant inside `MergeError::MissingMergeSource`.
+  - `nips::nip66` — Relay Discovery (`kind: 30166` discovery,
+    `kind: 10166` monitor). `RelayDiscovery` packs every column the
+    spec lists: `n` network type, `T` PascalCase relay type, `N`
+    supported NIPs, multi-`R` requirements with the `!`-prefix
+    boolean convention via `RelayRequirement`, multi-`t` topics,
+    `k` accepted kinds with the `!<kind>` rejected convention via
+    `AcceptedKind`, geohash, and four `rtt-*` round-trip metrics
+    (`open`/`read`/`write`/`auth`) typed through `RoundTripTime`.
+    Discovery `d` identifiers go through `DiscoveryTarget`
+    (`RelayUrl` or freeform string per spec §"d Tag"). `RelayMonitor`
+    bundles the monitor-side declaration with typed
+    `MonitorTimeout`, `frequency_seconds`, and the `o`/`g`/`u`
+    operator/geohash/URL columns.
+  - `nips::nip52` — Calendar Events (`kind: 31922` date-based,
+    `kind: 31923` time-based, `kind: 31924` calendar collection,
+    `kind: 31925` RSVP). `DateCalendarEvent` validates the `start`
+    column as an ISO-8601 date (`YYYY-MM-DD`) through
+    `CalendarDate::parse`, while `TimeCalendarEvent` keeps the
+    column as a typed `Timestamp` plus optional IANA `start_tzid` /
+    `end_tzid` rows. `CalendarEventCommon` shares the
+    `title`/`summary`/`image`/`location`/`g` geohash/`p`
+    participants (with role marker)/`t` hashtags/`r` references
+    surface across both kinds. `CalendarRequest` maps `a` tags onto
+    typed `Coordinate`s, `Calendar` aggregates owned event
+    coordinates into the addressable `kind: 31924` collection, and
+    `Rsvp` surfaces the `status` (`accepted`/`declined`/`tentative`)
+    plus the `fb` (`free`/`busy`) tag with the spec's "declined ⇒ no
+    fb" invariant enforced by `RsvpStatus::ensure_compatible_with`.
+  - `nips::nip71` — Video Events (`kind: 21` normal, `kind: 22`
+    short-form, `kind: 31337` normal addressable, `kind: 31338`
+    short-form addressable). `Video` bundles every column the spec
+    lists: `title`, `published_at`, `alt`, `summary`, `duration`,
+    multiple NIP-92 `imeta` variants (one per resolution / language),
+    `text-track` rows with optional relay hint via `TextTrack`,
+    `content-warning`, multi-`segment` chapter rows via `Segment`,
+    multi-`t` hashtags, multi-`p` participants via `VideoParticipant`,
+    multi-`r` references, and the optional `origin` row exposing
+    third-party platform metadata (`platform`, `external_id`,
+    optional URL, optional metadata blob) via `VideoOrigin`.
+    `EventBuilder::video` propagates `MediaAttachmentError` from any
+    malformed `imeta` variant up through `VideoError`.
+  - `nips::nip53` — Live Activities (`kind: 30311` live stream,
+    `kind: 30312` meeting space, `kind: 30313` meeting room,
+    `kind: 1311` live chat, `kind: 10312` room presence). The
+    `LiveStream` / `MeetingSpace` / `MeetingRoom` bundles share
+    `LiveStatus` (the spec's `planned`/`live`/`ended` tri-state plus
+    forward-compatible `Custom`) and a separate `SpaceStatus`
+    (`open`/`private`/`closed` plus `Custom`) for the meeting-space
+    extension. `LiveParticipant` surfaces the four-column `p` tag
+    shape (pubkey, relay hint, role marker, optional participation
+    proof). `MeetingRoom` enforces the parent-space `a` tag invariant
+    via `LiveError::MissingAddress`. `LiveChatMessage` and
+    `RoomPresence` expose the typed `q`/`e`/`a` cross-references with
+    the spec's `root` thread marker preserved across the round trip.
+
 - **Phase 1 W7 — content discovery, moderation & attestations**
   (`nula-core`):
   - `nips::nip32` — Labeling (`kind: 1985`). The `Label` bundle pairs
