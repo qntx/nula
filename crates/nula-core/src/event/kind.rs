@@ -84,6 +84,16 @@ impl Kind {
     pub const GENERIC_REPOST: Self = Self(16);
     /// Reporting (NIP-56).
     pub const REPORTING: Self = Self(1984);
+    /// Labeling (NIP-32).
+    pub const LABEL: Self = Self(1985);
+    /// Highlight (NIP-84).
+    pub const HIGHLIGHT: Self = Self(9_802);
+    /// Zap goal (NIP-75).
+    pub const ZAP_GOAL: Self = Self(9_041);
+    /// Recommended app handler (NIP-89).
+    pub const APP_RECOMMENDATION: Self = Self(31_989);
+    /// App handler (NIP-89).
+    pub const APP_HANDLER: Self = Self(31_990);
     /// Relay authentication (NIP-42).
     pub const AUTHENTICATION: Self = Self(22242);
     /// Seal (NIP-59) — the encrypted middle layer of a gift-wrapped event.

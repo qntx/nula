@@ -9,6 +9,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 1 W7 — content discovery, moderation & attestations**
+  (`nula-core`):
+  - `nips::nip32` — Labeling (`kind: 1985`). The `Label` bundle pairs
+    `Vec<LabelTerm>` (namespace + value pairs, with the spec's `ugc`
+    fallback) with `Vec<LabelTarget>` (typed `e`/`p`/`a`/`r`/`t`
+    targets, each carrying an optional relay hint). `labels_from_tags`
+    also reads self-reported `L`/`l` tags off any non-1985 event;
+    `term_to_tags` is the canonical pair builder.
+  - `nips::nip36` — Sensitive Content. `ContentWarning` wraps the
+    `content-warning` tag's optional reason column; `Tag::content_warning`
+    is the canonical builder, `content_warning_from_tags` the reader.
+    Pairs naturally with `nips::nip32` for ontology-scoped warnings.
+  - `nips::nip56` — Reporting (`kind: 1984`). `Report` bundles the
+    spec's three target shapes (profile / event / blob) plus
+    free-form `.content` rationale, with `ReportType` (the spec's
+    seven tokens + forward-compatible `Custom(String)`) and the
+    Appendix server-URL hints (`server` tag). `EventBuilder::report`
+    pins the correct `p`/`e`/`x`/`server` tag ordering per spec
+    examples.
+  - `nips::nip73` — External Content IDs. `ExternalContentId` and
+    `ExternalContentKind` mirror every row of the spec table (URLs,
+    ISBN, geohash, ISO 3166, ISAN, DOI, hashtags, podcast feeds /
+    episodes / publishers, blockchain transactions and addresses
+    with optional chain IDs). `ExternalContentRef` carries an
+    optional URL hint, `refs_from_tags` walks any event's `i` tags,
+    and `ref_to_tags` builds the canonical `i`+`k` pair.
+  - `nips::nip92` — Media Attachments. `MediaAttachment` packs the
+    NIP-94 column set into the variadic `imeta` wire form (one
+    `url` field plus at least one other), preserves unknown
+    `(key, value)` extras for forward compatibility, and
+    cross-converts with [`FileMetadata`](crate::nips::nip94) via
+    `from_file_metadata` / `to_file_metadata`. `Tag::imeta` builds
+    the tag from the typed bundle.
+  - `nips::nip89` — Recommended App Handlers. `HandlerRecommendation`
+    (`kind: 31989`) bundles a recommended-kind `d` value with one
+    or more `a` rows (handler coordinate + relay hint + platform
+    marker). `HandlerInformation` (`kind: 31990`) packs the
+    handler's identifier, supported kinds (`k` tags), and
+    platform-specific entry points (`web` / `ios` / custom) with
+    optional NIP-19 entity hints. `ClientTag` models the optional
+    `client` tag publishers can attach to advertise the authoring
+    application.
+  - `nips::nip84` — Highlights (`kind: 9802`). `Highlight` carries
+    the highlighted text in `.content`, a typed
+    `Vec<HighlightSource>` (events, addressable events, or URLs
+    with the spec's `source` / `mention` markers), and a typed
+    `Vec<Attribution>` (`p` tags with optional relay hint and role
+    keyword). The optional `context` / `comment` tags surface the
+    quote-highlight shape from spec §"Quote Highlights"; `roles`
+    and `url_markers` modules pin the spec-defined string
+    constants.
+  - `nips::nip75` — Zap Goals (`kind: 9041`). `ZapGoal` bundles the
+    required `amount` (millisats) and `relays` columns, plus the
+    optional `closed_at` deadline, `image` / `summary` metadata,
+    `r` / `a` references, and reuses NIP-57
+    `crate::nips::nip57::ZapSplitTarget` for beneficiary splits.
+    `GoalLink` (`Tag::goal`) models the `goal` tag addressable
+    events may carry to link back to their funding goal.
+
 - **Phase 1 W6 — lists, search, app data, monetisation & connectivity**
   (`nula-core`):
   - `nips::nip51` — Lists & sets. The `List` bundle pairs public tag
