@@ -693,7 +693,8 @@ pub enum CommunityError {
     /// A relay URL did not parse.
     #[error("invalid relay URL: {0}")]
     InvalidRelayUrl(#[source] RelayUrlError),
-    /// `image[2]` failed [`ImageDimensions::from_str`].
+    /// `image[2]` failed to parse as [`ImageDimensions`] via its
+    /// [`FromStr`](std::str::FromStr) impl.
     #[error("invalid image dimensions: {0}")]
     InvalidImageDim(#[source] ImageError),
 }

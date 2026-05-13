@@ -17,8 +17,8 @@
 //! | Podcast Feeds          | "podcast:guid:`<guid>`"                                    | "podcast:guid"           |
 //! | Podcast Episodes       | "podcast:item:guid:`<guid>`"                               | "podcast:item:guid"      |
 //! | Podcast Publishers     | "podcast:publisher:guid:`<guid>`"                          | "podcast:publisher:guid" |
-//! | Blockchain Transaction | "`<blockchain>`:[`<chainId>`:]tx:`<txid, hex, lowercase>`" | "`<blockchain>`:tx"      |
-//! | Blockchain Address     | "`<blockchain>`:[`<chainId>`:]address:`<address>`"         | "`<blockchain>`:address" |
+//! | Blockchain Transaction | "`<blockchain>`:\[`<chainId>`:\]tx:`<txid, hex, lowercase>`" | "`<blockchain>`:tx"      |
+//! | Blockchain Address     | "`<blockchain>`:\[`<chainId>`:\]address:`<address>`"         | "`<blockchain>`:address" |
 //!
 //! [`ExternalContentRef`] groups the parsed `i` tag with its
 //! optional URL hint (per spec §"Optional URL Hints"). The reader

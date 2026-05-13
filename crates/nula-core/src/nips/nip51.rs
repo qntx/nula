@@ -22,7 +22,7 @@
 //! a handful of list kinds and **leaves the encryption out
 //! entirely**. We model:
 //!
-//! 1. **Every spec'd kind** as a [`Kind::*`] constant
+//! 1. **Every spec'd kind** as a typed constant on [`Kind`]
 //!    ([`crate::Kind::MUTE_LIST`], `BOOKMARK_SET`, …).
 //! 2. A typed [`ListItem`] enum that maps the eight item shapes
 //!    NIP-51 uses (pubkey, event, address, hashtag, word, relay,

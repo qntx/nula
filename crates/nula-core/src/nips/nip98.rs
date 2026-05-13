@@ -23,7 +23,7 @@
 //! - [`HttpMethod`] — strongly-typed enum with `Other(String)` for
 //!   forward compatibility;
 //! - [`HttpAuthRequest`] — typed bundle that round-trips through
-//!   [`Self::to_tags`] / [`Self::from_event`];
+//!   [`HttpAuthRequest::to_tags`] / [`HttpAuthRequest::from_event`];
 //! - [`HttpAuthRequest::validate`] — the four-step server-side
 //!   validation NIP-98 §"validate" mandates (kind, timestamp
 //!   skew, exact URL match, exact method match) plus the optional
@@ -405,9 +405,8 @@ pub const AUTH_SCHEME_PREFIX: &str = "Nostr ";
 ///
 /// # Errors
 ///
-/// Forwarded from [`crate::Event::try_to_json`] (effectively
-/// unreachable for spec-conforming inputs but propagated for
-/// completeness).
+/// Forwarded from [`JsonUtil::try_to_json`] (effectively unreachable
+/// for spec-conforming inputs but propagated for completeness).
 pub fn authorization_header(event: &Event) -> Result<String, HttpAuthError> {
     let json = event
         .try_to_json()

@@ -29,8 +29,8 @@
 //! # Cross-NIP
 //!
 //! The set of keys is intentionally aligned with NIP-94: any field on
-//! [`FileMetadata`](crate::nips::nip94::FileMetadata) can appear inside
-//! an `imeta` tag. The two-direction converters
+//! [`FileMetadata`] can appear inside an `imeta` tag. The
+//! two-direction converters
 //! [`MediaAttachment::from_file_metadata`] /
 //! [`MediaAttachment::to_file_metadata`] make crossing the boundary
 //! cheap.

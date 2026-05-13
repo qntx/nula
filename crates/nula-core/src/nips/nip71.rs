@@ -14,12 +14,12 @@
 //! - **Required**: `title`, plus at least one `imeta` tag carrying
 //!   the variant's URL and extra metadata. Addressable variants also
 //!   require a `d` identifier.
-//! - **`imeta` tags** reuse [`MediaAttachment`](crate::nips::nip92::MediaAttachment)
-//!   from NIP-92, which already rounds-trips every NIP-94 field and
-//!   preserves unknown keys. NIP-71's two extra fields (`duration`,
-//!   `bitrate`) ride inside that struct's
-//!   [`extra_fields`](crate::nips::nip92::MediaAttachment::extra_fields)
-//!   passthrough, so producers that set them round-trip cleanly.
+//! - **`imeta` tags** reuse [`MediaAttachment`] from NIP-92, which
+//!   already rounds-trips every NIP-94 field and preserves unknown
+//!   keys. NIP-71's two extra fields (`duration`, `bitrate`) ride
+//!   inside that struct's
+//!   [`extra_fields`](MediaAttachment::extra_fields) passthrough, so
+//!   producers that set them round-trip cleanly.
 //! - **Top-level**: `published_at`, `alt`, `content-warning` (spec
 //!   cross-ref to NIP-36), `duration`, `t` hashtags, `p`
 //!   participants (optional relay hint), `r` URLs, `text-track`

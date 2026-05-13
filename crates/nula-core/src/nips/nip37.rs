@@ -221,7 +221,7 @@ impl PrivateStorageRelays {
     ///
     /// # Errors
     ///
-    /// Propagates [`Nip44Error`] / [`crate::util::json::Error`].
+    /// Propagates [`Nip44Error`] / [`serde_json::Error`].
     pub fn encrypt(
         relays: &[RelayUrl],
         secret: &SecretKey,
@@ -240,7 +240,7 @@ impl PrivateStorageRelays {
     ///
     /// # Errors
     ///
-    /// Propagates [`Nip44Error`] / [`crate::util::json::Error`] /
+    /// Propagates [`Nip44Error`] / [`serde_json::Error`] /
     /// [`RelayUrlError`].
     pub fn decrypt(
         &self,

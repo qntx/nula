@@ -40,11 +40,13 @@
 //!   patch.
 //! - [`ErrorCode`] — every spec'd error code as a typed variant
 //!   plus `Other(String)` for forward compatibility.
-//! - [`EventBuilder::nwc_*`] / [`decrypt_request`] /
-//!   [`decrypt_response`] / [`decrypt_notification`] — the
-//!   end-to-end happy path: build a signed encrypted event, parse
-//!   one back, all behind the `nip44` feature gate so the build
-//!   stays fast for callers who don't need NWC at all.
+//! - [`EventBuilder::nwc_info`] / [`EventBuilder::nwc_request`] /
+//!   [`EventBuilder::nwc_response`] / [`EventBuilder::nwc_notification`]
+//!   plus the matching [`decrypt_request`] / [`decrypt_response`] /
+//!   [`decrypt_notification`] readers — the end-to-end happy path:
+//!   build a signed encrypted event, parse one back, all behind the
+//!   `nip44` feature gate so the build stays fast for callers who
+//!   don't need NWC at all.
 //!
 //! What the module **does not** do (yet): per-method typed
 //! payloads (`PayInvoice`, `MakeInvoice`, …). Those are pure
@@ -633,7 +635,7 @@ fn decrypt_with(
 ///
 /// # Errors
 ///
-/// Returns [`NwcError::UnsupportedEncryption`] if the tag value is
+/// Returns [`NwcError::UnknownEncryption`] if the tag value is
 /// not one of the schemes defined in §2.
 pub fn encryption_for_event(event: &Event) -> Result<Encryption, NwcError> {
     for tag in &event.tags {

@@ -21,7 +21,7 @@
 //! 2. **Forward-compatible extra tags** — apps frequently attach
 //!    bespoke tags they invent for their own bookkeeping. We
 //!    expose them through [`ApplicationData::extra_tags`] so
-//!    [`Self::from_event`] never silently drops anything.
+//!    [`ApplicationData::from_event`] never silently drops anything.
 //!
 //! # Usage sketch
 //!

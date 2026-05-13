@@ -11,9 +11,9 @@
 //! - [`hll_offset_for_value`] — the deterministic offset rule the
 //!   spec pins for cacheable counts.
 //!
-//! The wire serialisation lives behind [`CountRequest::to_wire`] and
-//! [`CountResponse::to_wire`] so callers can plug it into their own
-//! WebSocket transport without forcing this crate to take a
+//! The wire types are plain structs, so callers compose them into
+//! their own JSON arrays (`["COUNT", <sub_id>, <filter>...]` /
+//! `["COUNT", <sub_id>, {"count": ...}]`) without this crate taking a
 //! `serde_json::Value` round-trip.
 //!
 //! [NIP-45]: https://github.com/nostr-protocol/nips/blob/master/45.md

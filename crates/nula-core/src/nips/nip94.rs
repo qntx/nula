@@ -13,23 +13,23 @@
 //! ignores everything else NIP-94 mentions. We model the **complete**
 //! set so a NIP-94 event round-trips byte-for-byte:
 //!
-//! | Tag         | Field                        | Type            |
-//! |-------------|------------------------------|-----------------|
-//! | `url`       | [`Self::url`]                | [`Url`]         |
-//! | `m`         | [`Self::mime_type`]          | `String`        |
-//! | `x`         | [`Self::hash`]               | `[u8; 32]`      |
-//! | `ox`        | [`Self::original_hash`]      | `[u8; 32]`      |
-//! | `size`      | [`Self::size`]               | `u64`           |
-//! | `dim`       | [`Self::dim`]                | [`ImageDimensions`] |
-//! | `magnet`    | [`Self::magnet`]             | `String`        |
-//! | `i`         | [`Self::torrent_infohash`]   | `String`        |
-//! | `blurhash`  | [`Self::blurhash`]           | `String`        |
-//! | `thumb`     | [`Self::thumb`]              | [`FileVariant`] |
-//! | `image`     | [`Self::preview_image`]      | [`FileVariant`] |
-//! | `summary`   | [`Self::summary`]            | `String`        |
-//! | `alt`       | [`Self::alt`]                | `String`        |
-//! | `fallback`  | [`Self::fallback_urls`]      | `Vec<Url>`      |
-//! | `service`   | [`Self::service`]            | `String`        |
+//! | Tag         | Field                                 | Type            |
+//! |-------------|---------------------------------------|-----------------|
+//! | `url`       | [`FileMetadata::url`]                 | [`Url`]         |
+//! | `m`         | [`FileMetadata::mime_type`]           | `String`        |
+//! | `x`         | [`FileMetadata::hash`]                | `[u8; 32]`      |
+//! | `ox`        | [`FileMetadata::original_hash`]       | `[u8; 32]`      |
+//! | `size`      | [`FileMetadata::size`]                | `u64`           |
+//! | `dim`       | [`FileMetadata::dim`]                 | [`ImageDimensions`] |
+//! | `magnet`    | [`FileMetadata::magnet`]              | `String`        |
+//! | `i`         | [`FileMetadata::torrent_infohash`]    | `String`        |
+//! | `blurhash`  | [`FileMetadata::blurhash`]            | `String`        |
+//! | `thumb`     | [`FileMetadata::thumb`]               | [`FileVariant`] |
+//! | `image`     | [`FileMetadata::preview_image`]       | [`FileVariant`] |
+//! | `summary`   | [`FileMetadata::summary`]             | `String`        |
+//! | `alt`       | [`FileMetadata::alt`]                 | `String`        |
+//! | `fallback`  | [`FileMetadata::fallback_urls`]       | `Vec<Url>`      |
+//! | `service`   | [`FileMetadata::service`]             | `String`        |
 //!
 //! # Authoring vs reading
 //!
