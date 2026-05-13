@@ -46,12 +46,6 @@ pub mod util;
 // warning-clean even when only [`SecretKey`]'s zeroize call site is
 // active.
 use zeroize as _;
-// `reqwest` is consumed by NIP-05 (`ReqwestNip05Fetcher`); the
-// `nip11-fetch` feature stages the same dep for the upcoming NIP-11
-// fetcher implementation. Until that lands, the placeholder keeps
-// `cargo check --features nip11-fetch` warning-clean.
-#[cfg(all(feature = "nip11-fetch", not(feature = "nip05")))]
-use reqwest as _;
 // `criterion` is wired in `dev-dependencies` for the `benches/`
 // targets only; lib unit tests never reach for it. The placeholder
 // keeps `cargo build --tests` warning-clean under
