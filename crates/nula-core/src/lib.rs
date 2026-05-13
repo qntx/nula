@@ -41,28 +41,23 @@ pub mod signer;
 pub mod types;
 pub mod util;
 
-// Placeholder import for crates that are declared in `Cargo.toml` but
-// not yet pulled in by any `nipNN` module: silences
-// `unused-crate-dependencies` so we can stage the dep graph ahead of
-// the implementation. Remove the corresponding line as each NIP lights
-// up its own real `use … ::*;`.
-#[cfg(feature = "nip05")]
-use reqwest as _;
 // `zeroize` is consumed across NIP-44, NIP-49 and the `Keys` Drop
 // impls; the unconditional placeholder keeps `--no-default-features`
 // warning-clean even when only [`SecretKey`]'s zeroize call site is
 // active.
 use zeroize as _;
+// `reqwest` is consumed by NIP-05 (`ReqwestNip05Fetcher`); the
+// `nip11-fetch` feature stages the same dep for the upcoming NIP-11
+// fetcher implementation. Until that lands, the placeholder keeps
+// `cargo check --features nip11-fetch` warning-clean.
+#[cfg(all(feature = "nip11-fetch", not(feature = "nip05")))]
+use reqwest as _;
 // `criterion` is wired in `dev-dependencies` for the `benches/`
-// targets only; lib unit tests never reach for it. `base64` is a
-// dev-dependency for the `nip44_vectors` integration test (and an
-// optional production dependency behind the `nip04` / `nip44`
-// features); when both features are off, the lib's own unit-test build
-// has no use for it. Both placeholders keep `cargo build --tests`
-// warning-clean under `unused-crate-dependencies` regardless of which
-// feature subset is active.
+// targets only; lib unit tests never reach for it. The placeholder
+// keeps `cargo build --tests` warning-clean under
+// `unused-crate-dependencies`.
 #[cfg(test)]
-use {base64 as _, criterion as _};
+use criterion as _;
 
 // Crate-root re-exports: only the small set of types that callers reach
 // for *by name* on every interaction with Nostr (events, keys, filters,

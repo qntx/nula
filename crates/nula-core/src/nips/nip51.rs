@@ -54,7 +54,9 @@ use crate::event::{
     Alphabet, Coordinate, CoordinateError, Event, EventBuilder, EventId, EventIdError, Kind,
     SingleLetterTag, Tag, TagError, TagKind, Tags,
 };
-use crate::key::{PublicKey, PublicKeyError, SecretKey};
+use crate::key::{PublicKey, PublicKeyError};
+#[cfg(feature = "nip44")]
+use crate::key::SecretKey;
 use crate::types::{RelayUrl, RelayUrlError};
 
 /// One typed item that lives on a NIP-51 list or set.
@@ -548,11 +550,13 @@ impl List {
     }
 }
 
+#[cfg(feature = "nip44")]
 fn serialize_items(items: &[ListItem]) -> Result<String, serde_json::Error> {
     let raw: Vec<Vec<String>> = items.iter().map(|i| i.to_tag().values().to_vec()).collect();
     serde_json::to_string(&raw)
 }
 
+#[cfg(feature = "nip44")]
 fn deserialize_items(json: &str) -> Result<Vec<ListItem>, serde_json::Error> {
     let raw: Vec<Vec<String>> = serde_json::from_str(json)?;
     raw.into_iter()
@@ -564,10 +568,12 @@ fn deserialize_items(json: &str) -> Result<Vec<ListItem>, serde_json::Error> {
         .collect()
 }
 
+#[cfg(feature = "nip44")]
 trait CustomError {
     fn custom<E: core::fmt::Display>(err: E) -> Self;
 }
 
+#[cfg(feature = "nip44")]
 impl CustomError for serde_json::Error {
     fn custom<E: core::fmt::Display>(err: E) -> Self {
         <Self as serde::de::Error>::custom(err.to_string())

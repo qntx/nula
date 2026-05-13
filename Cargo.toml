@@ -25,6 +25,11 @@ serde_json = { version = "1.0.149", default-features = false, features = ["alloc
 # Cryptography (always-on)
 secp256k1 = { version = "0.31.1", default-features = false, features = ["std", "serde"] }
 sha2 = "0.11.0"
+# `base64` is consumed by NIP-04 (legacy DM), NIP-44 (v2 encrypted
+# payloads), and NIP-98 (HTTP auth). It is effectively a core codec
+# rather than an optional addon, so it lives alongside the other
+# always-on cryptography crates.
+base64 = "0.22.1"
 zeroize = { version = "1.8.2", default-features = false, features = ["zeroize_derive"] }
 
 # Cryptography (NIP-04 / NIP-44 / NIP-49 - feature-gated)
@@ -47,7 +52,6 @@ bip39 = "2.2.2"
 unicode-normalization = "0.1.25"
 
 # Encoding
-base64 = "0.22.1"
 bech32 = { version = "0.11.1", default-features = false, features = ["std"] }
 faster-hex = { version = "0.10.0", default-features = false, features = ["std"] }
 url = { version = "2.5.8", default-features = false, features = ["serde"] }

@@ -27,9 +27,14 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["nip04", "nip06", "nip17", "nip44", "nip46", "nip49", "nip59"]
 
 # Encryption primitives (each brings in its own optional crypto deps).
-nip04 = ["dep:aes", "dep:cbc", "dep:base64"]
-nip06 = ["dep:bip39"]
-nip44 = ["dep:chacha20", "dep:hkdf", "dep:hmac", "dep:base64"]
+# `base64` is no longer feature-gated: it is shared across NIP-04,
+# NIP-44, and NIP-98 (HTTP auth, unconditional), so it lives in the
+# core dependency block. `hmac` is shared between NIP-06 (BIP-32
+# derivation via HMAC-SHA512) and NIP-44 (HMAC-SHA256 MAC); each
+# feature lists it explicitly so the dep stays opt-in.
+nip04 = ["dep:aes", "dep:cbc"]
+nip06 = ["dep:bip39", "dep:hmac"]
+nip44 = ["dep:chacha20", "dep:hkdf", "dep:hmac"]
 nip49 = ["dep:chacha20poly1305", "dep:scrypt", "dep:unicode-normalization"]
 
 # Composite NIPs that ride on top of an encryption layer.
@@ -52,6 +57,7 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 # Always-on protocol primitives.
+base64.workspace = true
 bech32.workspace = true
 faster-hex.workspace = true
 getrandom.workspace = true
@@ -66,7 +72,6 @@ zeroize.workspace = true
 
 # Optional crypto primitives (feature-gated).
 aes = { workspace = true, optional = true }
-base64 = { workspace = true, optional = true }
 bip39 = { workspace = true, optional = true }
 cbc = { workspace = true, optional = true }
 chacha20 = { workspace = true, optional = true }
@@ -83,7 +88,6 @@ reqwest = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
-base64.workspace = true
 criterion.workspace = true
 hex-literal.workspace = true
 serde_json = { workspace = true, features = ["std"] }
