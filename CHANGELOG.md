@@ -7,7 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Feature gating** (`nula-core`):
+  - `nips::nip98` (HTTP Auth) unconditionally referenced `base64::Engine`
+    but `base64` was an optional dependency pulled in only via the
+    `nip04` / `nip44` features. Any feature subset lacking either
+    failed to compile (e.g. `cargo check --features nip49`). Resolution:
+    promote `base64` to a non-optional workspace dependency.
+  - `nips::nip06` (BIP-39 derivation) uses `hmac::Hmac<Sha512>`
+    internally but the `nip06` feature only declared `dep:bip39`,
+    omitting `dep:hmac`. Building with `--features nip06` alone
+    failed. Resolution: list `dep:hmac` explicitly on the `nip06`
+    feature (it stays optional and is also pulled in by `nip44`).
+  - `nips::nip51` carried dead-code warnings under feature subsets
+    without `nip44` (the `SecretKey` import plus the
+    `serialize_items` / `deserialize_items` / `CustomError` items
+    are only used by encrypted-list helpers). Resolution: gate them
+    with `#[cfg(feature = "nip44")]`.
+
+- **Documentation** (`nula-core`):
+  - All 31 rustdoc unresolved-link / redundant-target warnings
+    cleared. Categories: stale `Self::xxx` references in module-level
+    docs replaced with concrete type paths (`nip78` / `nip94` / `nip98`);
+    invented method names corrected to the real items (`nip37`'s
+    `crate::util::json::Error` → `serde_json::Error`; `nip47`'s
+    `NwcError::UnsupportedEncryption` → `NwcError::UnknownEncryption`
+    plus the `EventBuilder::nwc_*` wildcard expanded to the four
+    concrete methods; `nip98`'s `Event::try_to_json` →
+    `JsonUtil::try_to_json`); redundant `[Type](crate::path::Type)`
+    targets dropped where the type is already in scope (`nip71` /
+    `nip92`); literal `[<chainId>:]` in `nip73`'s i-tag wire-format
+    table escaped so rustdoc stops parsing it as an intra-doc link;
+    wildcard `Kind::*` and `CountRequest::to_wire` references in
+    `nip45` / `nip51` rewritten as prose. `cargo doc -p nula-core
+    --no-deps --all-features` now passes under
+    `RUSTDOCFLAGS="-D warnings"`.
+
 ### Added
+
+- **`nip11-fetch` feature implementation** (`nula-core`):
+  - `Nip11Fetcher` trait + `Nip11FetchError` enum
+    (`Transport` / `Status` / `Decode` variants) + `FetchFuture`
+    alias, mirroring the NIP-05 fetcher architecture. The core
+    stays side-effect-free so callers can plug in any HTTP
+    backend; the `reqwest`-backed `ReqwestNip11Fetcher` default
+    implementation lives behind the existing `nip11-fetch` Cargo
+    feature.
+  - The default fetcher sends `Accept: application/nostr+json`
+    per NIP-11 §"Discovering Relay Information" and disables
+    HTTP redirects so the relay URL stays the relay's identifier.
+    `NIP11_MEDIA_TYPE` is surfaced as a public `const` for
+    downstream HTTP servers to advertise the canonical
+    `Content-Type`.
+  - `MockNip11Fetcher` test fixture inlined in `mod tests`
+    matches the `MockFetcher` shape from `nip05` and exercises
+    both the happy path and the JSON-decode error path. The
+    minimal `block_on` helper is built on `Waker::noop()`
+    (stable since Rust 1.85) so the tests do not pull `tokio`
+    or `futures-executor` into dev-dependencies.
 
 - **Phase 1 W8 — addressable surfaces & live experiences**
   (`nula-core`):
@@ -393,6 +451,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `nostr-protocol/nips`).
 
 ### Changed
+
+- **Dependency surface** (`nula-core`):
+  - `base64` promoted from an optional dependency (previously gated by
+    the `nip04` / `nip44` features) to a non-optional workspace
+    dependency. It is consumed by NIP-04 legacy DMs, NIP-44 v2 encrypted
+    payloads, and the NIP-98 HTTP-auth `Authorization` header — three
+    of the most commonly used NIPs in the workspace — so it is
+    effectively a core codec rather than an opt-in extra. The
+    `dep:base64` clauses on `nip04` / `nip44` are removed accordingly.
+  - **BREAKING**: callers that previously disabled `base64` by
+    selecting a feature subset without `nip04` / `nip44` will now
+    pull it in unconditionally (~50 KB compiled). Downstream feature
+    declarations that named `nula-core/nip04` or `nula-core/nip44`
+    purely to surface the `base64` dependency can drop those flags.
+
+- **Code style** (`nula-core`):
+  - All `core::*` imports migrated to `std::*` to reflect the Phase 0
+    "strictly std-only" stance documented in this changelog. In std
+    mode these paths are identical re-exports (`std::fmt == core::fmt`),
+    so this is a pure consistency change with zero runtime or codegen
+    impact. 42 files updated.
 
 - **Phase 1 W1** (`nula-core`):
   - The `nip44_vectors` integration test now declares
