@@ -6,7 +6,7 @@
 //! automatically verify the cryptographic invariants — call
 //! [`Event::verify`] when ingesting events from an untrusted source.
 
-use core::fmt;
+use std::fmt;
 
 use secp256k1::SECP256K1;
 use secp256k1::schnorr::Signature;

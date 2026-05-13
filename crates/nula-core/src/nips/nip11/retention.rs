@@ -4,7 +4,7 @@
 //! given class of events. NIP-11 lets the `kinds` array mix bare integers
 //! and `[start, end]` 2-element arrays; [`KindRange`] models that union.
 
-use core::fmt;
+use std::fmt;
 
 use serde::de::{self, Deserializer, SeqAccess, Visitor};
 use serde::ser::{SerializeSeq, Serializer};

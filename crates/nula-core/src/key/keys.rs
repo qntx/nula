@@ -5,7 +5,7 @@
 //! recomputing the public key on every call — important on the hot path of
 //! event creation.
 
-use core::fmt;
+use std::fmt;
 
 use secp256k1::SECP256K1;
 use secp256k1::schnorr::Signature;

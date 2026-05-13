@@ -8,7 +8,7 @@
 //!
 //! [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md
 
-use core::fmt;
+use std::fmt;
 
 use serde::de::{self, SeqAccess, Visitor};
 use serde::ser::{SerializeSeq, Serializer};

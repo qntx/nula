@@ -37,8 +37,8 @@
 //!
 //! [NIP-27]: https://github.com/nostr-protocol/nips/blob/master/27.md
 
-use core::ops::Range;
 use std::collections::BTreeSet;
+use std::ops::Range;
 
 use crate::event::{Alphabet, SingleLetterTag, Tag, TagKind};
 use crate::nips::nip21::Nip21;
@@ -219,7 +219,7 @@ mod tests {
     fn profile_uri() -> (String, PublicKey) {
         let keys = Keys::parse("0000000000000000000000000000000000000000000000000000000000000003")
             .unwrap();
-        let profile = Nip19Profile::new(*keys.public_key(), core::iter::empty());
+        let profile = Nip19Profile::new(*keys.public_key(), std::iter::empty());
         let bech32 = profile.to_bech32().unwrap();
         (format!("nostr:{bech32}"), *keys.public_key())
     }

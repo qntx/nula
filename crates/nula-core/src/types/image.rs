@@ -4,9 +4,9 @@
 //! `picture` field in NIP-01 metadata. The wire format is a single string
 //! with a lowercase `x` separator, e.g. `"800x600"`.
 
-use core::fmt;
-use core::num::ParseIntError;
-use core::str::FromStr;
+use std::fmt;
+use std::num::ParseIntError;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;

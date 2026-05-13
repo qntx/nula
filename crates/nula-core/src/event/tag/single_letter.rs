@@ -10,8 +10,8 @@
 //! [`SingleLetterTag`] models the discriminator without conflating it with the
 //! free-form custom tag names (which live in [`super::TagKind::Custom`]).
 
-use core::fmt;
-use core::str::FromStr;
+use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;

@@ -27,7 +27,7 @@
 //!
 //! [NIP-30]: https://github.com/nostr-protocol/nips/blob/master/30.md
 
-use core::ops::Range;
+use std::ops::Range;
 
 use thiserror::Error;
 
@@ -180,7 +180,7 @@ pub fn emojis_from_tags(tags: &Tags) -> impl Iterator<Item = Emoji> + use<'_> {
 /// rejected (so `prefix:code:` yields the `:code:` span starting
 /// after `prefix`).
 ///
-/// Returns [`Range<usize>`](core::ops::Range) of byte offsets plus
+/// Returns [`Range<usize>`](std::ops::Range) of byte offsets plus
 /// a borrowed slice of the shortcode body (no colons).
 pub fn shortcodes_in(content: &str) -> impl Iterator<Item = (Range<usize>, &str)> + '_ {
     ShortcodeScanner::new(content)

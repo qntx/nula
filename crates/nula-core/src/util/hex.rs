@@ -5,7 +5,7 @@
 //! Nostr wire format expects lowercase hex (NIP-01) and consistency makes
 //! pubkeys/event IDs trivially comparable.
 
-use core::fmt;
+use std::fmt;
 
 use thiserror::Error;
 

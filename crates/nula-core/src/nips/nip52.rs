@@ -35,7 +35,7 @@
 //!
 //! [NIP-52]: https://github.com/nostr-protocol/nips/blob/master/52.md
 
-use core::{fmt, num::ParseIntError, str::FromStr};
+use std::{fmt, num::ParseIntError, str::FromStr};
 
 use thiserror::Error;
 

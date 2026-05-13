@@ -6,8 +6,8 @@
 //! [`Tags::find_first`] give NIP-aware code a one-line lookup without
 //! re-implementing the iteration.
 
-use core::fmt;
-use core::slice;
+use std::fmt;
+use std::slice;
 
 use serde::{Deserialize, Serialize};
 

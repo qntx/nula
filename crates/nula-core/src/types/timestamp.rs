@@ -7,10 +7,10 @@
 //!
 //! [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md
 
-use core::fmt;
-use core::num::ParseIntError;
-use core::ops::{Add, Sub};
-use core::str::FromStr;
+use std::fmt;
+use std::num::ParseIntError;
+use std::ops::{Add, Sub};
+use std::str::FromStr;
 use std::time::{Duration, SystemTime, SystemTimeError, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};

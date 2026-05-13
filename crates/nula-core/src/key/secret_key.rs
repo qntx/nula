@@ -14,8 +14,8 @@
 //!   the volatile memset survives. This is the same primitive `bitcoin`
 //!   and `rust-secp256k1` themselves rely on.
 
-use core::fmt;
-use core::str::FromStr;
+use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;

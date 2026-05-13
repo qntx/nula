@@ -19,8 +19,8 @@
 //!
 //! [NIP-10]: https://github.com/nostr-protocol/nips/blob/master/10.md
 
-use core::fmt;
-use core::str::FromStr;
+use std::fmt;
+use std::str::FromStr;
 
 use thiserror::Error;
 

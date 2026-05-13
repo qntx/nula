@@ -45,8 +45,8 @@
 //! [NIP-46]: https://github.com/nostr-protocol/nips/blob/master/46.md
 //! [NIP-44]: https://github.com/nostr-protocol/nips/blob/master/44.md
 
-use core::fmt;
-use core::str::FromStr;
+use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;

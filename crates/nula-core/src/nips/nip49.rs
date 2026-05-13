@@ -211,8 +211,8 @@ pub struct EncryptedSecretKey {
     ciphertext: [u8; CIPHERTEXT_BYTES],
 }
 
-impl core::fmt::Debug for EncryptedSecretKey {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl std::fmt::Debug for EncryptedSecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EncryptedSecretKey")
             .field("log_n", &self.log_n)
             .field("security", &self.security)

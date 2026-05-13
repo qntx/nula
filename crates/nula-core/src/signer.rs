@@ -29,10 +29,10 @@
 //! Schnorr signature itself, and impls that already produce a boxed
 //! future (NIP-46 RPC, browser extensions) pay no extra cost.
 
-use core::error::Error as StdError;
-use core::fmt;
-use core::future::Future;
-use core::pin::Pin;
+use std::error::Error as StdError;
+use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use thiserror::Error as ThisError;
@@ -343,8 +343,8 @@ mod tests {
 
     fn block_on<F: Future>(f: F) -> F::Output {
         // Smallest possible executor: poll once, panic if pending.
-        use core::task::{Context, Poll, Waker};
         use std::pin::pin;
+        use std::task::{Context, Poll, Waker};
 
         let waker = Waker::noop();
         let mut cx = Context::from_waker(waker);

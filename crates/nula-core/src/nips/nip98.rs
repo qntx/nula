@@ -128,8 +128,8 @@ impl HttpMethod {
     }
 }
 
-impl core::fmt::Display for HttpMethod {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl std::fmt::Display for HttpMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
     }
 }
@@ -349,7 +349,7 @@ pub enum HttpAuthError {
     HeaderInvalidBase64(#[source] base64::DecodeError),
     /// `Authorization` body decoded to non-UTF-8.
     #[error("`Authorization` body is not UTF-8: {0}")]
-    HeaderInvalidUtf8(#[source] core::str::Utf8Error),
+    HeaderInvalidUtf8(#[source] std::str::Utf8Error),
     /// `Authorization` body did not deserialise as a Nostr event.
     #[error("`Authorization` body is not a valid Nostr event: {0}")]
     HeaderInvalidEvent(#[source] EventError),
@@ -438,7 +438,7 @@ pub fn parse_authorization_header(header: &str) -> Result<Event, HttpAuthError> 
     let bytes = BASE64
         .decode(body.trim())
         .map_err(HttpAuthError::HeaderInvalidBase64)?;
-    let json = core::str::from_utf8(&bytes).map_err(HttpAuthError::HeaderInvalidUtf8)?;
+    let json = std::str::from_utf8(&bytes).map_err(HttpAuthError::HeaderInvalidUtf8)?;
     let event = Event::from_json(json).map_err(HttpAuthError::HeaderInvalidJson)?;
     Ok(event)
 }

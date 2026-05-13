@@ -187,10 +187,7 @@ pub type FetchFuture<'a, T, E> = Pin<Box<dyn Future<Output = Result<T, E>> + Sen
 /// across futures and threads.
 pub trait Nip11Fetcher: Send + Sync {
     /// Fetch the relay-info document advertised by `url`.
-    fn fetch<'a>(
-        &'a self,
-        url: &'a Url,
-    ) -> FetchFuture<'a, RelayInformation, Nip11FetchError>;
+    fn fetch<'a>(&'a self, url: &'a Url) -> FetchFuture<'a, RelayInformation, Nip11FetchError>;
 }
 
 #[cfg(feature = "nip11-fetch")]
@@ -199,7 +196,9 @@ pub use reqwest_impl::ReqwestNip11Fetcher;
 
 #[cfg(feature = "nip11-fetch")]
 mod reqwest_impl {
-    use super::{FetchFuture, NIP11_MEDIA_TYPE, Nip11FetchError, Nip11Fetcher, RelayInformation, Url};
+    use super::{
+        FetchFuture, NIP11_MEDIA_TYPE, Nip11FetchError, Nip11Fetcher, RelayInformation, Url,
+    };
 
     /// `reqwest`-backed [`Nip11Fetcher`].
     ///
@@ -261,10 +260,7 @@ mod reqwest_impl {
     }
 
     impl Nip11Fetcher for ReqwestNip11Fetcher {
-        fn fetch<'a>(
-            &'a self,
-            url: &'a Url,
-        ) -> FetchFuture<'a, RelayInformation, Nip11FetchError> {
+        fn fetch<'a>(&'a self, url: &'a Url) -> FetchFuture<'a, RelayInformation, Nip11FetchError> {
             Box::pin(do_fetch(&self.client, url))
         }
     }

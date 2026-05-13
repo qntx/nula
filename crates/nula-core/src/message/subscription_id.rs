@@ -5,8 +5,8 @@
 //! interoperable clients use lowercase hex random strings to avoid surprising
 //! relays that index the value as a database key.
 
-use core::fmt;
-use core::str::FromStr;
+use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;

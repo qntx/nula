@@ -34,9 +34,9 @@
 //! event.verify().unwrap();
 //! ```
 
-use core::fmt;
-use core::str::FromStr;
 use std::collections::BTreeMap;
+use std::fmt;
+use std::str::FromStr;
 
 use thiserror::Error;
 

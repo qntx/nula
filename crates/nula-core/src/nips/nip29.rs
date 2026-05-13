@@ -258,7 +258,7 @@ impl GroupFlags {
     }
 }
 
-impl core::ops::BitOr for GroupFlags {
+impl std::ops::BitOr for GroupFlags {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self {
@@ -266,7 +266,7 @@ impl core::ops::BitOr for GroupFlags {
     }
 }
 
-impl core::ops::BitOrAssign for GroupFlags {
+impl std::ops::BitOrAssign for GroupFlags {
     fn bitor_assign(&mut self, rhs: Self) {
         self.0 |= rhs.0;
     }

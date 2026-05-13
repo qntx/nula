@@ -10,9 +10,9 @@
 //! [`TagKind::custom`], parsed from a string via [`TagKind::from_str`], or
 //! borrowed from a serialised tag through [`TagKind::from_wire`].
 
-use core::borrow::Borrow;
-use core::fmt;
-use core::str::FromStr;
+use std::borrow::Borrow;
+use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;

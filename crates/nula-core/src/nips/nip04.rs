@@ -168,7 +168,7 @@ pub fn decrypt(secret: &SecretKey, peer: &PublicKey, payload: &str) -> Result<St
         .decrypt_padded::<Pkcs7>(&mut ciphertext)
         .map_err(|_| Nip04Error::Unpad)?;
 
-    let result = core::str::from_utf8(plaintext)
+    let result = std::str::from_utf8(plaintext)
         .map_err(|_| Nip04Error::InvalidUtf8)?
         .to_owned();
 

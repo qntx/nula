@@ -10,8 +10,8 @@
 //! Higher-level types ([`super::RelayUrl`], NIP-19 `nevent` URIs, NIP-21
 //! `nostr:` URIs) build on this primitive.
 
-use core::fmt;
-use core::str::FromStr;
+use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;

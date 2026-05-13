@@ -464,7 +464,7 @@ struct FilterVisitor;
 impl<'de> Visitor<'de> for FilterVisitor {
     type Value = Filter;
 
-    fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("a Nostr filter object")
     }
 

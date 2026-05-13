@@ -28,7 +28,7 @@
 //!
 //! [NIP-73]: https://github.com/nostr-protocol/nips/blob/master/73.md
 
-use core::fmt;
+use std::fmt;
 
 use thiserror::Error;
 

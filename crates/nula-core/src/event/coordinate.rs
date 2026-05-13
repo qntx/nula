@@ -15,8 +15,8 @@
 //! wire form, and is reused by NIP-09 (`a` tag in deletion events), NIP-19
 //! (`naddr`), and any future NIP that addresses replaceable events.
 
-use core::fmt;
-use core::str::FromStr;
+use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;

@@ -45,13 +45,13 @@ pub mod util;
 // impls; the unconditional placeholder keeps `--no-default-features`
 // warning-clean even when only [`SecretKey`]'s zeroize call site is
 // active.
-use zeroize as _;
 // `criterion` is wired in `dev-dependencies` for the `benches/`
 // targets only; lib unit tests never reach for it. The placeholder
 // keeps `cargo build --tests` warning-clean under
 // `unused-crate-dependencies`.
 #[cfg(test)]
 use criterion as _;
+use zeroize as _;
 
 // Crate-root re-exports: only the small set of types that callers reach
 // for *by name* on every interaction with Nostr (events, keys, filters,

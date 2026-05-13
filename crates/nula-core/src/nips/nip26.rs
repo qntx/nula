@@ -51,7 +51,7 @@
 //!
 //! [NIP-26]: https://github.com/nostr-protocol/nips/blob/master/26.md
 
-use core::fmt;
+use std::fmt;
 
 use secp256k1::schnorr::Signature;
 use sha2::{Digest, Sha256};

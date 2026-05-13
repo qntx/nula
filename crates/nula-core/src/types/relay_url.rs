@@ -19,8 +19,8 @@
 //!
 //! [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md
 
-use core::fmt;
-use core::str::FromStr;
+use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;

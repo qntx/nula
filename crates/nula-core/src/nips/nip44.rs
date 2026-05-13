@@ -164,8 +164,8 @@ pub enum Nip44Error {
 #[derive(Clone, ZeroizeOnDrop)]
 pub struct ConversationKey([u8; 32]);
 
-impl core::fmt::Debug for ConversationKey {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl std::fmt::Debug for ConversationKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("ConversationKey(<redacted>)")
     }
 }

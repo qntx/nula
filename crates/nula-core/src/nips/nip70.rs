@@ -34,7 +34,7 @@ impl EventBuilder {
         let kind = TagKind::from_wire(PROTECTED_TAG);
         // `Tag::with` ships the head string as the tag's first element and
         // accepts zero further values, producing exactly `["-"]`.
-        let tag = Tag::with(&kind, core::iter::empty::<String>());
+        let tag = Tag::with(&kind, std::iter::empty::<String>());
         self.tags_mut().push_unique_kind(tag);
         self
     }

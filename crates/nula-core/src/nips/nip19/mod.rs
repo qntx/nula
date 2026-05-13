@@ -41,8 +41,8 @@ pub mod hrp;
 pub mod profile;
 pub mod tlv;
 
-use core::str;
-use core::str::Utf8Error;
+use std::str;
+use std::str::Utf8Error;
 
 use bech32::Bech32;
 use bech32::primitives::decode::{CheckedHrpstring, CheckedHrpstringError};
@@ -828,7 +828,7 @@ mod tests {
         // Construct a string that is *syntactically* a bech32 candidate
         // (lowercase ascii + a `1` separator) but longer than the cap.
         // The length check must fire before any expensive bech32 work.
-        let oversized: String = core::iter::repeat_n('q', MAX_NIP19_LENGTH + 1).collect();
+        let oversized: String = std::iter::repeat_n('q', MAX_NIP19_LENGTH + 1).collect();
         let err = Nip19Entity::from_bech32(&oversized).unwrap_err();
         assert!(matches!(
             err,

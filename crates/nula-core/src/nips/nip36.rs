@@ -62,7 +62,7 @@ impl ContentWarning {
     pub fn to_tag(&self) -> Tag {
         let head = TagKind::from_wire(CONTENT_WARNING_TAG);
         self.reason.as_ref().map_or_else(
-            || Tag::with(&head, core::iter::empty::<String>()),
+            || Tag::with(&head, std::iter::empty::<String>()),
             |reason| Tag::with(&head, [reason.clone()]),
         )
     }
@@ -113,7 +113,7 @@ impl Tag {
     pub fn content_warning(reason: Option<impl Into<String>>) -> Self {
         let head = TagKind::from_wire(CONTENT_WARNING_TAG);
         reason.map_or_else(
-            || Self::with(&head, core::iter::empty::<String>()),
+            || Self::with(&head, std::iter::empty::<String>()),
             |r| Self::with(&head, [r.into()]),
         )
     }

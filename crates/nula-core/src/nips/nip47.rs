@@ -55,8 +55,8 @@
 //!
 //! [NIP-47]: https://github.com/nostr-protocol/nips/blob/master/47.md
 
-use core::fmt;
 use std::collections::HashSet;
+use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;

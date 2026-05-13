@@ -4,8 +4,8 @@
 //! and every `p` tag). [`PublicKey`] wraps [`secp256k1::XOnlyPublicKey`] with
 //! Nostr-friendly construction, hex/serde representations, and clear errors.
 
-use core::fmt;
-use core::str::FromStr;
+use std::fmt;
+use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
