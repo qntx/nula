@@ -20,7 +20,7 @@ mod defaults {
 
     /// 60 s publish ack window. Most relays reply within ~50 ms;
     /// the long tail covers IBC-style relay chains.
-    pub(super) const PUBLISH_TIMEOUT: Duration = Duration::from_secs(60);
+    pub(super) const PUBLISH_TIMEOUT: Duration = Duration::from_mins(1);
 }
 
 /// Configuration for a [`crate::Relay`] instance.

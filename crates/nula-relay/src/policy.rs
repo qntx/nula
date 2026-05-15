@@ -40,7 +40,7 @@ impl Default for ReconnectPolicy {
     fn default() -> Self {
         Self::Exponential {
             base: Duration::from_millis(500),
-            cap: Duration::from_secs(60),
+            cap: Duration::from_mins(1),
         }
     }
 }

@@ -109,7 +109,7 @@ async fn subscribe_emits_req_and_streams_event_eose() {
     let event = signed_event();
     let event_json = serde_json::to_string(&event).expect("event json");
     handle
-        .push_inbound(Message::Text(format!(r#"["EVENT","sub-1",{event_json}]"#,)))
+        .push_inbound(Message::Text(format!(r#"["EVENT","sub-1",{event_json}]"#)))
         .expect("push event");
     handle
         .push_inbound(Message::Text(r#"["EOSE","sub-1"]"#.to_owned()))
