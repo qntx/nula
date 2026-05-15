@@ -9,7 +9,33 @@
 //! Higher-level crates layer pool management, transports, databases, gossip,
 //! signers, and relay servers on top of these primitives.
 //!
+//! # Hard limits
+//!
+//! Every byte size, length cap, and tunable bound the protocol mandates lives
+//! in [`limits`]. The table below summarises the most common values; consult
+//! the cited NIPs for the binding spec text.
+//!
+//! | Constant | Value | Spec |
+//! |---|---|---|
+//! | [`limits::EVENT_ID_BYTES`] | `32` | [NIP-01] §`id` |
+//! | [`limits::SIGNATURE_BYTES`] | `64` | [NIP-01] §`sig` |
+//! | [`limits::PUBLIC_KEY_BYTES`] | `32` | [BIP-340] |
+//! | [`limits::SECRET_KEY_BYTES`] | `32` | [BIP-340] |
+//! | [`limits::SUBSCRIPTION_ID_MAX_CHARS`] | `64` | [NIP-01] §`<subscription_id>` |
+//! | [`limits::NIP19_MAX_LENGTH`] | `5_000` | [NIP-19] §guards |
+//! | [`limits::NIP44_MIN_PLAINTEXT_BYTES`] | `1` | [NIP-44] §plaintext |
+//! | [`limits::NIP44_MAX_PLAINTEXT_BYTES`] | `65_535` | [NIP-44] §plaintext |
+//! | [`limits::NIP44_MAX_PAYLOAD_BYTES`] | `65_603` | [NIP-44] §payload |
+//! | [`limits::NIP49_SALT_BYTES`] | `16` | [NIP-49] §scrypt |
+//! | [`limits::NIP49_NONCE_BYTES`] | `24` | [NIP-49] §XChaCha20 |
+//! | [`limits::NIP49_MAX_LOG_N`] | `30` | [NIP-49] §scrypt cost cap |
+//!
 //! [Nostr]: https://github.com/nostr-protocol/nostr
+//! [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md
+//! [NIP-19]: https://github.com/nostr-protocol/nips/blob/master/19.md
+//! [NIP-44]: https://github.com/nostr-protocol/nips/blob/master/44.md
+//! [NIP-49]: https://github.com/nostr-protocol/nips/blob/master/49.md
+//! [BIP-340]: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/nula-core")]
@@ -32,6 +58,7 @@
 pub mod event;
 pub mod filter;
 pub mod key;
+pub mod limits;
 pub mod message;
 pub mod metadata;
 pub mod nips;
