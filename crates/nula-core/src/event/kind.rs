@@ -71,6 +71,8 @@ impl Kind {
     pub const NUTZAP: Self = Self(9_321);
     /// Nutzap informational replaceable event (NIP-61).
     pub const NUTZAP_INFO: Self = Self(10_019);
+    /// NIP-96 user-preferred file-storage server list.
+    pub const FILE_SERVER_LIST: Self = Self(10_096);
     /// Badge award (NIP-58).
     pub const BADGE_AWARD: Self = Self(8);
     /// Zap request (NIP-57). Not published to relays; sent to the
