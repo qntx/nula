@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Feature gating** (`nula-core`):
+  - `limits.rs` unconditionally re-exported `nips::nip49::{MAX_LOG_N,
+    NONCE_BYTES, SALT_BYTES}` even though the `nip49` module is
+    feature-gated. Building `nula-core` with any feature subset that
+    excluded `nip49` (notably `--no-default-features`) failed.
+    Resolution: gate the three re-exports plus the matching drift
+    assertions in `tests::pinned_values_match_spec` behind
+    `#[cfg(feature = "nip49")]`. This unblocks `nula-net`'s
+    trait-only build, which depends on `nula-core` with default
+    features off.
   - `nips::nip98` (HTTP Auth) unconditionally referenced `base64::Engine`
     but `base64` was an optional dependency pulled in only via the
     `nip04` / `nip44` features. Any feature subset lacking either
@@ -45,6 +54,123 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `RUSTDOCFLAGS="-D warnings"`.
 
 ### Added
+
+- **`nula-net` Layer-2 transport crate** (`nula-net`):
+  - `WebSocketTransport` trait — object-safe, returns
+    `BoxFuture<'_, Result<(WebSocketSink, WebSocketStream), Error>>`
+    so the transport surface stays runtime-agnostic and works under
+    `Arc<dyn …>` erasure in the upper layers.
+  - Wire-shaped `Message` / `CloseFrame` variants mirroring RFC 6455
+    one-for-one, plus a `#[non_exhaustive]` `ConnectionMode` enum
+    (today only `Direct`; `Proxy` / `Tor` reserved for a future
+    minor release).
+  - `Error` enum following ADR-0004: `#[non_exhaustive]`, every
+    boxed source `Send + Sync + 'static`, dedicated variants for
+    `Io` / `Tls` / `Handshake { status, message }` /
+    `ConnectionClosed` / `ProtocolViolation` / `UnsupportedMode` /
+    `Backend`.
+  - `BoxFuture` alias with a `cfg(target_arch = "wasm32")` split
+    that drops the `Send` bound on browser targets (see ADR-0003).
+    `WebSocketSink` / `WebSocketStream` aliases follow the same
+    cfg-split.
+  - `default-transport` feature (default-on) ships a
+    `tokio-tungstenite`-backed `DefaultTransport` plus a
+    `DefaultTransportBuilder` exposing `max_frame_size`,
+    `max_message_size`, and `accept_unmasked_frames`. rustls +
+    webpki-roots are wired in so `wss://…` works on a fresh install.
+    The default sink avoids the `SinkMapErr` panic documented at
+    rust-nostr#984 by forwarding `Sink` methods explicitly.
+  - `mock` feature (default-off) provides `MockTransport` +
+    `MockHandle`, an unbounded-channel-backed in-memory transport
+    that upper-layer crates use to drive their state machines
+    without opening real sockets.
+  - `tracing` feature (default-off) wires `Instrument` spans on the
+    handshake hot path with `nostr.relay.url` recorded per
+    ADR-0005 conventions.
+  - `IntoWebSocketTransport` blanket sugar accepting concrete `T:
+    WebSocketTransport`, `Arc<T>`, and `Arc<dyn WebSocketTransport>`
+    — callers pass any of the three to API boundaries.
+  - End-to-end integration tests: text + binary frame round-trip
+    against a localhost echo server (`tests/default_transport.rs`)
+    and channel round-trip with assertion helpers
+    (`tests/mock_transport.rs`).
+  - Disable defaults (`default-features = false`) for wasm /
+    custom-backend builds; the trait surface alone has zero runtime
+    dependencies beyond `nula-core` + `futures` + `thiserror`.
+
+- **`nula-relay` Layer-3 single-relay state machine** (`nula-relay`):
+  - `Relay` handle + `RelayBuilder` — `Arc<Inner>` over a detached
+    tokio actor task; `Send + Sync + Clone`. The last clone going
+    out of scope fires `Command::Shutdown` from `Inner::Drop`, so
+    there is no manual `close()` to forget.
+  - Connection lifecycle modelled as a 5-state machine
+    (`Initialized` → `Connecting` → `Connected` → `Disconnected`
+    → `Terminated`), exposed both as `Relay::status()` (lock-free
+    `AtomicU8`) and as a lossless `mpsc` notification stream via
+    `Relay::notifications()`.
+  - `ReconnectPolicy::{Never, Constant, Exponential}` with the
+    AWS *full jitter* algorithm
+    (`random(0, min(cap, base * 2^attempts))`); reconnect timer is
+    armed inside the actor's `select!` so flap recovery costs zero
+    extra wakeups.
+  - Subscription model: `Relay::subscribe(id, filters, opts)`
+    returns a `SubscriptionHandle` that is `Stream<Item =
+    SubscriptionItem>` with three terminal forms (`Event`,
+    `EndOfStoredEvents`, `Closed { message }`). Dropping the
+    handle auto-issues `["CLOSE", id]` to the relay via an RAII
+    `CloseGuard`. Active subscriptions are re-issued on every
+    successful reconnect.
+  - Publish path: `Relay::publish(event, opts)` correlates
+    `["EVENT", …]` with the relay's `OK` reply through a deadline-
+    keyed map. The actor's `select!` arms a dedicated
+    `next_publish_timeout` timer keyed off the earliest pending
+    deadline, so an idle actor still expires timed-out publishes
+    without depending on external wakeups.
+  - NIP-42 AUTH (`feature = "nip42"`, default-on): inbound
+    `["AUTH", challenge]` surfaces as
+    `RelayNotification::AuthChallenge`; callers reply with
+    `Relay::authenticate(event)`.
+  - `RelayLimits` — caller-tunable caps on inbound message size,
+    in-flight subscriptions, and pending publishes; over-cap calls
+    return typed `Error` variants instead of growing the actor's
+    maps unbounded.
+  - `RelayStats` — per-handle atomic counters (connect attempts /
+    successes, bytes sent / received, events published / received,
+    last handshake duration). Read-only via `Relay::stats()`.
+  - `Error` enum follows ADR-0004 with variants for transport
+    failure, malformed messages, publish rejection / timeout,
+    subscription closure, shutdown, connect timeout, not-connected,
+    duplicate subscription, and the two cap-exceeded conditions.
+  - Feature flags: `default-transport` (re-export of
+    `nula-net/default-transport` so `Relay::new(url)` works
+    out-of-the-box), `nip42`, and `tracing`. The trait surface
+    compiles under `--no-default-features` for wasm / custom
+    transports.
+  - Integration test suite (`tests/{lifecycle,subscribe,publish,
+    nip42}.rs`) drives every public method through
+    `nula-net::mock::MockTransport`; the suite covers connect /
+    disconnect / drop-shutdown, REQ + EVENT + EOSE round-trip,
+    `close_on_eose` stream termination, `["CLOSE", id]` on
+    handle-drop, CLOSED-frame surfacing, publish OK / reject /
+    timeout / NotConnected, and the NIP-42 AUTH challenge round
+    trip.
+
+- **ADR amendments** (docs):
+  - ADR-0001 — layer table updated: `nula-net` now hosts the default
+    `tokio-tungstenite` implementation behind a feature gate, and
+    `nula-relay` is recast as the NIP-01 protocol state machine
+    (reconnect, subscriptions, AUTH, negentropy) rather than the
+    transport client.
+  - ADR-0003 — added a "Default-impl gating" section documenting
+    the `default-transport` / `mock` / `tracing` feature triplet,
+    plus a wasm-aware `BoxFuture` alias listing.
+  - ADR-0006 — new record describing the single-relay actor model:
+    detached `tokio::spawn` task owning every mutable structure,
+    the `select!` wakeup invariants, the channel topology
+    (`mpsc` commands + `oneshot` replies + `mpsc` notifications +
+    per-subscription `mpsc` event sinks), and the alternatives we
+    explicitly rejected (mutex-everywhere, broadcast notifications,
+    public `JoinHandle`, manual unsafe `Either<L, R>`).
 
 - **`nip11-fetch` feature implementation** (`nula-core`):
   - `Nip11Fetcher` trait + `Nip11FetchError` enum
