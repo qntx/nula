@@ -67,6 +67,10 @@ impl Kind {
     pub const CASHU_HISTORY: Self = Self(7_376);
     /// Cashu wallet replaceable event (NIP-60).
     pub const CASHU_WALLET: Self = Self(17_375);
+    /// Nutzap event (NIP-61).
+    pub const NUTZAP: Self = Self(9_321);
+    /// Nutzap informational replaceable event (NIP-61).
+    pub const NUTZAP_INFO: Self = Self(10_019);
     /// Badge award (NIP-58).
     pub const BADGE_AWARD: Self = Self(8);
     /// Zap request (NIP-57). Not published to relays; sent to the
