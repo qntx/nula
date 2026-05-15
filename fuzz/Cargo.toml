@@ -1,0 +1,59 @@
+[package]
+name = "nula-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+rust-version = "1.94"
+license = "MIT OR Apache-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+# Detached from the parent workspace: `cargo-fuzz` injects nightly-only
+# flags via `RUSTFLAGS`, and the parent workspace is locked to stable.
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1.4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11"
+
+[dependencies.nula-core]
+path = "../crates/nula-core"
+features = ["nip04", "nip06", "nip17", "nip44", "nip46", "nip49", "nip59"]
+
+[profile.release]
+debug = 1
+overflow-checks = true
+
+# Each target is a tiny binary that links libFuzzer. The
+# `path = "fuzz_targets/<name>.rs"` is the cargo-fuzz convention.
+[[bin]]
+name = "canonical_bytes_cross"
+path = "fuzz_targets/canonical_bytes_cross.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "nip19_round_trip"
+path = "fuzz_targets/nip19_round_trip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "nip44_decrypt"
+path = "fuzz_targets/nip44_decrypt.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "filter_match_event"
+path = "fuzz_targets/filter_match_event.rs"
+test = false
+doc = false
+bench = false

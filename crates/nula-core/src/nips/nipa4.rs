@@ -210,4 +210,35 @@ mod tests {
             Err(PublicMessageError::ForbiddenEventTag)
         ));
     }
+
+    #[test]
+    fn wrong_kind_is_rejected() {
+        // Non-`kind:24` events must not parse as public messages.
+        let event = EventBuilder::text_note("nope")
+            .sign_with_keys(&keys())
+            .unwrap();
+        assert!(matches!(
+            PublicMessage::from_event(&event),
+            Err(PublicMessageError::WrongKind(_))
+        ));
+    }
+
+    #[test]
+    fn extra_tags_round_trip_intact() {
+        // Unknown tags MUST pass through unchanged so the typed bundle
+        // is forward-compatible with future spec extensions.
+        let recipient = PublicMessageRecipient::new(*keys().public_key());
+        let mut msg = PublicMessage::new("hi", vec![recipient]);
+        msg.extra_tags.push(Tag::with(
+            &TagKind::from_wire("vendor-foo"),
+            ["bar".to_owned()],
+        ));
+        let event = EventBuilder::public_message(&msg)
+            .unwrap()
+            .sign_with_keys(&keys())
+            .unwrap();
+        let parsed = PublicMessage::from_event(&event).unwrap();
+        assert_eq!(parsed.extra_tags.len(), 1);
+        assert_eq!(parsed.extra_tags[0].name(), "vendor-foo");
+    }
 }

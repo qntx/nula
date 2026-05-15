@@ -386,4 +386,39 @@ mod tests {
             Err(DraftError::MissingDraftKind)
         ));
     }
+
+    #[test]
+    fn wrong_kind_is_rejected() {
+        // A text note is the canonical \"not a draft wrap\" sample.
+        let event = EventBuilder::text_note("not a draft")
+            .sign_with_keys(&keys())
+            .unwrap();
+        assert!(matches!(
+            DraftWrap::from_event(&event),
+            Err(DraftError::WrongKind(_))
+        ));
+        // PrivateStorageRelays parser also rejects mismatched kinds.
+        assert!(matches!(
+            PrivateStorageRelays::from_event(&event),
+            Err(DraftError::WrongKind(_))
+        ));
+    }
+
+    #[test]
+    fn invalid_k_tag_is_rejected() {
+        // `k` tag value must be a valid `u16` kind \u2014 anything else is a
+        // wire-level error per the typed `Kind` invariants.
+        let event = EventBuilder::new(KIND_DRAFT_WRAP, "")
+            .tag(Tag::d("foo"))
+            .tag(Tag::with(
+                &TagKind::from_wire(KIND_TAG),
+                ["not-a-number".to_owned()],
+            ))
+            .sign_with_keys(&keys())
+            .unwrap();
+        assert!(matches!(
+            DraftWrap::from_event(&event),
+            Err(DraftError::InvalidDraftKind(raw)) if raw == "not-a-number"
+        ));
+    }
 }

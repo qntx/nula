@@ -256,4 +256,55 @@ mod tests {
             Err(CodeSnippetError::WrongKind(_))
         ));
     }
+
+    #[test]
+    fn minimal_snippet_with_only_language_round_trips() {
+        // Smallest valid snippet: body + language label only.
+        let snippet = CodeSnippet::new("print('hi')");
+        let mut snippet = snippet;
+        snippet.language = Some("python".into());
+        let event = EventBuilder::code_snippet(&snippet)
+            .sign_with_keys(&keys())
+            .unwrap();
+        let parsed = CodeSnippet::from_event(&event).unwrap();
+        assert_eq!(parsed.language.as_deref(), Some("python"));
+        assert_eq!(parsed.content, "print('hi')");
+        assert!(parsed.licenses.is_empty());
+        assert!(parsed.repos.is_empty());
+    }
+
+    #[test]
+    fn url_only_repo_reference_round_trips() {
+        // A snippet may attach a plain URL repo \u2014 the parser preserves
+        // the `CodeRepo::Url` shape rather than upgrading to `Repository`.
+        let mut snippet = CodeSnippet::new("body");
+        snippet.repos.push(CodeRepo::Url(
+            Url::parse("https://github.com/example/proj").unwrap(),
+        ));
+        let event = EventBuilder::code_snippet(&snippet)
+            .sign_with_keys(&keys())
+            .unwrap();
+        let parsed = CodeSnippet::from_event(&event).unwrap();
+        assert_eq!(parsed.repos.len(), 1);
+        match &parsed.repos[0] {
+            CodeRepo::Url(url) => assert_eq!(url.as_str(), "https://github.com/example/proj"),
+            other @ CodeRepo::Repository { .. } => panic!("expected URL repo, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn malformed_repo_tag_is_rejected() {
+        // A `repo` tag with only the head column is malformed.
+        let event = EventBuilder::new(KIND_CODE_SNIPPET, "body")
+            .tag(Tag::with(
+                &TagKind::from_wire(REPO_TAG),
+                Vec::<String>::new(),
+            ))
+            .sign_with_keys(&keys())
+            .unwrap();
+        assert!(matches!(
+            CodeSnippet::from_event(&event),
+            Err(CodeSnippetError::MalformedRepo)
+        ));
+    }
 }

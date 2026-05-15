@@ -192,4 +192,58 @@ mod tests {
             Err(WebBookmarkError::MissingIdentifier)
         ));
     }
+
+    #[test]
+    fn wrong_kind_is_rejected() {
+        // Bookmarks are addressable kind 39701 \u2014 anything else fails.
+        let event = EventBuilder::text_note("nope")
+            .sign_with_keys(&keys())
+            .unwrap();
+        assert!(matches!(
+            WebBookmark::from_event(&event),
+            Err(WebBookmarkError::WrongKind(_))
+        ));
+    }
+
+    #[test]
+    fn hashtags_are_lowercased_on_round_trip() {
+        // Spec recommends lowercase hashtags; the parser normalises.
+        let event = EventBuilder::new(KIND_WEB_BOOKMARK, "body")
+            .tag(Tag::d("site.example/page"))
+            .tag(Tag::t("MixedCase"))
+            .tag(Tag::t("CAPS"))
+            .sign_with_keys(&keys())
+            .unwrap();
+        let parsed = WebBookmark::from_event(&event).unwrap();
+        assert_eq!(parsed.hashtags, vec!["mixedcase", "caps"]);
+    }
+
+    #[test]
+    fn coordinate_matches_addressable_triple() {
+        // The bookmark's coordinate accessor MUST yield `(kind, author,
+        // d)` so callers can compose NIP-19 `naddr` entities.
+        let bookmark = WebBookmark::new("alice.blog/post-1");
+        let coord = bookmark.coordinate(*keys().public_key());
+        assert_eq!(coord.kind, KIND_WEB_BOOKMARK);
+        assert_eq!(coord.author, *keys().public_key());
+        assert_eq!(coord.identifier, "alice.blog/post-1");
+    }
+
+    #[test]
+    fn malformed_published_at_is_rejected() {
+        // `published_at` MUST be a parseable Unix timestamp; non-numeric
+        // values bubble up as `InvalidTimestamp`.
+        let event = EventBuilder::new(KIND_WEB_BOOKMARK, "body")
+            .tag(Tag::d("site.example/page"))
+            .tag(Tag::with(
+                &TagKind::from_wire(PUBLISHED_AT_TAG),
+                ["not-a-timestamp".to_owned()],
+            ))
+            .sign_with_keys(&keys())
+            .unwrap();
+        assert!(matches!(
+            WebBookmark::from_event(&event),
+            Err(WebBookmarkError::InvalidTimestamp(_))
+        ));
+    }
 }

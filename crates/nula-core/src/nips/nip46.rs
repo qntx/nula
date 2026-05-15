@@ -16,20 +16,30 @@
 //!
 //! # Method matrix
 //!
-//! | Method            | Request payload              | Response payload          |
-//! |-------------------|------------------------------|---------------------------|
-//! | `connect`         | `[remote_pubkey, secret?]`   | `"ack"` or echoed secret  |
-//! | `get_public_key`  | `[]`                         | user's pubkey (hex)       |
-//! | `sign_event`      | `[unsigned_json]`            | signed event JSON         |
-//! | `nip04_encrypt`   | `[peer_pubkey, plaintext]`   | base64 ciphertext         |
-//! | `nip04_decrypt`   | `[peer_pubkey, ciphertext]`  | plaintext                 |
-//! | `nip44_encrypt`   | `[peer_pubkey, plaintext]`   | base64 ciphertext         |
-//! | `nip44_decrypt`   | `[peer_pubkey, ciphertext]`  | plaintext                 |
-//! | `ping`            | `[]`                         | `"pong"`                  |
+//! | Method            | Request payload                            | Response payload                            |
+//! |-------------------|--------------------------------------------|---------------------------------------------|
+//! | `connect`         | `[remote_pubkey, secret?, perms?]`         | `"ack"` or echoed secret                    |
+//! | `get_public_key`  | `[]`                                       | user's pubkey (hex)                         |
+//! | `sign_event`      | `[unsigned_json]`                          | signed event JSON                           |
+//! | `nip04_encrypt`   | `[peer_pubkey, plaintext]`                 | base64 ciphertext                           |
+//! | `nip04_decrypt`   | `[peer_pubkey, ciphertext]`                | plaintext                                   |
+//! | `nip44_encrypt`   | `[peer_pubkey, plaintext]`                 | base64 ciphertext                           |
+//! | `nip44_decrypt`   | `[peer_pubkey, ciphertext]`                | plaintext                                   |
+//! | `ping`            | `[]`                                       | `"pong"`                                    |
+//! | `switch_relays`   | `[]`                                       | JSON array of relay URLs, or `null`         |
 //!
 //! Any method may instead return `"auth_url"` (signaling that the user
 //! must complete an out-of-band auth step) or `"error"` with the
 //! `error` field populated.
+//!
+//! # Permissions (NIP-46 § "Requested permissions")
+//!
+//! The third positional slot of `connect` carries a comma-separated
+//! list of `method[:params]` tokens, e.g. `nip44_encrypt,sign_event:4`.
+//! Each token is modelled as a [`Permission`]; the typed enum keeps the
+//! two well-defined shapes (blanket method, `sign_event` restricted to
+//! a kind) and falls back to [`Permission::Other`] for vendor or
+//! future-spec extensions.
 //!
 //! # Connection URIs
 //!
@@ -52,7 +62,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 use url::Url;
 
-use crate::event::{Event, EventError, UnsignedEvent, UnsignedEventError};
+use crate::event::{Event, EventError, Kind, UnsignedEvent, UnsignedEventError};
 use crate::key::{PublicKey, PublicKeyError};
 use crate::types::{RelayUrl, RelayUrlError};
 use crate::util::JsonUtil;
@@ -97,9 +107,13 @@ pub enum Nip46Error {
         /// Number of params the message actually carried.
         actual: usize,
     },
-    /// The wire `method` field is not one of the eight defined methods.
+    /// The wire `method` field is not one of the nine defined methods.
     #[error("unsupported NIP-46 method: {0}")]
     UnsupportedMethod(String),
+    /// The `switch_relays` response carried JSON that was neither
+    /// `null` nor an array of relay URL strings.
+    #[error("invalid switch_relays response payload")]
+    InvalidSwitchRelaysPayload,
     /// Tried to convert a [`Message::Response`] to a [`Request`] (or
     /// vice-versa).
     #[error("{0}")]
@@ -153,6 +167,9 @@ pub enum Method {
     Nip44Decrypt,
     /// Liveness probe.
     Ping,
+    /// Ask the remote signer for its preferred relay set
+    /// (NIP-46 § "Switching relays").
+    SwitchRelays,
 }
 
 impl Method {
@@ -168,6 +185,7 @@ impl Method {
             Self::Nip44Encrypt => "nip44_encrypt",
             Self::Nip44Decrypt => "nip44_decrypt",
             Self::Ping => "ping",
+            Self::SwitchRelays => "switch_relays",
         }
     }
 }
@@ -191,8 +209,119 @@ impl FromStr for Method {
             "nip44_encrypt" => Self::Nip44Encrypt,
             "nip44_decrypt" => Self::Nip44Decrypt,
             "ping" => Self::Ping,
+            "switch_relays" => Self::SwitchRelays,
             other => return Err(Nip46Error::UnsupportedMethod(other.to_owned())),
         })
+    }
+}
+
+/// A single permission entry inside the `connect` request's third
+/// positional slot.
+///
+/// Wire format: `method[:params]`, comma-separated when packed into the
+/// surrounding string. Spec line 112 reserves "parameters for other
+/// methods are to be defined later", so anything that does not match a
+/// known shape falls into [`Self::Other`] verbatim — round-tripping is
+/// always lossless.
+///
+/// # Examples
+///
+/// ```
+/// use nula_core::Kind;
+/// use nula_core::nips::nip46::{Method, Permission};
+///
+/// assert_eq!(
+///     "nip44_encrypt".parse::<Permission>().unwrap(),
+///     Permission::Method(Method::Nip44Encrypt),
+/// );
+/// assert_eq!(
+///     "sign_event:1".parse::<Permission>().unwrap(),
+///     Permission::SignEventKind(Kind::TEXT_NOTE),
+/// );
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Permission {
+    /// Blanket permission to call a known method with no further
+    /// parameter constraints (`<method>` form).
+    Method(Method),
+    /// Permission to call `sign_event` restricted to one event kind
+    /// (`sign_event:<kind>` form).
+    SignEventKind(Kind),
+    /// Forward-compat: a vendor extension or a shape the spec has not
+    /// standardised yet. Stored verbatim so encoding is lossless.
+    Other(String),
+}
+
+impl Permission {
+    /// Encode a single permission as its wire token (`method[:params]`).
+    #[must_use]
+    pub fn to_wire(&self) -> String {
+        match self {
+            Self::Method(method) => method.to_string(),
+            Self::SignEventKind(kind) => {
+                format!("{}:{}", Method::SignEvent.as_str(), kind.as_u16())
+            }
+            Self::Other(raw) => raw.clone(),
+        }
+    }
+
+    /// Encode a list of permissions as a single comma-separated wire
+    /// string (suitable for the `connect` request's third positional
+    /// slot or the `nostrconnect://?perms=` query parameter).
+    #[must_use]
+    pub fn join(perms: &[Self]) -> String {
+        let mut out = String::new();
+        for (i, perm) in perms.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            out.push_str(&perm.to_wire());
+        }
+        out
+    }
+
+    /// Decode a comma-separated wire string into a vector of
+    /// permissions. Empty input yields an empty vector; whitespace
+    /// around each token is trimmed.
+    #[must_use]
+    pub fn split(wire: &str) -> Vec<Self> {
+        if wire.is_empty() {
+            return Vec::new();
+        }
+        wire.split(',')
+            .map(str::trim)
+            .filter(|tok| !tok.is_empty())
+            .map(|tok| tok.parse().unwrap_or_else(|_| Self::Other(tok.to_owned())))
+            .collect()
+    }
+}
+
+impl fmt::Display for Permission {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.to_wire())
+    }
+}
+
+impl FromStr for Permission {
+    type Err = Nip46Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // `method[:params]` — split on the first colon.
+        if let Some((head, tail)) = s.split_once(':') {
+            if head == Method::SignEvent.as_str()
+                && let Ok(raw) = tail.parse::<u16>()
+            {
+                return Ok(Self::SignEventKind(Kind::new(raw)));
+            }
+            // Known method with an unknown parameter shape, or a
+            // vendor namespace — preserve verbatim.
+            return Ok(Self::Other(s.to_owned()));
+        }
+        // No colon: bare method name. Unknown vocabulary falls
+        // through to the spec-mandated `Other` passthrough.
+        Ok(s.parse::<Method>()
+            .map_or_else(|_| Self::Other(s.to_owned()), Self::Method))
     }
 }
 
@@ -218,12 +347,19 @@ impl<'de> Deserialize<'de> for Method {
 pub enum Request {
     /// `connect` — present the remote signer's public key (and an
     /// optional one-time secret) to negotiate the session.
+    ///
+    /// `perms` carries the optional third positional argument from
+    /// NIP-46 § "Requested permissions"; `None` means the caller did
+    /// not negotiate any (the slot is omitted on the wire),
+    /// `Some(vec![])` means an explicitly empty set is being sent.
     Connect {
         /// Remote signer's pubkey.
         remote_signer_public_key: PublicKey,
         /// Optional anti-spoofing secret (carried in `bunker://`
         /// URIs and required in `nostrconnect://` URIs).
         secret: Option<String>,
+        /// Optional requested permissions.
+        perms: Option<Vec<Permission>>,
     },
     /// `get_public_key` — return the user's pubkey.
     GetPublicKey,
@@ -259,6 +395,8 @@ pub enum Request {
     },
     /// `ping` — liveness probe.
     Ping,
+    /// `switch_relays` — ask the signer for its preferred relay set.
+    SwitchRelays,
 }
 
 impl Request {
@@ -274,25 +412,42 @@ impl Request {
             Self::Nip44Encrypt { .. } => Method::Nip44Encrypt,
             Self::Nip44Decrypt { .. } => Method::Nip44Decrypt,
             Self::Ping => Method::Ping,
+            Self::SwitchRelays => Method::SwitchRelays,
         }
     }
 
     /// Wire-format params (the `params` JSON array).
+    ///
+    /// `connect` follows the spec's positional layout
+    /// `[pubkey, secret?, perms?]`. Because the slots are positional,
+    /// emitting `perms` requires emitting a `secret` slot first; an
+    /// absent secret is encoded as the empty string so the perms slot
+    /// stays at index 2.
     #[must_use]
     pub fn params(&self) -> Vec<String> {
         match self {
             Self::Connect {
                 remote_signer_public_key,
                 secret,
+                perms,
             } => {
-                let mut out = Vec::with_capacity(1 + usize::from(secret.is_some()));
+                let mut out = Vec::with_capacity(
+                    1 + usize::from(secret.is_some()) + usize::from(perms.is_some()),
+                );
                 out.push(remote_signer_public_key.to_hex());
-                if let Some(s) = secret {
+                if perms.is_some() {
+                    // perms occupies position 2, so a placeholder for
+                    // an absent secret keeps the layout positional.
+                    out.push(secret.clone().unwrap_or_default());
+                } else if let Some(s) = secret {
                     out.push(s.clone());
+                }
+                if let Some(perms) = perms {
+                    out.push(Permission::join(perms));
                 }
                 out
             }
-            Self::GetPublicKey | Self::Ping => Vec::new(),
+            Self::GetPublicKey | Self::Ping | Self::SwitchRelays => Vec::new(),
             Self::SignEvent(unsigned) => vec![unsigned.try_to_json().unwrap_or_default()],
             Self::Nip04Encrypt { peer, text } | Self::Nip44Encrypt { peer, text } => {
                 vec![peer.to_hex(), text.clone()]
@@ -323,10 +478,24 @@ impl Request {
             (Method::Connect, [pk_hex]) => Ok(Self::Connect {
                 remote_signer_public_key: PublicKey::parse(pk_hex)?,
                 secret: None,
+                perms: None,
             }),
             (Method::Connect, [pk_hex, secret]) => Ok(Self::Connect {
                 remote_signer_public_key: PublicKey::parse(pk_hex)?,
                 secret: Some(secret.clone()),
+                perms: None,
+            }),
+            (Method::Connect, [pk_hex, secret, perms]) => Ok(Self::Connect {
+                remote_signer_public_key: PublicKey::parse(pk_hex)?,
+                // An empty secret slot is a placeholder for "no secret
+                // but perms present" — collapse it back to `None` so
+                // round-trips preserve the original semantic shape.
+                secret: if secret.is_empty() {
+                    None
+                } else {
+                    Some(secret.clone())
+                },
+                perms: Some(Permission::split(perms)),
             }),
             (Method::GetPublicKey, []) => Ok(Self::GetPublicKey),
             (Method::SignEvent, [json]) => Ok(Self::SignEvent(UnsignedEvent::from_json(json)?)),
@@ -347,13 +516,18 @@ impl Request {
                 ciphertext: ciphertext.clone(),
             }),
             (Method::Ping, []) => Ok(Self::Ping),
+            (Method::SwitchRelays, []) => Ok(Self::SwitchRelays),
             // Arity-mismatch fallbacks, grouped by required param count
             // (clippy::match_same_arms refuses two arms that produce
             // structurally identical bodies).
-            (Method::GetPublicKey | Method::Ping, _) => {
+            (Method::GetPublicKey | Method::Ping | Method::SwitchRelays, _) => {
                 Err(invalid_param_length(method, 0, params.len()))
             }
-            (Method::Connect | Method::SignEvent, _) => {
+            // `connect` accepts 1, 2, or 3 positional args; the
+            // catch-all here only fires for 0 or 4+. We report the
+            // canonical 1-arg form for both `sign_event` and
+            // `connect` to keep the diagnostic surface stable.
+            (Method::SignEvent | Method::Connect, _) => {
                 Err(invalid_param_length(method, 1, params.len()))
             }
             (
@@ -403,6 +577,9 @@ pub enum ResponseResult {
     Nip44Decrypt(String),
     /// Liveness probe response.
     Pong,
+    /// `switch_relays` reply: either the signer's updated relay set,
+    /// or `None` meaning "no change" (spec line 108 `... OR null`).
+    SwitchRelays(Option<Vec<RelayUrl>>),
     /// The signer needs the user to complete an out-of-band step
     /// (typically open a URL); the URL travels in the `error` slot per
     /// spec.
@@ -454,14 +631,28 @@ impl ResponseResult {
                     })
                 }
             }
+            Method::SwitchRelays => {
+                let trimmed = result.trim();
+                if trimmed == "null" {
+                    return Ok(Self::SwitchRelays(None));
+                }
+                let raw: Vec<String> = serde_json::from_str(trimmed)
+                    .map_err(|_| Nip46Error::InvalidSwitchRelaysPayload)?;
+                let mut relays = Vec::with_capacity(raw.len());
+                for url in raw {
+                    relays.push(RelayUrl::parse(&url)?);
+                }
+                Ok(Self::SwitchRelays(Some(relays)))
+            }
         }
     }
 
     /// Wire encoding of the result (string placed in the JSON `result`
     /// field).
     ///
-    /// `SignEvent` produces a JSON-encoded event, every other variant
-    /// is a single token.
+    /// `SignEvent` produces a JSON-encoded event, `SwitchRelays`
+    /// produces a JSON-encoded array (or the literal `null`), every
+    /// other variant is a single token.
     #[must_use]
     pub fn to_wire(&self) -> String {
         match self {
@@ -474,6 +665,11 @@ impl ResponseResult {
             Self::GetPublicKey(pk) => pk.to_hex(),
             Self::SignEvent(ev) => ev.try_to_json().unwrap_or_default(),
             Self::Pong => "pong".to_owned(),
+            Self::SwitchRelays(None) => "null".to_owned(),
+            Self::SwitchRelays(Some(relays)) => {
+                let urls: Vec<&str> = relays.iter().map(RelayUrl::as_str).collect();
+                serde_json::to_string(&urls).unwrap_or_else(|_| "null".to_owned())
+            }
             Self::AuthUrl => "auth_url".to_owned(),
             Self::Error => "error".to_owned(),
         }
@@ -699,7 +895,7 @@ pub enum Uri {
         /// URI was used by the intended party.
         secret: Option<String>,
     },
-    /// `nostrconnect://<client_pubkey>?relay=…&metadata=…&secret=…`
+    /// `nostrconnect://<client_pubkey>?relay=…&metadata=…&secret=…&perms=…`
     ///
     /// The client publishes this URI (typically as a QR code); the
     /// signer dials the listed relays and addresses the client's
@@ -715,6 +911,9 @@ pub enum Uri {
         metadata: Metadata,
         /// Anti-spoofing secret (mandatory).
         secret: String,
+        /// Optional requested permissions (NIP-46 § "Requested
+        /// permissions"); empty when omitted from the URI.
+        perms: Vec<Permission>,
     },
 }
 
@@ -734,13 +933,15 @@ impl Uri {
         let mut relays: Vec<RelayUrl> = Vec::new();
         let mut secret: Option<String> = None;
         let mut metadata: Option<Metadata> = None;
+        let mut perms: Vec<Permission> = Vec::new();
         for (key, value) in parsed.query_pairs() {
             match key.as_ref() {
                 "relay" => relays.push(RelayUrl::parse(value.as_ref())?),
                 "secret" => secret = Some(value.into_owned()),
                 "metadata" => metadata = Some(Metadata::from_json(value.as_ref())?),
+                "perms" => perms = Permission::split(value.as_ref()),
                 // Forward-compat: silently drop unknown query
-                // parameters (e.g. `perms=`, vendor-specific keys).
+                // parameters (vendor-specific keys we have no model for).
                 _ => {}
             }
         }
@@ -763,6 +964,7 @@ impl Uri {
                     relays,
                     metadata,
                     secret,
+                    perms,
                 })
             }
             other => Err(Nip46Error::UnknownUriScheme(other.to_owned())),
@@ -811,17 +1013,18 @@ impl fmt::Display for Uri {
                 secret,
             } => {
                 write!(f, "{URI_SCHEME_BUNKER}://{remote_signer_public_key}")?;
-                write_query(f, relays, secret.as_deref(), None)
+                write_query(f, relays, secret.as_deref(), None, &[])
             }
             Self::Client {
                 public_key,
                 relays,
                 metadata,
                 secret,
+                perms,
             } => {
                 write!(f, "{URI_SCHEME_CLIENT}://{public_key}")?;
                 let metadata_json = metadata.try_to_json().unwrap_or_default();
-                write_query(f, relays, Some(secret), Some(&metadata_json))
+                write_query(f, relays, Some(secret), Some(&metadata_json), perms)
             }
         }
     }
@@ -832,6 +1035,7 @@ fn write_query(
     relays: &[RelayUrl],
     secret: Option<&str>,
     metadata_json: Option<&str>,
+    perms: &[Permission],
 ) -> fmt::Result {
     let mut first = true;
     let mut emit = |sink: &mut fmt::Formatter<'_>, key: &str, value: &str| -> fmt::Result {
@@ -847,6 +1051,9 @@ fn write_query(
     }
     if let Some(s) = secret {
         emit(out, "secret", s)?;
+    }
+    if !perms.is_empty() {
+        emit(out, "perms", &Permission::join(perms))?;
     }
     Ok(())
 }
@@ -904,6 +1111,7 @@ mod tests {
             Method::Nip44Encrypt,
             Method::Nip44Decrypt,
             Method::Ping,
+            Method::SwitchRelays,
         ] {
             let s = method.as_str();
             let parsed: Method = s.parse().unwrap();
@@ -924,10 +1132,30 @@ mod tests {
             Request::Connect {
                 remote_signer_public_key: pk,
                 secret: Some("hunter2".to_owned()),
+                perms: None,
             },
             Request::Connect {
                 remote_signer_public_key: pk,
                 secret: None,
+                perms: None,
+            },
+            Request::Connect {
+                remote_signer_public_key: pk,
+                secret: Some("hunter2".to_owned()),
+                perms: Some(vec![
+                    Permission::Method(Method::Nip44Encrypt),
+                    Permission::SignEventKind(Kind::TEXT_NOTE),
+                ]),
+            },
+            Request::Connect {
+                remote_signer_public_key: pk,
+                secret: None,
+                perms: Some(vec![Permission::Method(Method::GetPublicKey)]),
+            },
+            Request::Connect {
+                remote_signer_public_key: pk,
+                secret: None,
+                perms: Some(Vec::new()),
             },
             Request::GetPublicKey,
             Request::Nip04Encrypt {
@@ -947,6 +1175,7 @@ mod tests {
                 ciphertext: "AgAB...".to_owned(),
             },
             Request::Ping,
+            Request::SwitchRelays,
         ];
 
         for req in cases {
@@ -1089,6 +1318,7 @@ mod tests {
             relays: vec![RelayUrl::parse("wss://relay.example/").unwrap()],
             metadata: metadata.clone(),
             secret: "anti-mitm".into(),
+            perms: Vec::new(),
         };
         let rendered = original.to_string();
         let reparsed = Uri::parse(&rendered).unwrap();
@@ -1108,5 +1338,131 @@ mod tests {
         let pk = fixture_pk();
         let err = Uri::parse(&format!("nip46://{}", pk.to_hex())).unwrap_err();
         assert!(matches!(err, Nip46Error::UnknownUriScheme(s) if s == "nip46"));
+    }
+
+    #[test]
+    fn permission_token_round_trips() {
+        // Bare method.
+        let bare: Permission = "get_public_key".parse().unwrap();
+        assert_eq!(bare, Permission::Method(Method::GetPublicKey));
+        assert_eq!(bare.to_wire(), "get_public_key");
+        // sign_event:<kind>
+        let kinded: Permission = "sign_event:4".parse().unwrap();
+        assert_eq!(kinded, Permission::SignEventKind(Kind::new(4)));
+        assert_eq!(kinded.to_wire(), "sign_event:4");
+        // Vendor / future-spec passthrough preserves the verbatim wire.
+        let vendor: Permission = "weird_vendor:opt=1".parse().unwrap();
+        assert_eq!(vendor, Permission::Other("weird_vendor:opt=1".to_owned()));
+        assert_eq!(vendor.to_wire(), "weird_vendor:opt=1");
+        // sign_event with a non-numeric tail falls into Other rather than
+        // a parse error — spec leaves param shapes extensible.
+        let extensible: Permission = "sign_event:any".parse().unwrap();
+        assert_eq!(extensible, Permission::Other("sign_event:any".to_owned()));
+    }
+
+    #[test]
+    fn permission_list_round_trips_via_join_split() {
+        // Mirrors the spec example string at NIP-46 line 112.
+        let perms = vec![
+            Permission::Method(Method::Nip44Encrypt),
+            Permission::SignEventKind(Kind::new(4)),
+        ];
+        let joined = Permission::join(&perms);
+        assert_eq!(joined, "nip44_encrypt,sign_event:4");
+        let parsed = Permission::split(&joined);
+        assert_eq!(parsed, perms);
+        // Empty string \u2192 empty vec; whitespace tolerated.
+        assert!(Permission::split("").is_empty());
+        assert_eq!(
+            Permission::split(" ping , sign_event:1 "),
+            vec![
+                Permission::Method(Method::Ping),
+                Permission::SignEventKind(Kind::TEXT_NOTE),
+            ],
+        );
+    }
+
+    #[test]
+    fn connect_request_with_perms_emits_positional_layout() {
+        let pk = fixture_pk();
+        // perms-only: position 1 (secret) is a placeholder empty string
+        // so position 2 (perms) keeps its index.
+        let req = Request::Connect {
+            remote_signer_public_key: pk,
+            secret: None,
+            perms: Some(vec![Permission::Method(Method::GetPublicKey)]),
+        };
+        let params = req.params();
+        assert_eq!(params.len(), 3);
+        assert_eq!(params[0], pk.to_hex());
+        assert_eq!(params[1], "");
+        assert_eq!(params[2], "get_public_key");
+        let recovered = Request::from_wire(Method::Connect, &params).unwrap();
+        assert_eq!(recovered, req);
+    }
+
+    #[test]
+    fn switch_relays_response_round_trips_through_wire() {
+        // null branch: spec line 108 explicit `OR null`.
+        let null_value = ResponseResult::SwitchRelays(None);
+        assert_eq!(null_value.to_wire(), "null");
+        let null_recovered = ResponseResult::from_wire(Method::SwitchRelays, "null").unwrap();
+        assert_eq!(null_recovered, null_value);
+
+        // empty-array branch.
+        let empty_value = ResponseResult::SwitchRelays(Some(Vec::new()));
+        let empty_wire = empty_value.to_wire();
+        assert_eq!(empty_wire, "[]");
+        let empty_recovered = ResponseResult::from_wire(Method::SwitchRelays, &empty_wire).unwrap();
+        assert_eq!(empty_recovered, empty_value);
+
+        // non-empty array branch.
+        let relays = vec![
+            RelayUrl::parse("wss://relay.one/").unwrap(),
+            RelayUrl::parse("wss://relay.two/").unwrap(),
+        ];
+        let populated = ResponseResult::SwitchRelays(Some(relays));
+        let populated_wire = populated.to_wire();
+        let populated_recovered =
+            ResponseResult::from_wire(Method::SwitchRelays, &populated_wire).unwrap();
+        assert_eq!(populated_recovered, populated);
+
+        // malformed JSON \u2192 dedicated error variant.
+        let err =
+            ResponseResult::from_wire(Method::SwitchRelays, "not-json").expect_err("must reject");
+        assert!(matches!(err, Nip46Error::InvalidSwitchRelaysPayload));
+    }
+
+    #[test]
+    fn switch_relays_request_envelope_round_trips_through_json() {
+        let msg = Message::request("sw-1", &Request::SwitchRelays);
+        let json = msg.try_to_json().unwrap();
+        let recovered = Message::from_json(&json).unwrap();
+        assert_eq!(recovered.id(), "sw-1");
+        let req = recovered.into_request().unwrap();
+        assert_eq!(req, Request::SwitchRelays);
+    }
+
+    #[test]
+    fn nostrconnect_uri_carries_perms_round_trip() {
+        let pk = fixture_pk();
+        let metadata = Metadata::new("demo");
+        let original = Uri::Client {
+            public_key: pk,
+            relays: vec![RelayUrl::parse("wss://relay.example/").unwrap()],
+            metadata,
+            secret: "anti-mitm".into(),
+            perms: vec![
+                Permission::Method(Method::Nip44Encrypt),
+                Permission::Method(Method::Nip44Decrypt),
+                Permission::SignEventKind(Kind::new(13)),
+                Permission::SignEventKind(Kind::new(14)),
+                Permission::SignEventKind(Kind::new(1059)),
+            ],
+        };
+        let rendered = original.to_string();
+        assert!(rendered.contains("perms="));
+        let reparsed = Uri::parse(&rendered).unwrap();
+        assert_eq!(reparsed, original);
     }
 }

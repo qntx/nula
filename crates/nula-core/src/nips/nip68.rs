@@ -311,4 +311,57 @@ mod tests {
             Err(PictureError::WrongKind(_))
         ));
     }
+
+    #[test]
+    fn tagged_user_with_relay_hint_round_trips() {
+        // The `p` tag's optional second column carries a relay hint;
+        // confirm both the no-hint and with-hint shapes survive a wire
+        // round-trip.
+        let bare = PictureTaggedUser::new(*keys().public_key());
+        let hinted = PictureTaggedUser {
+            pubkey: *keys().public_key(),
+            relay_hint: Some(RelayUrl::parse("wss://relay.example/").unwrap()),
+        };
+        let post = PicturePost::new("with tags", vec![sample_picture()])
+            .title("Captioned")
+            // direct construction so the test exercises both shapes.
+            ;
+        let mut post = post;
+        post.tagged_users = vec![bare.clone(), hinted.clone()];
+        let event = EventBuilder::picture_post(&post)
+            .unwrap()
+            .sign_with_keys(&keys())
+            .unwrap();
+        let parsed = PicturePost::from_event(&event).unwrap();
+        assert_eq!(parsed.tagged_users, vec![bare, hinted]);
+    }
+
+    #[test]
+    fn multiple_imeta_pictures_round_trip() {
+        // Picture-first posts may carry an alternate-variant set \u2014
+        // every imeta tag becomes one MediaAttachment.
+        let pic_a = MediaAttachment::new(Url::parse("https://nostr.build/i/a.png").unwrap())
+            .mime_type("image/png");
+        let pic_b = MediaAttachment::new(Url::parse("https://nostr.build/i/b.jpg").unwrap())
+            .mime_type("image/jpeg");
+        let post = PicturePost::new("variants", vec![pic_a, pic_b]);
+        let event = EventBuilder::picture_post(&post)
+            .unwrap()
+            .sign_with_keys(&keys())
+            .unwrap();
+        let parsed = PicturePost::from_event(&event).unwrap();
+        assert_eq!(parsed.pictures.len(), 2);
+        assert_eq!(parsed.pictures[0].mime_type.as_deref(), Some("image/png"));
+        assert_eq!(parsed.pictures[1].mime_type.as_deref(), Some("image/jpeg"));
+    }
+
+    #[test]
+    fn supported_mime_types_match_spec() {
+        // The spec enumerates exactly six image MIME types; lock the
+        // ordering and contents so accidental drift is loud.
+        assert_eq!(SUPPORTED_MIME_TYPES.len(), 6);
+        assert!(SUPPORTED_MIME_TYPES.contains(&"image/jpeg"));
+        assert!(SUPPORTED_MIME_TYPES.contains(&"image/webp"));
+        assert!(!SUPPORTED_MIME_TYPES.contains(&"image/tiff"));
+    }
 }

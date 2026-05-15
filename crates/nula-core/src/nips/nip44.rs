@@ -492,9 +492,10 @@ pub fn decrypt_with_conversation_key(
 
     // Verify HMAC in constant time before touching ChaCha20: prevents
     // padding-oracle / chosen-ciphertext attacks against the cipher
-    // state machine.
-    let computed_mac = compute_hmac(mks.hmac_key(), &nonce, ciphertext);
-    if !hmac_eq(&computed_mac, mac) {
+    // state machine. `verify_hmac` delegates to
+    // [`hmac::Mac::verify_slice`], the standard library idiom for
+    // constant-time MAC comparison.
+    if !verify_hmac(mks.hmac_key(), &nonce, ciphertext, mac) {
         return Err(Nip44Error::InvalidMac);
     }
 
@@ -587,20 +588,20 @@ fn compute_hmac(key: &[u8], nonce: &[u8], ciphertext: &[u8]) -> [u8; HMAC_BYTES]
     mac.finalize().into_bytes().into()
 }
 
-/// Constant-time equality comparison of two 32-byte HMAC values.
+/// Verify an HMAC-SHA256 tag in constant time against `nonce || ciphertext`.
 ///
-/// `hmac::Mac::verify_slice` would do the same, but we already have the
-/// raw bytes in hand and want to keep the call site explicit.
-fn hmac_eq(a: &[u8; HMAC_BYTES], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    // Black-box the iteration so the compiler cannot short-circuit.
-    let mut diff: u8 = 0;
-    for (x, y) in a.iter().zip(b.iter()) {
-        diff |= x ^ y;
-    }
-    diff == 0
+/// Returns `true` iff the supplied `tag` matches the freshly-computed
+/// MAC over the same inputs. Internally delegates to
+/// [`hmac::Mac::verify_slice`], which is guaranteed constant-time by
+/// contract — we keep this thin wrapper so the decrypt call site reads
+/// as a single statement and so the compiler never sees an explicit
+/// byte-level comparison loop that vectorisers could short-circuit.
+fn verify_hmac(key: &[u8], nonce: &[u8], ciphertext: &[u8], tag: &[u8]) -> bool {
+    let mut mac =
+        <Hmac<Sha256> as KeyInit>::new_from_slice(key).expect("HMAC-SHA256 accepts any key length");
+    mac.update(nonce);
+    mac.update(ciphertext);
+    mac.verify_slice(tag).is_ok()
 }
 
 #[cfg(test)]

@@ -221,4 +221,31 @@ mod tests {
             Err(VoiceMessageError::WrongKind(_))
         ));
     }
+
+    #[test]
+    fn invalid_audio_url_is_rejected() {
+        // `.content` MUST be a parseable URL per spec; bare text fails.
+        let event = EventBuilder::new(KIND_VOICE_MESSAGE, "not a url")
+            .sign_with_keys(&keys())
+            .unwrap();
+        let err = VoiceMessage::from_event(&event).expect_err("must reject");
+        assert!(matches!(err, VoiceMessageError::InvalidAudioUrl(_)));
+    }
+
+    #[test]
+    fn preview_extracts_waveform_and_duration_in_isolation() {
+        // Direct call to the side extractor proves the `imeta` extra
+        // fields are picked up even when [`VoiceMessage::media`] is
+        // attached after construction.
+        let media = sample_media();
+        let preview = preview_from_media(&media);
+        assert_eq!(preview.waveform.as_deref(), Some("0 5 100 50"));
+        assert_eq!(preview.duration_seconds, Some(8));
+
+        // Non-numeric `duration` is silently dropped (lenient parse).
+        let bad = MediaAttachment::new(Url::parse("https://example.com/v.mp4").unwrap())
+            .extra("duration", "not-a-number");
+        let lenient = preview_from_media(&bad);
+        assert!(lenient.duration_seconds.is_none());
+    }
 }

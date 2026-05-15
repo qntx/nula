@@ -200,4 +200,45 @@ mod tests {
             Err(VanishError::MissingTarget)
         ));
     }
+
+    #[test]
+    fn wrong_kind_is_rejected() {
+        // A text note is not a NIP-62 request \u2014 the parser must reject it.
+        let event = EventBuilder::text_note("nope")
+            .sign_with_keys(&keys())
+            .unwrap();
+        assert!(matches!(
+            RequestToVanish::from_event(&event),
+            Err(VanishError::WrongKind(_))
+        ));
+    }
+
+    #[test]
+    fn parse_event_with_no_relay_tags_rejected() {
+        // A kind-62 event with zero `relay` tags violates the spec.
+        let event = EventBuilder::new(KIND_REQUEST_TO_VANISH, "no relay tag here")
+            .sign_with_keys(&keys())
+            .unwrap();
+        assert!(matches!(
+            RequestToVanish::from_event(&event),
+            Err(VanishError::MissingTarget)
+        ));
+    }
+
+    #[test]
+    fn malformed_relay_tag_is_rejected() {
+        // A `relay` tag with only the head column is structurally
+        // malformed; the parser should surface MalformedTarget.
+        let event = EventBuilder::new(KIND_REQUEST_TO_VANISH, "")
+            .tag(Tag::with(
+                &TagKind::from_wire(RELAY_TAG),
+                Vec::<String>::new(),
+            ))
+            .sign_with_keys(&keys())
+            .unwrap();
+        assert!(matches!(
+            RequestToVanish::from_event(&event),
+            Err(VanishError::MalformedTarget)
+        ));
+    }
 }
