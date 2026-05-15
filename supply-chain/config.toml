@@ -1,0 +1,33 @@
+# cargo-vet workspace policy.
+#
+# Declares which audit roots `cargo vet check` consults when
+# verifying the dependency graph, and which criteria each workspace
+# member must satisfy.
+#
+# Updated by hand. `cargo vet add-imports` and `cargo vet trust`
+# extend the [[imports]] table; `cargo vet certify` extends
+# audits.toml (not this file).
+
+[cargo-vet]
+version = "0.10"
+
+# Workspace policy: every published crate ships in production and
+# therefore requires the `safe-to-deploy` criteria from its
+# dependencies. Non-published crates (currently only `nula-fuzz`,
+# which lives in a detached sub-workspace) inherit `safe-to-run`.
+[policy.nula-core]
+criteria = ["safe-to-deploy"]
+
+[policy.nula-net]
+criteria = ["safe-to-deploy"]
+
+[policy.nula-relay]
+criteria = ["safe-to-deploy"]
+
+# Trusted external audit feeds. The Mozilla feed covers most of the
+# cargo/rustls/tokio ecosystem we depend on. Adding a new feed is a
+# deliberate decision: each entry adds implicit trust in the
+# maintainers behind the upstream audits.
+[imports.mozilla]
+url          = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
+criteria-map = []

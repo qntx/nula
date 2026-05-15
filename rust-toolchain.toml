@@ -1,2 +1,8 @@
 [toolchain]
-channel = "stable"
+# Pin to the workspace MSRV (1.94, edition 2024). Bumping this
+# requires updating workspace.package.rust-version in Cargo.toml,
+# the msrv-check job in .github/workflows/ci.yml, and recording the
+# decision in docs/adr/.
+channel = "1.94"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

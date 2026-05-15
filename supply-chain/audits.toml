@@ -1,0 +1,40 @@
+# cargo-vet audit declarations for the `nula` workspace.
+#
+# This file is the workspace-side counterpart to `deny.toml`: where
+# `deny.toml` lists what we refuse to ship, this file records the
+# crates we have positively reviewed.
+#
+# Workflow:
+#   `cargo vet`            prints which dependencies still need a row.
+#   `cargo vet check`      is run by the `supply-chain` job in CI;
+#                          failures are advisory during phase 0
+#                          (`continue-on-error: true`) because the
+#                          corpus below is intentionally empty until
+#                          the upper layers stabilise.
+#   `cargo vet certify`    walks an interactive reviewer through
+#                          adding an entry to this file.
+#
+# Once a crate has an audit row here it stays even after the dep is
+# dropped from the workspace: keeping the audit visible lets future
+# consumers reuse the review work.
+#
+# Schema: https://mozilla.github.io/cargo-vet/audit-entries.html
+
+# Audits.
+#
+# Each `[[audits.<crate>]]` block declares that a maintainer has read
+# the source of `<crate>@<version>` and considers it free of known-bad
+# behaviour at the named `criteria`. Reserved criteria from cargo-vet
+# defaults are `safe-to-deploy` (production binaries) and
+# `safe-to-run` (tests/CI only). Empty until the workspace stabilises.
+[audits]
+
+# Exemptions.
+#
+# Exemptions opt a crate out of the audit requirement temporarily.
+# Use them sparingly; every exemption is a `TODO: audit me`. Format:
+#
+#   [[exemptions.<crate>]]
+#   version  = "<exact-version>"
+#   criteria = "safe-to-deploy"
+[exemptions]

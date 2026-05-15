@@ -5,9 +5,283 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: short
+  RUSTFLAGS: "-D warnings"
+  RUSTDOCFLAGS: "-D warnings"
+  # MSRV is owned by rust-toolchain.toml and workspace.package.rust-version
+  # in Cargo.toml. Bumping it requires updating all three plus the
+  # SECURITY.md "Supported versions" section.
+  MSRV: "1.94"
 
 jobs:
-  ci:
-    uses: qntx/workflows/.github/workflows/ci-rust.yml@main
-    with:
-      submodules: true
+  # Cheapest gate: rustfmt diff. An unformatted PR fails in seconds
+  # rather than after the full matrix.
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install nightly rustfmt
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - name: Check formatting
+        run: cargo +nightly fmt --all -- --check
+
+  # Strict clippy on nightly so nursery + pedantic lints stay current.
+  # Specific lints from the `restriction` group are opted into via
+  # `workspace.lints.clippy` in Cargo.toml.
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install nightly clippy
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: clippy-nightly
+      - name: Clippy (workspace, all features)
+        run: |
+          cargo +nightly clippy \
+            --workspace \
+            --all-targets \
+            --all-features \
+            -- -D warnings
+
+  # rustdoc with -D warnings catches broken intra-doc links, missing
+  # codeblock languages, and every rustdoc lint declared in
+  # `[workspace.lints.rustdoc]`.
+  doc:
+    name: doc
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: doc-nightly
+      - name: cargo doc
+        env:
+          # Enable the cfg(docsrs) gate so `#[cfg_attr(docsrs, ...)]`
+          # feature badges render in the generated docs.
+          RUSTDOCFLAGS: "-D warnings --cfg docsrs"
+        run: cargo +nightly doc --workspace --no-deps --all-features
+
+  # MSRV gate. Builds with the exact toolchain in rust-toolchain.toml.
+  # A failure means the PR pulled in a feature or transitive crate
+  # that needs a newer Rust; fix by reverting the feature, raising
+  # MSRV (with an ADR amendment), or pinning the dependency.
+  msrv:
+    name: msrv (${{ env.MSRV }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: msrv-${{ env.MSRV }}
+      - name: cargo check (workspace, all features)
+        run: cargo +${{ env.MSRV }} check --workspace --all-features --locked
+
+  # Cross-platform test matrix. Three feature axes (default / none /
+  # all) prove that every feature is additive; three OS axes catch
+  # path-handling and threading regressions. wasm32 lives in its own
+  # job because the dependency stack diverges (no reqwest, no tokio).
+  test:
+    name: test ${{ matrix.os-label }} (${{ matrix.features }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        features: [default, none, all]
+        include:
+          - os: ubuntu-latest
+            os-label: linux
+          - os: macos-latest
+            os-label: macos
+          - os: windows-latest
+            os-label: windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test-${{ matrix.os-label }}-${{ matrix.features }}
+      - name: cargo test (default features)
+        if: matrix.features == 'default'
+        run: cargo test --workspace --locked
+      - name: cargo test (no default features)
+        if: matrix.features == 'none'
+        run: cargo test --workspace --no-default-features --locked
+      - name: cargo test (all features)
+        if: matrix.features == 'all'
+        run: cargo test --workspace --all-features --locked
+
+  # wasm32 smoke. nula-core must build for wasm; the upper layers
+  # currently do not. Until they do, only the protocol-core crate is
+  # exercised here, and the http-bound features are disabled because
+  # reqwest does not build on wasm32-unknown-unknown.
+  wasm:
+    name: wasm32 (nula-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: wasm-stable
+      - name: cargo check (wasm32, nula-core, no http)
+        run: |
+          cargo check \
+            -p nula-core \
+            --no-default-features \
+            --features nip04,nip06,nip17,nip44,nip46,nip49,nip59 \
+            --target wasm32-unknown-unknown \
+            --locked
+
+  # Supply-chain auditing. cargo-deny enforces deny.toml (licenses,
+  # advisories, banned sources); cargo-vet checks audit rows in
+  # supply-chain/audits.toml. Vet is advisory until the audit corpus
+  # is populated — see ADR-0001 and supply-chain/audits.toml header.
+  supply-chain:
+    name: supply-chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny,cargo-vet
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: supply-chain
+      - name: cargo deny check
+        run: cargo deny --workspace check
+      - name: cargo vet check
+        run: cargo vet check
+        continue-on-error: true
+
+  # Fuzz smoke. cargo-fuzz needs nightly. Each target runs for 60s
+  # to catch compilation regressions, not to mine for new crashes —
+  # serious fuzzing belongs on OSS-Fuzz (tracked in a future ADR).
+  fuzz-smoke:
+    name: fuzz-smoke (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - canonical_bytes_cross
+          - nip19_round_trip
+          - nip44_decrypt
+          - filter_match_event
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+          shared-key: fuzz-${{ matrix.target }}
+      - name: cargo fuzz run (60s)
+        env:
+          RUSTFLAGS: ""
+        working-directory: fuzz
+        run: |
+          cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=60
+
+  # Coverage. cargo-llvm-cov runs the full suite under instrumentation
+  # and uploads to Codecov. Informational only — it does not gate
+  # merges because the upload requires the optional CODECOV_TOKEN.
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov,cargo-nextest
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: coverage
+      - name: cargo llvm-cov
+        run: |
+          cargo llvm-cov \
+            --workspace \
+            --all-features \
+            --locked \
+            --lcov \
+            --output-path lcov.info \
+            nextest
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: lcov.info
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Aggregator. Every required check is listed in branch protection.
+  # Adding a job means updating this `needs` list AND the protection
+  # rules in repository settings.
+  ci-required:
+    name: ci-required
+    if: always()
+    needs:
+      - fmt
+      - clippy
+      - doc
+      - msrv
+      - test
+      - wasm
+      - supply-chain
+      - fuzz-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate result
+        env:
+          RESULTS: ${{ toJson(needs) }}
+        run: |
+          echo "$RESULTS" | python3 -c '
+          import json, sys
+          data = json.loads(sys.stdin.read())
+          failed = [k for k, v in data.items() if v.get("result") not in ("success", "skipped")]
+          if failed:
+              print("Failed jobs:", failed)
+              sys.exit(1)
+          print("All required jobs passed.")
+          '
