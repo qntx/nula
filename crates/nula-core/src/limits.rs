@@ -64,11 +64,17 @@ pub const NIP44_MAX_PAYLOAD_BYTES: usize = 65_603;
 /// minutes of CPU on commodity hardware — far above any sane
 /// production setting. The cap exists to keep accidentally-pathological
 /// values from wedging a decryptor.
+#[cfg(feature = "nip49")]
+#[cfg_attr(docsrs, doc(cfg(feature = "nip49")))]
 pub use crate::nips::nip49::MAX_LOG_N as NIP49_MAX_LOG_N;
 /// Length, in bytes, of the XChaCha20-Poly1305 nonce embedded in
 /// an `ncryptsec`.
+#[cfg(feature = "nip49")]
+#[cfg_attr(docsrs, doc(cfg(feature = "nip49")))]
 pub use crate::nips::nip49::NONCE_BYTES as NIP49_NONCE_BYTES;
 /// Length, in bytes, of the scrypt salt embedded in an `ncryptsec`.
+#[cfg(feature = "nip49")]
+#[cfg_attr(docsrs, doc(cfg(feature = "nip49")))]
 pub use crate::nips::nip49::SALT_BYTES as NIP49_SALT_BYTES;
 
 #[cfg(test)]
@@ -89,8 +95,11 @@ mod tests {
         assert_eq!(NIP44_MIN_PLAINTEXT_BYTES, 1);
         assert_eq!(NIP44_MAX_PLAINTEXT_BYTES, 65_535);
         assert_eq!(NIP44_MAX_PAYLOAD_BYTES, 65_603);
-        assert_eq!(NIP49_SALT_BYTES, 16);
-        assert_eq!(NIP49_NONCE_BYTES, 24);
-        assert_eq!(NIP49_MAX_LOG_N, 30);
+        #[cfg(feature = "nip49")]
+        {
+            assert_eq!(NIP49_SALT_BYTES, 16);
+            assert_eq!(NIP49_NONCE_BYTES, 24);
+            assert_eq!(NIP49_MAX_LOG_N, 30);
+        }
     }
 }

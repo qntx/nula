@@ -38,8 +38,9 @@
 //! [NIP-96]: https://github.com/nostr-protocol/nips/blob/master/96.md
 //! [NIP-B7]: https://github.com/nostr-protocol/nips/blob/master/B7.md
 
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::event::{Event, EventBuilder, Kind, Tag, TagError, TagKind};
@@ -103,12 +104,7 @@ impl FileServerList {
     pub fn to_tags(&self) -> Vec<Tag> {
         self.servers
             .iter()
-            .map(|server| {
-                Tag::with(
-                    &TagKind::custom(SERVER_TAG),
-                    [server.as_str().to_owned()],
-                )
-            })
+            .map(|server| Tag::with(&TagKind::custom(SERVER_TAG), [server.as_str().to_owned()]))
             .collect()
     }
 

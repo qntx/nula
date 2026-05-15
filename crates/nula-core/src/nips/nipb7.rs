@@ -89,12 +89,7 @@ impl BlossomServerList {
     pub fn to_tags(&self) -> Vec<Tag> {
         self.servers
             .iter()
-            .map(|server| {
-                Tag::with(
-                    &TagKind::custom(SERVER_TAG),
-                    [server.as_str().to_owned()],
-                )
-            })
+            .map(|server| Tag::with(&TagKind::custom(SERVER_TAG), [server.as_str().to_owned()]))
             .collect()
     }
 
@@ -261,8 +256,13 @@ mod tests {
 
     #[test]
     fn blob_ref_parses_64_hex_with_and_without_extension() {
-        let no_ext = Url::parse(format!("https://blossom.self.hosted/{}", sample_hash_hex())).unwrap();
-        let with_ext = Url::parse(format!("https://blossom.self.hosted/{}.png", sample_hash_hex())).unwrap();
+        let no_ext =
+            Url::parse(format!("https://blossom.self.hosted/{}", sample_hash_hex())).unwrap();
+        let with_ext = Url::parse(format!(
+            "https://blossom.self.hosted/{}.png",
+            sample_hash_hex()
+        ))
+        .unwrap();
 
         let parsed_no_ext = BlossomBlobRef::from_url(&no_ext).unwrap();
         assert_eq!(parsed_no_ext.hash_hex, sample_hash_hex());

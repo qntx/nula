@@ -44,8 +44,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::event::{
-    Alphabet, Event, EventBuilder, EventBuilderError, EventId, EventIdError, Kind,
-    SingleLetterTag, Tag, TagError, TagKind, Tags,
+    Alphabet, Event, EventBuilder, EventBuilderError, EventId, EventIdError, Kind, SingleLetterTag,
+    Tag, TagError, TagKind, Tags,
 };
 use crate::key::{Keys, SecretKey, SecretKeyError};
 use crate::nips::nip40::EXPIRATION_TAG;
@@ -849,8 +849,7 @@ mod tests {
             id: "005c2502034d4f12".to_owned(),
             amount,
             secret: secret.to_owned(),
-            c: "0241d98a8197ef238a192d47edf191a9de78b657308937b4f7dd0aa53beae72c46"
-                .to_owned(),
+            c: "0241d98a8197ef238a192d47edf191a9de78b657308937b4f7dd0aa53beae72c46".to_owned(),
         }
     }
 

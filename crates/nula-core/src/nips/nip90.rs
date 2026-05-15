@@ -50,8 +50,8 @@
 use thiserror::Error;
 
 use crate::event::{
-    Alphabet, Event, EventBuilder, EventBuilderError, EventId, EventIdError, Kind,
-    SingleLetterTag, Tag, TagError, TagKind,
+    Alphabet, Event, EventBuilder, EventBuilderError, EventId, EventIdError, Kind, SingleLetterTag,
+    Tag, TagError, TagKind,
 };
 use crate::key::{PublicKey, PublicKeyError};
 use crate::types::{RelayUrl, RelayUrlError};
@@ -101,7 +101,10 @@ mod feedback_strings {
 /// `5000..=5999`.
 #[must_use]
 pub const fn is_job_request_kind(kind: Kind) -> bool {
-    matches!(kind.as_u16(), JOB_REQUEST_RANGE_START..=JOB_REQUEST_RANGE_END)
+    matches!(
+        kind.as_u16(),
+        JOB_REQUEST_RANGE_START..=JOB_REQUEST_RANGE_END
+    )
 }
 
 /// True when `kind` is in the reserved DVM job-result range
@@ -252,7 +255,10 @@ impl JobInput {
     /// typed input plus its optional marker.
     fn parse(args: &[String]) -> Result<(Self, Option<String>), Nip90Error> {
         let value = args.first().cloned().unwrap_or_default();
-        let kind = args.get(1).cloned().unwrap_or_else(|| input_kinds::URL.to_owned());
+        let kind = args
+            .get(1)
+            .cloned()
+            .unwrap_or_else(|| input_kinds::URL.to_owned());
         let relay = args.get(2).and_then(|s| {
             if s.is_empty() {
                 None
@@ -532,10 +538,7 @@ impl JobRequest {
             tags.push(Tag::with(&TagKind::custom(tag_names::RELAYS), row));
         }
         for topic in &self.topics {
-            tags.push(Tag::with(
-                &TagKind::custom(tag_names::T),
-                [topic.clone()],
-            ));
+            tags.push(Tag::with(&TagKind::custom(tag_names::T), [topic.clone()]));
         }
         for provider in &self.providers {
             tags.push(Tag::with(
@@ -579,14 +582,8 @@ impl JobRequest {
                     }
                 }
                 tag_names::PARAM => {
-                    let key = args
-                        .first()
-                        .cloned()
-                        .ok_or(Nip90Error::MalformedParam)?;
-                    let value = args
-                        .get(1)
-                        .cloned()
-                        .ok_or(Nip90Error::MalformedParam)?;
+                    let key = args.first().cloned().ok_or(Nip90Error::MalformedParam)?;
+                    let value = args.get(1).cloned().ok_or(Nip90Error::MalformedParam)?;
                     req.params.push(JobParam { key, value });
                 }
                 tag_names::BID => {
@@ -1097,7 +1094,9 @@ mod tests {
         let request = JobRequest::new(Kind::new(5_001))
             .unwrap()
             .input(JobInputRef::new(JobInput::Text("hello".to_owned())).marker("prompt"))
-            .input(JobInputRef::new(JobInput::Url("https://example.com/data".to_owned())))
+            .input(JobInputRef::new(JobInput::Url(
+                "https://example.com/data".to_owned(),
+            )))
             .output("text/plain")
             .param(JobParam::new("model", "LLaMA-2"))
             .param(JobParam::new("temperature", "0.5"))
@@ -1242,6 +1241,9 @@ mod tests {
         let recovered = JobFeedback::from_event(&event).unwrap();
         let amount = recovered.amount.expect("Amount must round-trip");
         assert_eq!(amount.msats, 1_000);
-        assert!(amount.bolt11.is_none(), "no invoice should round-trip as None");
+        assert!(
+            amount.bolt11.is_none(),
+            "no invoice should round-trip as None"
+        );
     }
 }

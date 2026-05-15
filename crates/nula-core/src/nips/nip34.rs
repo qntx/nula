@@ -276,10 +276,7 @@ impl Repository {
             [self.identifier.clone()],
         ));
         if let Some(name) = &self.name {
-            tags.push(Tag::with(
-                &TagKind::custom(tag_names::NAME),
-                [name.clone()],
-            ));
+            tags.push(Tag::with(&TagKind::custom(tag_names::NAME), [name.clone()]));
         }
         if let Some(description) = &self.description {
             tags.push(Tag::with(
@@ -455,10 +452,7 @@ impl RepositoryState {
             ));
         }
         if let Some(head) = &self.head {
-            tags.push(Tag::with(
-                &TagKind::custom(tag_names::HEAD),
-                [head.clone()],
-            ));
+            tags.push(Tag::with(&TagKind::custom(tag_names::HEAD), [head.clone()]));
         }
         tags
     }
@@ -495,8 +489,9 @@ impl RepositoryState {
                 state.refs.push(GitRef::new(name, oid));
             }
         }
-        state.identifier =
-            identifier.ok_or(Nip34Error::MissingIdentifier { kind: KIND_REPO_STATE })?;
+        state.identifier = identifier.ok_or(Nip34Error::MissingIdentifier {
+            kind: KIND_REPO_STATE,
+        })?;
         Ok(state)
     }
 }
@@ -866,7 +861,9 @@ impl PullRequest {
                 _ => {}
             }
         }
-        let repo = repo.ok_or(Nip34Error::MissingRepository { kind: KIND_PULL_REQUEST })?;
+        let repo = repo.ok_or(Nip34Error::MissingRepository {
+            kind: KIND_PULL_REQUEST,
+        })?;
         Ok(Self {
             content: event.content.clone(),
             repo,

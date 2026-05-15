@@ -35,8 +35,8 @@
 use thiserror::Error;
 
 use crate::event::{
-    Alphabet, Event, EventBuilder, EventBuilderError, EventId, EventIdError, Kind,
-    SingleLetterTag, Tag, TagError, TagKind,
+    Alphabet, Event, EventBuilder, EventBuilderError, EventId, EventIdError, Kind, SingleLetterTag,
+    Tag, TagError, TagKind,
 };
 use crate::key::{PublicKey, PublicKeyError};
 use crate::nips::nip60::CashuProof;
@@ -352,10 +352,7 @@ impl Nutzap {
             tags.push(Tag::with(&TagKind::custom(tag_names::PROOF), [json]));
         }
         if let Some(unit) = &self.unit {
-            tags.push(Tag::with(
-                &TagKind::custom(tag_names::UNIT),
-                [unit.clone()],
-            ));
+            tags.push(Tag::with(&TagKind::custom(tag_names::UNIT), [unit.clone()]));
         }
         tags.push(Tag::with(
             &TagKind::custom(tag_names::U),
@@ -572,11 +569,15 @@ mod tests {
 
     #[test]
     fn nutzap_round_trips_through_event() {
-        let zap = Nutzap::new(*other_keys().public_key(), mint_url(), vec![proof(1), proof(2)])
-            .comment("Thanks for this great idea.")
-            .unit("sat")
-            .target_event(EventId::from_byte_array([0xab; 32]))
-            .target_kind(Kind::TEXT_NOTE);
+        let zap = Nutzap::new(
+            *other_keys().public_key(),
+            mint_url(),
+            vec![proof(1), proof(2)],
+        )
+        .comment("Thanks for this great idea.")
+        .unit("sat")
+        .target_event(EventId::from_byte_array([0xab; 32]))
+        .target_kind(Kind::TEXT_NOTE);
         let event = EventBuilder::nutzap(&zap)
             .unwrap()
             .sign_with_keys(&keys())
