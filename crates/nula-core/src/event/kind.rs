@@ -59,6 +59,14 @@ impl Kind {
     pub const WALLET_CONNECT_NOTIFICATION_LEGACY: Self = Self(23_196);
     /// Wallet Connect NIP-44 notification (NIP-47).
     pub const WALLET_CONNECT_NOTIFICATION: Self = Self(23_197);
+    /// Cashu mint quote state (NIP-60).
+    pub const CASHU_QUOTE: Self = Self(7_374);
+    /// Cashu unspent-token event (NIP-60).
+    pub const CASHU_TOKEN: Self = Self(7_375);
+    /// Cashu spending-history event (NIP-60).
+    pub const CASHU_HISTORY: Self = Self(7_376);
+    /// Cashu wallet replaceable event (NIP-60).
+    pub const CASHU_WALLET: Self = Self(17_375);
     /// Badge award (NIP-58).
     pub const BADGE_AWARD: Self = Self(8);
     /// Zap request (NIP-57). Not published to relays; sent to the

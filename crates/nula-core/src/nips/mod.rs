@@ -177,6 +177,9 @@ pub mod nip58;
 #[cfg(feature = "nip59")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip59")))]
 pub mod nip59;
+#[cfg(feature = "nip44")]
+#[cfg_attr(docsrs, doc(cfg(feature = "nip44")))]
+pub mod nip60;
 pub mod nip62;
 pub mod nip65;
 pub mod nip66;
