@@ -179,7 +179,7 @@ fn build_p_tag(p_kind: &TagKind, contact: &Contact) -> Tag {
 }
 
 /// Errors raised when parsing a NIP-02 contact list event.
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum ContactListError {
     /// The event's kind was not `3`.
@@ -196,7 +196,7 @@ pub enum ContactListError {
     InvalidRelay(#[from] RelayUrlError),
     /// The legacy `content` relay map was malformed JSON.
     #[error("invalid legacy relay JSON: {0}")]
-    InvalidLegacyJson(String),
+    InvalidLegacyJson(#[from] serde_json::Error),
 }
 
 /// Per-relay read/write flags carried by the deprecated NIP-02 `content`
@@ -253,8 +253,7 @@ impl ContactList {
         if trimmed.is_empty() {
             return Ok(BTreeMap::new());
         }
-        let raw: BTreeMap<String, LegacyRelayEntry> = serde_json::from_str(trimmed)
-            .map_err(|err| ContactListError::InvalidLegacyJson(err.to_string()))?;
+        let raw: BTreeMap<String, LegacyRelayEntry> = serde_json::from_str(trimmed)?;
         let mut out = BTreeMap::new();
         for (url, entry) in raw {
             let marker = match (entry.read, entry.write) {

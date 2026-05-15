@@ -76,7 +76,13 @@ pub enum Nip59Error {
     Nip44(#[from] nip44::Nip44Error),
     /// JSON encoding / decoding failed.
     #[error("JSON serialization failed: {0}")]
-    Json(String),
+    Json(#[from] serde_json::Error),
+    /// An invariant of the gift-wrap pipeline was violated by an
+    /// unexpected upstream failure (e.g. a `Keys` signer returning
+    /// `SignerMismatch`, which is unreachable in the happy path).
+    /// The string carries the upstream description for triage.
+    #[error("gift-wrap internal failure: {0}")]
+    Internal(String),
     /// Outer signature did not verify.
     #[error(transparent)]
     Event(#[from] EventError),
@@ -133,9 +139,7 @@ pub fn create_seal(
     rumor: &UnsignedEvent,
     seal_created_at: Timestamp,
 ) -> Result<Event, Nip59Error> {
-    let rumor_json = rumor
-        .try_to_json()
-        .map_err(|e| Nip59Error::Json(e.to_string()))?;
+    let rumor_json = rumor.try_to_json()?;
     let ciphertext = nip44::encrypt(sender.secret_key(), recipient, &rumor_json)?;
     let seal = EventBuilder::new(Kind::SEAL, ciphertext)
         .created_at(seal_created_at)
@@ -143,10 +147,10 @@ pub fn create_seal(
         .map_err(|e| match e {
             crate::event::EventBuilderError::Clock(c) => Nip59Error::Clock(c),
             crate::event::EventBuilderError::Signer(s) => {
-                // SignerMismatch from a Keys signer is unreachable, but
-                // surface it as a JSON error rather than panic so the
-                // function stays total.
-                Nip59Error::Json(format!("seal signing failed unexpectedly: {s}"))
+                // `SignerMismatch` from a `Keys` signer is unreachable
+                // by construction but the function stays total via the
+                // dedicated `Internal` variant.
+                Nip59Error::Internal(format!("seal signing failed unexpectedly: {s}"))
             }
         })?;
     Ok(seal)
@@ -170,14 +174,12 @@ pub fn create_gift_wrap(
 ) -> Result<Event, Nip59Error> {
     let ephemeral = Keys::generate().map_err(|e| match e {
         crate::key::SecretKeyError::Rng(r) => Nip59Error::Rng(r),
-        // Other variants from `SecretKey::generate` never surface in the
-        // happy path; collapse them into Json/format for completeness.
-        other => Nip59Error::Json(format!("ephemeral key generation failed: {other}")),
+        // Other variants from `SecretKey::generate` never surface in
+        // the happy path; route through `Internal` for completeness.
+        other => Nip59Error::Internal(format!("ephemeral key generation failed: {other}")),
     })?;
 
-    let seal_json = seal
-        .try_to_json()
-        .map_err(|e| Nip59Error::Json(e.to_string()))?;
+    let seal_json = seal.try_to_json()?;
     let ciphertext = nip44::encrypt(ephemeral.secret_key(), recipient, &seal_json)?;
 
     let p_tag = Tag::with(
@@ -195,7 +197,7 @@ pub fn create_gift_wrap(
         .map_err(|e| match e {
             crate::event::EventBuilderError::Clock(c) => Nip59Error::Clock(c),
             crate::event::EventBuilderError::Signer(s) => {
-                Nip59Error::Json(format!("wrap signing failed unexpectedly: {s}"))
+                Nip59Error::Internal(format!("wrap signing failed unexpectedly: {s}"))
             }
         })?;
     Ok(wrap)
@@ -350,7 +352,7 @@ pub fn unwrap(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Nip5
         &gift_wrap.pubkey,
         &gift_wrap.content,
     )?;
-    let seal: Event = Event::from_json(seal_json).map_err(|e| Nip59Error::Json(e.to_string()))?;
+    let seal: Event = Event::from_json(seal_json)?;
     if seal.kind != Kind::SEAL {
         return Err(Nip59Error::UnexpectedKind {
             expected: Kind::SEAL.as_u16(),
@@ -364,8 +366,7 @@ pub fn unwrap(recipient: &Keys, gift_wrap: &Event) -> Result<UnsignedEvent, Nip5
 
     // Layer 2: peel the seal.
     let rumor_json = nip44::decrypt(recipient.secret_key(), &seal.pubkey, &seal.content)?;
-    let rumor: UnsignedEvent =
-        UnsignedEvent::from_json(rumor_json).map_err(|e| Nip59Error::Json(e.to_string()))?;
+    let rumor: UnsignedEvent = UnsignedEvent::from_json(rumor_json)?;
 
     // Spec defence: the rumor must claim authorship by the same key
     // that signed the seal. Otherwise the sender could re-pubkey the

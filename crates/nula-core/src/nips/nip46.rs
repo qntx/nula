@@ -90,7 +90,7 @@ pub enum Nip46Error {
     RelayUrl(#[from] RelayUrlError),
     /// `serde_json` rejected the wire payload.
     #[error("invalid JSON payload: {0}")]
-    Json(String),
+    Json(#[from] serde_json::Error),
     /// An unsigned event JSON in `sign_event` request failed to parse.
     #[error(transparent)]
     UnsignedEvent(#[from] UnsignedEventError),
@@ -139,12 +139,6 @@ pub enum Nip46Error {
         /// What the wire actually carried.
         received: String,
     },
-}
-
-impl From<serde_json::Error> for Nip46Error {
-    fn from(value: serde_json::Error) -> Self {
-        Self::Json(value.to_string())
-    }
 }
 
 /// Bare request method (the string in the wire `method` field).
