@@ -116,3 +116,40 @@ harness = false
 name = "nip44"
 harness = false
 required-features = ["nip44"]
+
+# Runnable examples (P1.T4). Each example is opt-in via its name on
+# the command line, e.g. `cargo run --example 04_dm_legacy --features nip04`.
+[[example]]
+name = "01_basic_event"
+path = "examples/01_basic_event.rs"
+
+[[example]]
+name = "04_dm_legacy"
+path = "examples/04_dm_legacy.rs"
+required-features = ["nip04"]
+
+[[example]]
+name = "05_nip05_lookup"
+path = "examples/05_nip05_lookup.rs"
+
+[[example]]
+name = "19_bech32_round_trip"
+path = "examples/19_bech32_round_trip.rs"
+
+[[example]]
+name = "44_payload"
+path = "examples/44_payload.rs"
+required-features = ["nip44"]
+
+[[example]]
+name = "46_remote_signer"
+path = "examples/46_remote_signer.rs"
+required-features = ["nip46"]
+
+[[example]]
+name = "57_zap_request"
+path = "examples/57_zap_request.rs"
+
+[[example]]
+name = "99_parser"
+path = "examples/99_parser.rs"

@@ -20,5 +20,24 @@ and offline tooling.
 - `message` — `ClientMessage`, `RelayMessage`, `SubscriptionId` plus the
   serialization rules described by NIP-01.
 - `signer` — the `NostrSigner` trait used by every higher-level crate.
+- `parser` — unified token stream that recognises NIP-21 references,
+  URLs (NIP-27), hashtags (NIP-12), and line breaks in a single pass.
+
+## Examples
+
+Eight runnable examples live under [`examples/`](./examples/); each is opt-in via
+`cargo run --example <name>`. Pass `--features <feature>` for examples that need
+an opt-in NIP module.
+
+| Example                  | Topic                                        | Required features |
+|--------------------------|----------------------------------------------|-------------------|
+| `01_basic_event`         | Generate keys, sign a kind-1 note, verify    | —                 |
+| `04_dm_legacy`           | NIP-04 DM round-trip + tamper detection      | `nip04`           |
+| `05_nip05_lookup`        | NIP-05 address parsing + offline verify      | —                 |
+| `19_bech32_round_trip`   | Encode/decode every NIP-19 entity            | —                 |
+| `44_payload`             | NIP-44 v2 encrypt/decrypt + size guards      | `nip44`           |
+| `46_remote_signer`       | NIP-46 connect handshake (typed envelope)    | `nip46`           |
+| `57_zap_request`         | NIP-57 zap request build + round-trip        | —                 |
+| `99_parser`              | Walk a note with `NostrParser` token stream  | —                 |
 
 [Nostr]: https://github.com/nostr-protocol/nostr
