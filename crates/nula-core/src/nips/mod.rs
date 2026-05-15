@@ -145,6 +145,7 @@ pub mod nip29;
 pub mod nip30;
 pub mod nip31;
 pub mod nip32;
+pub mod nip34;
 pub mod nip36;
 #[cfg(feature = "nip44")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip44")))]
