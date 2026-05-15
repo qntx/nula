@@ -132,6 +132,7 @@ pub mod nip14;
 pub mod nip17;
 pub mod nip18;
 pub mod nip19;
+pub mod nip20;
 pub mod nip21;
 pub mod nip22;
 pub mod nip23;
