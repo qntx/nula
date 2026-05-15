@@ -35,6 +35,15 @@
 //! else simply fails the downstream [`Nip21::parse`] and is
 //! dropped.
 //!
+//! # See also
+//!
+//! [`crate::parser`] is the unified text tokeniser that recognises
+//! NIP-21 references **plus** URLs, hashtags, and line breaks in a
+//! single pass. Reach for the parser when a UI layer needs to
+//! reconstruct the original content; the helpers in this module are
+//! the right tool when you only care about the embedded NIP-21
+//! references.
+//!
 //! [NIP-27]: https://github.com/nostr-protocol/nips/blob/master/27.md
 
 use std::collections::BTreeSet;
