@@ -199,6 +199,7 @@ pub mod nip84;
 pub mod nip86;
 pub mod nip88;
 pub mod nip89;
+pub mod nip90;
 pub mod nip92;
 pub mod nip94;
 pub mod nip98;
