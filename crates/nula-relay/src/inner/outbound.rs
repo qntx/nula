@@ -1,0 +1,72 @@
+//! Helpers that convert [`nula_core::ClientMessage`] / event payloads
+//! into wire-shaped [`nula_net::Message`] frames and push them on a
+//! [`nula_net::WebSocketSink`].
+
+use futures::SinkExt;
+use nula_core::{ClientMessage, Event, Filter, SubscriptionId};
+use nula_net::{Message, WebSocketSink};
+
+use crate::error::Error;
+
+/// Serialise a [`ClientMessage`] into a single text frame.
+pub(super) fn encode(message: &ClientMessage) -> Result<Message, Error> {
+    let json = serde_json::to_string(message)?;
+    Ok(Message::Text(json))
+}
+
+/// Send an outbound `["REQ", <id>, <filters…>]` frame.
+pub(super) async fn send_req(
+    sink: &mut WebSocketSink,
+    id: SubscriptionId,
+    filters: Vec<Filter>,
+) -> Result<usize, Error> {
+    let msg = ClientMessage::req(id, filters);
+    let frame = encode(&msg)?;
+    let bytes = frame_byte_len(&frame);
+    sink.send(frame).await?;
+    Ok(bytes)
+}
+
+/// Send an outbound `["CLOSE", <id>]` frame.
+pub(super) async fn send_close(
+    sink: &mut WebSocketSink,
+    id: SubscriptionId,
+) -> Result<usize, Error> {
+    let msg = ClientMessage::close(id);
+    let frame = encode(&msg)?;
+    let bytes = frame_byte_len(&frame);
+    sink.send(frame).await?;
+    Ok(bytes)
+}
+
+/// Send an outbound `["EVENT", <event>]` frame.
+pub(super) async fn send_event(sink: &mut WebSocketSink, event: Event) -> Result<usize, Error> {
+    let msg = ClientMessage::Event(event);
+    let frame = encode(&msg)?;
+    let bytes = frame_byte_len(&frame);
+    sink.send(frame).await?;
+    Ok(bytes)
+}
+
+/// Send an outbound `["AUTH", <event>]` frame.
+#[cfg(feature = "nip42")]
+pub(super) async fn send_auth(sink: &mut WebSocketSink, event: Event) -> Result<usize, Error> {
+    let msg = ClientMessage::Auth(event);
+    let frame = encode(&msg)?;
+    let bytes = frame_byte_len(&frame);
+    sink.send(frame).await?;
+    Ok(bytes)
+}
+
+/// Best-effort byte length for stats accounting. Control frames
+/// (ping/pong/close) are not counted; they don't carry application
+/// data.
+const fn frame_byte_len(frame: &Message) -> usize {
+    match frame {
+        Message::Text(s) => s.len(),
+        Message::Binary(b) => b.len(),
+        // Ping / Pong / Close + every future non-exhaustive variant
+        // count as zero application-level bytes.
+        _ => 0,
+    }
+}
