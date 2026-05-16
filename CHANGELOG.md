@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 5 — multi-relay routing & remote signer (Layer 4 completion).**
+  Two new workspace crates plus a Phase-4 relay-builder follow-up
+  bring the workspace to feature parity with the upstream
+  `rust-nostr` Layer-4 stack.
+  - `nula-gossip` (new crate, Layer 4): NIP-65 outbox/inbox routing,
+    NIP-17 DM-relay tracking, hint and most-received histograms,
+    `BrokenDownFilters` tri-state filter break-down (`PerRelay` /
+    `Orphan` / `Generic`), `AllowedRelays` policy gate (onion /
+    local / no-tls toggles), `GossipLimits` per-bucket caps,
+    `GossipBuilder` fluent constructor, `Gossip::warm_up` for cache
+    rehydration from `NostrDatabase`, and a `RefresherHandle`-driven
+    background tokio task that re-pulls outdated NIP-65 / NIP-17
+    lists on a configurable cadence.
+  - `nula-signer-connect` (new crate, Layer 4): NIP-46 (Nostr
+    Connect) remote signer client. Supports both `bunker://` and
+    `nostrconnect://` URIs (with mandatory secret-echo verification
+    on the latter), all nine NIP-46 RPCs (`connect`,
+    `get_public_key`, `sign_event`, `nip04_*`, `nip44_*`, `ping`,
+    `switch_relays`), pluggable `AuthUrlHandler` trait + default
+    `RejectAuthUrl`, dual `PoolMode` (external `Arc<RelayPool>` or
+    embedded mini-pool), and an object-safe
+    `nula_core::NostrSigner` impl so the client drops straight into
+    any `Arc<dyn NostrSigner>` slot.
+  - `nula-relay-builder` (Phase 4 follow-up): every connection
+    actor now consumes a relay-wide `tokio::sync::broadcast<Event>`
+    and forwards each accepted event to every active subscription
+    whose filter matches via `Filter::match_event`. Ephemeral kinds
+    (NIP-01 20000–<30000, including `kind:24133` / NIP-46) ACK with
+    `OK true` and broadcast to live subscribers without
+    persisting — matching the spec's broadcast-but-do-not-store
+    semantics.
+- **ADR-0009**: documents the routing / remote-signer architecture
+  (concrete `Gossip` struct vs. trait, dual pool mode, dispatcher
+  actor, secret-echo gate, NIP-46 RPC error mapping).
+
 ### Fixed
 
 - **Feature gating** (`nula-core`):

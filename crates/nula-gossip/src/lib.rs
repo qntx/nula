@@ -1,0 +1,83 @@
+//! NIP-65 / NIP-17 multi-relay routing graph.
+//!
+//! `nula-gossip` is Layer 4 of the `nula` workspace. It turns a
+//! stream of Nostr events into a routing table:
+//!
+//! - which relays the user **writes** to (NIP-65 outbox + hints +
+//!   most-received),
+//! - which relays the user **reads** from (NIP-65 inbox + hints +
+//!   most-received),
+//! - which relays the user prefers for **direct messages**
+//!   ([NIP-17] `kind:10050`).
+//!
+//! The crate also breaks every outgoing [`Filter`] into the per-relay
+//! sub-filters [`crate::Gossip::break_down_filter`] returns. The
+//! actual fan-out lives one layer up in [`nula_relay_pool::RelayPool`].
+//!
+//! See [ADR-0009](../../docs/adr/0009-multi-relay-routing-remote-signer.md)
+//! for the full design record.
+//!
+//! # Quickstart
+//!
+//! ```rust,no_run
+//! use std::sync::Arc;
+//!
+//! use nula_core::PublicKey;
+//! use nula_gossip::Gossip;
+//! use nula_storage::NostrDatabase;
+//!
+//! # async fn doc(db: Arc<dyn NostrDatabase>, user: PublicKey) -> Result<(), Box<dyn std::error::Error>> {
+//! let gossip = Gossip::builder().database(db).build();
+//! gossip.warm_up([user]).await?;
+//! let outbox = gossip.outbox_relays(&user).await;
+//! let _ = outbox;
+//! # Ok(()) }
+//! ```
+//!
+//! # Feature flags
+//!
+//! | Feature   | Default | Description                                      |
+//! | --------- | :-----: | ------------------------------------------------ |
+//! | `tracing` |   ❌    | Emit structured spans on selection / refresh.    |
+//!
+//! [NIP-17]: https://github.com/nostr-protocol/nips/blob/master/17.md
+//! [`Filter`]: nula_core::Filter
+
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![doc(html_root_url = "https://docs.rs/nula-gossip")]
+#![forbid(unsafe_code)]
+
+// Dev-dependencies pulled in only by integration tests. The
+// workspace `unused_crate_dependencies` lint fires at the lib root
+// even for test-only deps, so hedge them here. They are exercised
+// by `tests/refresh.rs` via `nula_relay_builder::MockRelayBuilder`,
+// `tests/process.rs` via `nula_storage_memory::MemoryDatabase`, and
+// `tests/refresh.rs` via `nula_net::default::DefaultTransport`
+// (transitively, through `nula_relay_pool`).
+#[cfg(test)]
+use nula_net as _;
+#[cfg(test)]
+use nula_relay_builder as _;
+#[cfg(test)]
+use nula_storage_memory as _;
+#[cfg(feature = "tracing")]
+use tracing as _;
+
+pub mod error;
+pub mod options;
+pub mod routes;
+pub mod ttl;
+
+mod filter;
+mod gossip;
+mod inner;
+mod refresher;
+mod selection;
+
+pub use self::error::Error;
+pub use self::filter::BrokenDownFilters;
+pub use self::gossip::{Gossip, GossipBuilder};
+pub use self::options::{AllowedRelays, GossipLimits, GossipOptions, ListKind};
+pub use self::refresher::RefresherHandle;
+pub use self::routes::UserRoutes;
+pub use self::ttl::{OutdatedKey, PublicKeyStatus};

@@ -591,7 +591,7 @@ fn decrypt_nip04(
 }
 
 #[cfg(all(feature = "nip44", not(feature = "nip04")))]
-fn decrypt_nip04(
+const fn decrypt_nip04(
     _owner_secret: &SecretKey,
     _owner_public: &PublicKey,
     _payload: &str,

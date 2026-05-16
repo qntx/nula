@@ -1402,6 +1402,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "nula-gossip"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "nula-core",
+ "nula-net",
+ "nula-relay",
+ "nula-relay-builder",
+ "nula-relay-pool",
+ "nula-storage",
+ "nula-storage-memory",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "nula-net"
 version = "0.1.0"
 dependencies = [
@@ -1462,6 +1479,26 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
+]
+
+[[package]]
+name = "nula-signer-connect"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "getrandom 0.4.2",
+ "nula-core",
+ "nula-net",
+ "nula-relay",
+ "nula-relay-builder",
+ "nula-relay-pool",
+ "nula-storage",
+ "nula-storage-memory",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "url",
 ]
 
 [[package]]

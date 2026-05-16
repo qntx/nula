@@ -29,6 +29,11 @@ pub(crate) struct ConnectionContext {
     pub(crate) write_policy: Arc<dyn WritePolicy>,
     pub(crate) read_policy: Arc<dyn ReadPolicy>,
     pub(crate) require_nip42: bool,
+    /// Relay-wide live broadcast: every accepted [`ClientMessage::Event`]
+    /// frame fans out to every connection's subscription matchers
+    /// here. Slow consumers see `RecvError::Lagged`, not back
+    /// pressure on the publish path.
+    pub(crate) broadcast: broadcast::Sender<Event>,
 }
 
 /// Drive a single accepted connection to completion.
@@ -44,6 +49,7 @@ pub(crate) async fn handle_connection(
 ) {
     let (mut sink, mut stream) = ws.split();
     let mut subscriptions: HashMap<SubscriptionId, Vec<Filter>> = HashMap::new();
+    let mut live = ctx.broadcast.subscribe();
 
     // Optional NIP-42 challenge — fires once at the top of the loop.
     let challenge_required = ctx.require_nip42;
@@ -64,72 +70,29 @@ pub(crate) async fn handle_connection(
                 break;
             }
 
+            // Live event from another connection — fan out to every
+            // subscription whose filter set matches.
+            broadcast_evt = live.recv() => {
+                let Ok(event) = broadcast_evt else { continue };
+                if forward_to_subscriptions(&mut sink, &subscriptions, &event)
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+
             // Inbound frame.
             next = stream.next() => {
-                let Some(frame) = next else { break };
-                let frame = match frame {
-                    Ok(WsMessage::Text(text)) => text.as_str().to_owned(),
-                    Ok(WsMessage::Binary(_)) => {
-                        // NIP-01 mandates UTF-8 text; binary frames
-                        // are protocol violations. Surface a NOTICE
-                        // and drop the frame.
-                        sink.send(WsMessage::text(encode_relay(&RelayMessage::Notice(
-                            "binary frames are not part of NIP-01".to_owned(),
-                        )))).await.ok();
-                        continue;
-                    }
-                    Ok(WsMessage::Ping(payload)) => {
-                        // Auto-pong; tungstenite normally does this
-                        // for us when we drive the stream, but we
-                        // are decomposing the stream so do it
-                        // manually.
-                        sink.send(WsMessage::Pong(payload)).await.ok();
-                        continue;
-                    }
-                    Ok(WsMessage::Pong(_) | WsMessage::Frame(_)) => continue,
-                    Ok(WsMessage::Close(_)) | Err(_) => break,
-                };
-
-                let msg = match ClientMessage::from_json(&frame) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        sink.send(WsMessage::text(encode_relay(&RelayMessage::Notice(
-                            format!("invalid client message: {e}"),
-                        ))))
-                        .await
-                        .ok();
-                        continue;
-                    }
-                };
-
-                if !authenticated && !is_auth_message(&msg) {
-                    let reply = if let ClientMessage::Event(event) = &msg {
-                        RelayMessage::Ok {
-                            event_id: event.id,
-                            accepted: false,
-                            message: format!(
-                                "{}: client must AUTH before publishing",
-                                MachineReadablePrefix::AuthRequired.as_str()
-                            ),
-                        }
-                    } else {
-                        RelayMessage::Notice(
-                            "auth-required: this relay requires NIP-42 authentication".into(),
-                        )
-                    };
-                    sink.send(WsMessage::text(encode_relay(&reply))).await.ok();
-                    continue;
-                }
-
-                if dispatch(
+                if handle_inbound_frame(
                     &ctx,
                     &mut subscriptions,
                     &mut sink,
-                    msg,
                     &mut authenticated,
+                    next,
                 )
                 .await
-                .is_err()
+                .is_break()
                 {
                     break;
                 }
@@ -139,6 +102,84 @@ pub(crate) async fn handle_connection(
 }
 
 type Sink = futures::stream::SplitSink<WebSocketStream<TcpStream>, WsMessage>;
+
+/// Outcome of [`handle_inbound_frame`]: whether the connection
+/// loop should keep going or terminate.
+use std::ops::ControlFlow;
+
+/// Handle one frame from the WebSocket stream. Extracted from the
+/// main `select!` body so the orchestration loop stays well below
+/// clippy's `cognitive_complexity` ceiling.
+async fn handle_inbound_frame(
+    ctx: &ConnectionContext,
+    subscriptions: &mut HashMap<SubscriptionId, Vec<Filter>>,
+    sink: &mut Sink,
+    authenticated: &mut bool,
+    frame: Option<Result<WsMessage, tokio_tungstenite::tungstenite::Error>>,
+) -> ControlFlow<()> {
+    let Some(frame) = frame else {
+        return ControlFlow::Break(());
+    };
+    let text = match frame {
+        Ok(WsMessage::Text(text)) => text.as_str().to_owned(),
+        Ok(WsMessage::Binary(_)) => {
+            // NIP-01 mandates UTF-8 text; binary frames are protocol
+            // violations. Surface a NOTICE and drop the frame.
+            sink.send(WsMessage::text(encode_relay(&RelayMessage::Notice(
+                "binary frames are not part of NIP-01".to_owned(),
+            ))))
+            .await
+            .ok();
+            return ControlFlow::Continue(());
+        }
+        Ok(WsMessage::Ping(payload)) => {
+            // Auto-pong; tungstenite normally does this for us when
+            // we drive the stream, but we are decomposing the stream
+            // so do it manually.
+            sink.send(WsMessage::Pong(payload)).await.ok();
+            return ControlFlow::Continue(());
+        }
+        Ok(WsMessage::Pong(_) | WsMessage::Frame(_)) => return ControlFlow::Continue(()),
+        Ok(WsMessage::Close(_)) | Err(_) => return ControlFlow::Break(()),
+    };
+
+    let msg = match ClientMessage::from_json(&text) {
+        Ok(m) => m,
+        Err(e) => {
+            sink.send(WsMessage::text(encode_relay(&RelayMessage::Notice(
+                format!("invalid client message: {e}"),
+            ))))
+            .await
+            .ok();
+            return ControlFlow::Continue(());
+        }
+    };
+
+    if !*authenticated && !is_auth_message(&msg) {
+        let reply = if let ClientMessage::Event(event) = &msg {
+            RelayMessage::Ok {
+                event_id: event.id,
+                accepted: false,
+                message: format!(
+                    "{}: client must AUTH before publishing",
+                    MachineReadablePrefix::AuthRequired.as_str()
+                ),
+            }
+        } else {
+            RelayMessage::Notice("auth-required: this relay requires NIP-42 authentication".into())
+        };
+        sink.send(WsMessage::text(encode_relay(&reply))).await.ok();
+        return ControlFlow::Continue(());
+    }
+
+    if dispatch(ctx, subscriptions, sink, msg, authenticated)
+        .await
+        .is_err()
+    {
+        return ControlFlow::Break(());
+    }
+    ControlFlow::Continue(())
+}
 
 #[derive(Debug)]
 struct DispatchError;
@@ -219,30 +260,85 @@ async fn handle_event(
     }
 
     let result = ctx.storage.save_event(&event).await;
-    let reply = match result {
-        Ok(SaveEventStatus::Success) => RelayMessage::Ok {
-            event_id,
-            accepted: true,
-            message: String::new(),
-        },
-        Ok(SaveEventStatus::Rejected(reason)) => RelayMessage::Ok {
-            event_id,
-            accepted: false,
-            message: format!("{}: {reason:?}", MachineReadablePrefix::Invalid.as_str()),
-        },
-        Ok(_) => RelayMessage::Ok {
-            event_id,
-            accepted: false,
-            message: format!("{}: rejected", MachineReadablePrefix::Error.as_str()),
-        },
-        Err(e) => RelayMessage::Ok {
-            event_id,
-            accepted: false,
-            message: format!("{}: {e}", MachineReadablePrefix::Error.as_str()),
-        },
+    let (accepted, reply) = match result {
+        // `Success` and `Rejected(Ephemeral)` both ACK with no
+        // message: persisted records are durably stored, ephemeral
+        // kinds (20000…<30000) per NIP-01 are broadcast to
+        // subscribers but never persisted. Either way the publisher
+        // sees `OK true` so the spec stays satisfied.
+        Ok(
+            SaveEventStatus::Success
+            | SaveEventStatus::Rejected(nula_storage::RejectedReason::Ephemeral),
+        ) => (
+            true,
+            RelayMessage::Ok {
+                event_id,
+                accepted: true,
+                message: String::new(),
+            },
+        ),
+        Ok(SaveEventStatus::Rejected(reason)) => (
+            false,
+            RelayMessage::Ok {
+                event_id,
+                accepted: false,
+                message: format!("{}: {reason:?}", MachineReadablePrefix::Invalid.as_str()),
+            },
+        ),
+        // `SaveEventStatus` is `#[non_exhaustive]`. Future protocol
+        // additions land here as a generic refusal so the relay does
+        // not silently mis-classify them.
+        Ok(_) => (
+            false,
+            RelayMessage::Ok {
+                event_id,
+                accepted: false,
+                message: format!(
+                    "{}: unsupported SaveEventStatus variant",
+                    MachineReadablePrefix::Error.as_str()
+                ),
+            },
+        ),
+        Err(e) => (
+            false,
+            RelayMessage::Ok {
+                event_id,
+                accepted: false,
+                message: format!("{}: {e}", MachineReadablePrefix::Error.as_str()),
+            },
+        ),
     };
 
-    send(sink, &reply).await
+    send(sink, &reply).await?;
+    if accepted {
+        // Fan out to every other connection's live subscriptions.
+        // `send` returns `Err` only when there are zero receivers,
+        // which is fine — this side already replied OK.
+        ctx.broadcast.send(event).ok();
+    }
+    Ok(())
+}
+
+async fn forward_to_subscriptions(
+    sink: &mut Sink,
+    subscriptions: &HashMap<SubscriptionId, Vec<Filter>>,
+    event: &Event,
+) -> Result<(), DispatchError> {
+    use nula_core::filter::MatchEventOptions;
+    let opts = MatchEventOptions::default();
+    for (sub_id, filters) in subscriptions {
+        if filters.iter().any(|f| f.match_event(event, opts)) {
+            send(
+                sink,
+                &RelayMessage::Event {
+                    subscription_id: sub_id.clone(),
+                    event: event.clone(),
+                },
+            )
+            .await?;
+        }
+    }
+    Ok(())
 }
 
 async fn handle_req(

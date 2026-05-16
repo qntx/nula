@@ -92,12 +92,16 @@ impl MockRelay {
         })?;
 
         let (shutdown_tx, _) = broadcast::channel(1);
+        // 4096 in-flight live events. Slow connections drop with
+        // `Lagged` rather than back-pressure the publish path.
+        let (live_tx, _) = broadcast::channel(4096);
 
         let ctx = ConnectionContext {
             storage: Arc::clone(&storage),
             write_policy,
             read_policy,
             require_nip42: options.require_nip42,
+            broadcast: live_tx,
         };
 
         let accept_loop = spawn_accept_loop(listener, ctx, shutdown_tx.clone());

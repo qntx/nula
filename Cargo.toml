@@ -24,6 +24,8 @@ nula-storage-memory = { version = "0.1.0", path = "crates/nula-storage-memory", 
 nula-storage-lmdb = { version = "0.1.0", path = "crates/nula-storage-lmdb", default-features = false }
 nula-relay-pool = { version = "0.1.0", path = "crates/nula-relay-pool", default-features = false }
 nula-relay-builder = { version = "0.1.0", path = "crates/nula-relay-builder", default-features = false }
+nula-gossip = { version = "0.1.0", path = "crates/nula-gossip", default-features = false }
+nula-signer-connect = { version = "0.1.0", path = "crates/nula-signer-connect", default-features = false }
 
 # Serialization
 serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
