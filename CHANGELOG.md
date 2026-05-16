@@ -171,6 +171,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     per-subscription `mpsc` event sinks), and the alternatives we
     explicitly rejected (mutex-everywhere, broadcast notifications,
     public `JoinHandle`, manual unsafe `Either<L, R>`).
+  - ADR-0007 — new record describing the Layer-3 storage
+    architecture: three-crate split, `heed` 0.20 + `postcard`
+    selection, the seven-dbi secondary-index schema, the single-
+    `unsafe` exemption around `EnvOpenOptions::open`, and the
+    ingester / spawn_blocking concurrency model.
+
+- **`nula-storage` Layer-3 trait surface** (`nula-storage`):
+  - `NostrDatabase` trait — eight methods (`save_event`,
+    `check_id`, `event_by_id`, `count`, `query`, `negentropy_items`,
+    `delete`, `wipe`), dyn-safe, returns `nula_net::BoxFuture` so
+    the runtime-agnostic cfg-split from ADR-0003 reaches Layer 3
+    unchanged.
+  - `NostrDatabaseExt` — default-implemented convenience methods
+    (`metadata`, `profile`, `relay_list_event`,
+    `contact_list_event`); backends inherit them for free.
+  - `Events` newtype — sorted, deduplicated `Vec<Event>` with
+    canonical "newest first, tie-break by ascending id" iteration
+    order matching NIP-01 wire ordering.
+  - `SaveEventStatus` / `DatabaseEventStatus` / `RejectedReason`
+    status enums with `#[non_exhaustive]` per ADR-0004; reasons
+    cover NIP-09 deletion, NIP-40 expiration, NIP-33 replaceable
+    conflict, NIP-62 vanish, ephemeral kinds, and duplicates.
+  - `Backend` enum + `Features` bitflags (`PERSISTENT`,
+    `FULL_TEXT_SEARCH`, `FAST_NEGENTROPY`, `BOUNDED_CAPACITY`).
+  - `Profile` aggregate (`PublicKey` + optional `Metadata`) for
+    `NostrDatabaseExt::profile`.
+  - Zero `unsafe`, zero tokio / tracing pulls — the trait surface
+    is wasm-friendly and runtime-agnostic.
+
+- **`nula-storage-memory` in-memory backend** (`nula-storage-memory`):
+  - `MemoryDatabase` — `Arc<RwLock<MemoryStore>>` over five
+    indexes (`by_id`, `by_time`, `by_author`, `by_kind_author`,
+    `by_coordinate`) and three tombstone sets (`deleted_ids`,
+    `deleted_coordinates`, `vanished_authors`). Cloning the handle
+    is `Arc`-cheap; lock guards never cross an `await`, so every
+    returned future is `Send`.
+  - `MemoryDatabaseBuilder` — fluent builder with `max_events`
+    (LRU eviction), `process_nip09`, and `process_nip62` knobs.
+  - `MemoryDatabaseOptions` — public option struct with sensible
+    defaults (NIP-09 + NIP-62 on, unbounded capacity).
+  - `QueryPattern` — filter classifier picking the most selective
+    index for the four common shapes (single author / `(kind,
+    author)` / addressable coordinate / generic full scan).
+  - 34 integration tests covering save lifecycle, duplicate /
+    ephemeral / expired / replaced rejections, every query
+    pattern, NIP-09 deletion (event-id + coordinate tombstones,
+    cross-author refusal), NIP-40 expiration, addressable
+    coordinate replacement, and bounded-capacity LRU eviction.
+
+- **`nula-storage-lmdb` persistent backend** (`nula-storage-lmdb`):
+  - `LmdbDatabase` — `Arc<Inner>` over an `heed` LMDB env, a
+    dedicated `nula-lmdb-ingester` writer thread, and seven
+    secondary index dbis. Drop of the last clone sends
+    `IngestCmd::Shutdown` and joins the thread, mirroring the
+    `Drop = shutdown` invariant `nula-relay` ships with.
+  - `LmdbDatabaseBuilder` — fluent async builder; `mmap` + dbi
+    creation runs on `tokio::task::spawn_blocking` so callers
+    stay cooperative.
+  - On-disk codec: `[version: u8] [postcard(event)]`. Future
+    schema changes bump `STORED_EVENT_VERSION`; old binaries
+    return `Error::UnsupportedCodecVersion` instead of corrupting
+    state silently.
+  - Concurrency model: single-writer ingester thread fed via
+    `flume::unbounded` MPSC, reads run on `tokio::task::spawn_blocking`
+    with their own `heed::RoTxn`.
+  - **Single `unsafe` block** around `heed::EnvOpenOptions::open`,
+    documented inline with a `// SAFETY:` comment and an
+    `#[allow(unsafe_code, reason = …)]` attribute citing ADR-0007.
+    The crate uses `#![deny(unsafe_code)]` instead of `forbid`;
+    no other `unsafe` lives in `nula-storage-lmdb`.
+  - 21 integration tests covering save lifecycle, every query
+    index path, NIP-09 deletion, persistence (save → drop →
+    reopen round-trip), and `wipe` durability across handle
+    cycles.
 
 - **`nip11-fetch` feature implementation** (`nula-core`):
   - `Nip11Fetcher` trait + `Nip11FetchError` enum
