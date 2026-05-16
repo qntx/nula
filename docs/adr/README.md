@@ -45,3 +45,4 @@ allowed but should be claimed in a PR within two weeks or recycled.
 | 0004 | Error handling via `thiserror`                     | Accepted |
 | 0005 | Observability field conventions for `tracing`      | Accepted |
 | 0006 | Single relay actor model                           | Accepted |
+| 0007 | Layer-3 storage architecture                       | Accepted |
