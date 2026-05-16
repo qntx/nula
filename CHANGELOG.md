@@ -176,6 +176,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     selection, the seven-dbi secondary-index schema, the single-
     `unsafe` exemption around `EnvOpenOptions::open`, and the
     ingester / spawn_blocking concurrency model.
+  - ADR-0008 — new record describing the Layer-4 multi-relay
+    orchestration architecture: the pool-without-second-actor
+    coordinator model, the `Output<T>` partial-success contract,
+    `RelayCapabilities` bitflags, broadcast vs. mpsc trade-offs
+    for pool notifications, the `stream_events` LRU-bounded
+    dedup driver (improvement over upstream's unbounded
+    `HashSet`), and the deliberate non-scope of admit / monitor /
+    NIP-65 / NIP-46 / TLS at this layer.
+
+- **`nula-net::BoxStream` alias** (`nula-net`):
+  - The `future` module is renamed to `boxed` and now hosts both
+    [`BoxFuture`] and the new [`BoxStream`] type alias. `BoxStream`
+    follows the same wasm32 cfg-split as `BoxFuture` (drops the
+    `Send` bound on browser targets) and is the canonical return
+    shape for object-safe `Stream`-yielding APIs across the
+    workspace, starting with `nula-relay-pool::stream_events`.
+  - Re-exported as `nula_net::BoxStream`; consumers stay on the
+    top-level path so the rename is invisible to callers.
+
+- **`nula-relay-pool` Layer-4 multi-relay coordinator** (`nula-relay-pool`):
+  - `RelayPool` — `Arc<Inner>` over `RwLock<HashMap<RelayUrl,
+    RelayEntry>>`, **no second actor task**. Each per-relay
+    [`nula_relay::Relay`] still runs its own actor; the pool
+    coordinates them. Cloning the handle is `Arc`-cheap; the last
+    clone going out of scope tears the pool down (drains relays,
+    aborts forwarders, broadcasts `PoolNotification::Shutdown`).
+  - `RelayPoolBuilder` — fluent builder requiring an
+    `Arc<dyn NostrDatabase>`; defaults the transport to
+    `nula_net::default::DefaultTransport` when the
+    `default-transport` feature is on.
+  - `Output<T>` — partial-success contract for every fan-out
+    operation (`success: HashSet<RelayUrl>`, `failed:
+    HashMap<RelayUrl, String>`, classifiers
+    `is_full_success` / `is_partial_success` / `is_total_failure`).
+  - `RelayCapabilities` bitflags (`READ` / `WRITE` / `DISCOVERY`)
+    plus `AtomicRelayCapabilities` for runtime mutation.
+    `add_relay` merges capabilities on the second call; pool
+    operations pick relays whose capability set overlaps with
+    what they need.
+  - `PoolNotification` over `tokio::sync::broadcast` —
+    `RelayAdded` / `RelayRemoved` / `Status` / `Notice` /
+    `Shutdown`. **Lossy on slow consumers** (documented).
+    Subscription events do **not** flow here; they live on
+    `stream_events` with cross-relay dedup applied.
+  - `stream_events` — single driver task merging per-relay
+    `SubscriptionHandle`s with `futures::stream::SelectAll`,
+    deduping by `EventId` through an `lru::LruCache` with a
+    configurable bound (default 100k entries). Optional auto-save
+    hook persists every cache-miss event into the pool's
+    `NostrDatabase`. **Improvement over upstream** rust-nostr,
+    which uses an unbounded `HashSet` and leaks memory on
+    long-lived streams.
+  - `RelayPoolOptions` — `max_relays`, `notification_channel_size`
+    (default 4096), `dedup_cache_size` (default 100_000),
+    `auto_save_events` (default `true`).
+  - `Error` enum (#[non_exhaustive]) covering `Shutdown` /
+    `RelayNotFound` / `TooManyRelays` / `NoRelaysSpecified`,
+    plus `From<nula_relay::Error>` and `From<nula_storage::Error>`
+    boundary conversions.
+  - 22 integration tests covering add/remove/capacity
+    enforcement, send_event partial-success matrix, subscribe
+    semantics, cross-relay stream dedup, auto-save persistence,
+    `RelayAdded` / `Shutdown` notifications, and shutdown
+    idempotency.
+
+- **`nula-relay-builder` Layer-4 in-process Nostr relay** (`nula-relay-builder`):
+  - `MockRelay` — an `Arc`-cheap handle wrapping a real
+    `tokio::net::TcpListener` accept loop on `127.0.0.1:0`, one
+    `tokio::spawn` per accepted connection, full NIP-01 frame
+    support (`EVENT` / `REQ` / `CLOSE` / `AUTH` / `COUNT`) speaking
+    `tokio_tungstenite` server-side WebSocket. Drop-shutdown
+    invariant: dropping the last clone fires the relay-wide
+    shutdown broadcast and aborts the accept loop.
+  - `MockRelayBuilder` — fluent builder accepting a custom
+    `Arc<dyn NostrDatabase>`, custom `WritePolicy` /
+    `ReadPolicy`, and a `MockRelayOptions` (bind addr,
+    `require_nip42` toggle). Defaults to a fresh
+    `MemoryDatabase` when the `memory` feature is on.
+  - `WritePolicy` / `ReadPolicy` — object-safe trait surfaces
+    using `nula_net::BoxFuture`. Default `AcceptAllWrites` /
+    `AcceptAllReads` impls preserve the one-line "spin up a
+    relay" ergonomics. `AdmitVerdict::Reject(reason)` surfaces a
+    `OK false …` / `CLOSED …` reply with a `MachineReadablePrefix`.
+  - **NIP-42 stub**: when `require_nip42` is on, the connection
+    actor sends `["AUTH", challenge]` on connect and gates every
+    subsequent `EVENT` / `REQ` behind a client `["AUTH", <event>]`
+    reply. The signature on the auth event is **not verified** —
+    this is a transport-layer fixture, not a real auth gate.
+  - `Error` enum (#[non_exhaustive]) covering `Bind` (with
+    captured `SocketAddr`), `Storage`, `Shutdown`.
+  - Deliberately omitted: TLS, hyper, multi-host routing, rate
+    limiting. The crate's role is "test fixture and ad-hoc dev
+    relay"; production deployments reach for `nostr-rs-relay`.
 
 - **`nula-storage` Layer-3 trait surface** (`nula-storage`):
   - `NostrDatabase` trait — eight methods (`save_event`,
