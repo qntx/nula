@@ -1,0 +1,27 @@
+[package]
+name = "nula-storage"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Nostr event-store trait surface: NIP-09 / NIP-40 / replaceable-kind semantics with pluggable backends."
+readme = "README.md"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+nula-core = { workspace = true }
+nula-net  = { workspace = true }
+
+bitflags  = "2.6"
+thiserror.workspace = true
+
+[lints]
+workspace = true

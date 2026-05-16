@@ -19,6 +19,9 @@ categories = ["cryptography", "network-programming"]
 nula-core = { version = "0.1.0", path = "crates/nula-core", default-features = false }
 nula-net = { version = "0.1.0", path = "crates/nula-net", default-features = false }
 nula-relay = { version = "0.1.0", path = "crates/nula-relay", default-features = false }
+nula-storage = { version = "0.1.0", path = "crates/nula-storage", default-features = false }
+nula-storage-memory = { version = "0.1.0", path = "crates/nula-storage-memory", default-features = false }
+nula-storage-lmdb = { version = "0.1.0", path = "crates/nula-storage-lmdb", default-features = false }
 
 # Serialization
 serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
@@ -82,6 +85,16 @@ futures = { version = "0.3.32", default-features = false, features = ["std", "al
 tokio = { version = "1.52.3", default-features = false }
 tokio-tungstenite = { version = "0.29.0", default-features = false }
 bytes = { version = "1.11.1", default-features = false, features = ["std"] }
+
+# Storage (nula-storage-lmdb)
+# `heed` is the safe-ish Rust binding over LMDB (still wraps unsafe C calls;
+# ADR-0007 records the unsafe-code exemption for nula-storage-lmdb).
+# `postcard` is the canonical serde wire format for our on-disk events.
+# `flume` is the bounded MPSC channel feeding the single-writer ingester.
+heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
+postcard = { version = "1.1", default-features = false, features = ["use-std"] }
+flume = { version = "0.11", default-features = false, features = ["async"] }
+tempfile = "3.16"
 
 # Testing
 hex-literal = "1.1.0"
