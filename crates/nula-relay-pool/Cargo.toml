@@ -1,0 +1,69 @@
+[package]
+name = "nula-relay-pool"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Multi-relay orchestration: pool management, per-call partial-success outputs, cross-relay event dedup."
+readme = "README.md"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+# Default-on: ship the pool wired against `nula-relay`'s default
+# tokio-tungstenite transport so the common case (`RelayPool::builder().build()`)
+# yields a working pool with no extra feature plumbing.
+default = ["default-transport"]
+
+# Re-export of `nula-relay/default-transport`. Spares consumers from
+# having to flip the same flag on two crates.
+default-transport = ["nula-relay/default-transport"]
+
+# Tracing spans on every pool operation. Field names follow ADR-0005.
+tracing = ["dep:tracing", "nula-relay/tracing", "nula-net/tracing"]
+
+[dependencies]
+nula-core    = { workspace = true }
+nula-net     = { workspace = true }
+nula-relay   = { workspace = true }
+nula-storage = { workspace = true }
+
+bitflags  = "2.6"
+futures.workspace = true
+thiserror.workspace = true
+
+# LRU cache for cross-relay event-id dedup in `stream_events`.
+# We pin a recent 0.x release; the API is a tiny `put` / `get` /
+# `pop_lru` surface that has been stable for years.
+lru = "0.16"
+
+# Tokio runtime: pool uses RwLock + broadcast + mpsc + spawn for the
+# stream-events driver task. Same feature mix as `nula-relay`.
+tokio = { workspace = true, features = ["sync", "rt", "macros", "time"] }
+tokio-stream = { workspace = true }
+
+# Optional observability.
+tracing = { workspace = true, optional = true }
+
+[dev-dependencies]
+nula-core           = { workspace = true, features = ["nip06"] }
+nula-net            = { workspace = true, features = ["mock"] }
+nula-storage-memory = { workspace = true }
+nula-relay-builder  = { workspace = true, features = ["memory"] }
+tokio = { workspace = true, features = [
+    "macros",
+    "rt-multi-thread",
+    "time",
+    "test-util",
+] }
+serde_json.workspace = true
+
+[lints]
+workspace = true

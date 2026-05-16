@@ -22,6 +22,8 @@ nula-relay = { version = "0.1.0", path = "crates/nula-relay", default-features =
 nula-storage = { version = "0.1.0", path = "crates/nula-storage", default-features = false }
 nula-storage-memory = { version = "0.1.0", path = "crates/nula-storage-memory", default-features = false }
 nula-storage-lmdb = { version = "0.1.0", path = "crates/nula-storage-lmdb", default-features = false }
+nula-relay-pool = { version = "0.1.0", path = "crates/nula-relay-pool", default-features = false }
+nula-relay-builder = { version = "0.1.0", path = "crates/nula-relay-builder", default-features = false }
 
 # Serialization
 serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
@@ -84,6 +86,10 @@ reqwest = { version = "0.13.3", default-features = false, features = ["rustls", 
 futures = { version = "0.3.32", default-features = false, features = ["std", "alloc"] }
 tokio = { version = "1.52.3", default-features = false }
 tokio-tungstenite = { version = "0.29.0", default-features = false }
+# `tokio-stream` adapts mpsc receivers into `Stream` and provides the
+# `SelectAll` combinator the relay-pool driver task uses to merge
+# per-relay subscription streams.
+tokio-stream = { version = "0.1", default-features = false, features = ["sync"] }
 bytes = { version = "1.11.1", default-features = false, features = ["std"] }
 
 # Storage (nula-storage-lmdb)
