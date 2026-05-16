@@ -6,10 +6,10 @@ use nula_core::RelayUrl;
 use tokio_tungstenite::connect_async_with_config;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
+use crate::boxed::BoxFuture;
 use crate::default::convert::{from_tungstenite, from_tungstenite_error};
 use crate::default::sink::TransportSink;
 use crate::error::Error;
-use crate::future::BoxFuture;
 use crate::mode::ConnectionMode;
 use crate::transport::{WebSocketSink, WebSocketStream, WebSocketTransport};
 

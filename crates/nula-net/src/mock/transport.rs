@@ -11,8 +11,8 @@ use futures::stream::Stream;
 use nula_core::RelayUrl;
 use tokio::sync::mpsc;
 
+use crate::boxed::BoxFuture;
 use crate::error::Error;
-use crate::future::BoxFuture;
 use crate::message::Message;
 use crate::mode::ConnectionMode;
 use crate::transport::{WebSocketSink, WebSocketStream, WebSocketTransport};

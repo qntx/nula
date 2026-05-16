@@ -63,8 +63,8 @@
 #![doc(html_root_url = "https://docs.rs/nula-net")]
 #![forbid(unsafe_code)]
 
+pub mod boxed;
 pub mod error;
-pub mod future;
 pub mod message;
 pub mod mode;
 pub mod transport;
@@ -77,8 +77,8 @@ pub mod default;
 #[cfg_attr(docsrs, doc(cfg(feature = "mock")))]
 pub mod mock;
 
+pub use self::boxed::{BoxFuture, BoxStream};
 pub use self::error::Error;
-pub use self::future::BoxFuture;
 pub use self::message::{CloseFrame, Message};
 pub use self::mode::ConnectionMode;
 pub use self::transport::{

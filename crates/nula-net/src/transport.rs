@@ -15,8 +15,8 @@ use futures::sink::Sink;
 use futures::stream::Stream;
 use nula_core::RelayUrl;
 
+use crate::boxed::BoxFuture;
 use crate::error::Error;
-use crate::future::BoxFuture;
 use crate::message::Message;
 use crate::mode::ConnectionMode;
 
