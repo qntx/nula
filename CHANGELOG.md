@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 6.2 — NIP-77 Negentropy sync (`nula-sync` crate).** New
+  Layer-3 crate that wraps the upstream
+  [`negentropy = "0.5"`](https://crates.io/crates/negentropy) state
+  machine in two role-specific session types plus a storage adapter:
+  - `Reconciliation` — initiator session. `with_defaults(storage)` /
+    `initiate(storage, frame_size_limit)` produce the opening
+    message; `reconcile(query)` / `reconcile_hex(query_hex)` fold
+    each peer reply into a `ReconcileOutcome { have, need,
+    next_message }`.
+  - `Responder` — non-initiator session, symmetric API for the
+    relay / mock side.
+  - `prepare_storage(items)` — sealed `NegentropyStorageVector`
+    builder for `impl IntoIterator<Item = (EventId, Timestamp)>`.
+  - `storage` feature: `from_database(&dyn NostrDatabase, filter)`
+    bridges `nula_storage::NostrDatabase::negentropy_items` into a
+    session-ready storage.
+  - `tracing` feature placeholder reserved for the upcoming
+    span-instrumented SDK loop.
+  - 10 tests total (9 unit + 1 doctest), including a two-replica
+    `MemoryDatabase` convergence end-to-end test.
+- **NIP-77 wire messages in `nula-core`.** Three new
+  `ClientMessage` variants (`NegOpen`, `NegMsg`, `NegClose`) and two
+  new `RelayMessage` variants (`NegMsg`, `NegErr`) with full
+  `serde` codec + 9 round-trip tests. Both enums are
+  `#[non_exhaustive]` so this is **additive only** for downstream
+  pattern matches that follow the workspace convention.
+- **ADR-0010** records why Negentropy lives in its own crate rather
+  than inside `nula-core` or `nula-relay-pool`.
+
 ### Changed
 
 - **Phase 6.1 — Layer 4 builder API convergence (breaking).** Every

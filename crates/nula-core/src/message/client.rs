@@ -24,6 +24,9 @@ const TAG_REQ: &str = "REQ";
 const TAG_CLOSE: &str = "CLOSE";
 const TAG_AUTH: &str = "AUTH";
 const TAG_COUNT: &str = "COUNT";
+const TAG_NEG_OPEN: &str = "NEG-OPEN";
+const TAG_NEG_MSG: &str = "NEG-MSG";
+const TAG_NEG_CLOSE: &str = "NEG-CLOSE";
 
 /// Errors raised when parsing a [`ClientMessage`].
 #[derive(Debug, Clone, Error)]
@@ -79,6 +82,36 @@ pub enum ClientMessage {
         /// Counting filter.
         filter: Filter,
     },
+    /// Open a NIP-77 Negentropy reconciliation session.
+    ///
+    /// Wire form (current protocol):
+    /// `["NEG-OPEN", <subscription_id>, <filter>, <initial_message_hex>]`.
+    NegOpen {
+        /// Subscription identifier the relay will use for follow-up
+        /// `NEG-MSG` / `NEG-ERR` frames.
+        subscription_id: SubscriptionId,
+        /// Filter that scopes the reconciliation.
+        filter: Filter,
+        /// Initial negentropy message, lowercase hex-encoded.
+        initial_message: String,
+    },
+    /// One step of an in-flight NIP-77 reconciliation.
+    ///
+    /// Wire form: `["NEG-MSG", <subscription_id>, <message_hex>]`.
+    NegMsg {
+        /// Subscription identifier the client picked in the matching
+        /// [`Self::NegOpen`].
+        subscription_id: SubscriptionId,
+        /// Reconciliation payload, lowercase hex-encoded.
+        message: String,
+    },
+    /// Close a NIP-77 reconciliation session.
+    ///
+    /// Wire form: `["NEG-CLOSE", <subscription_id>]`.
+    NegClose {
+        /// Subscription identifier to release on the relay side.
+        subscription_id: SubscriptionId,
+    },
 }
 
 impl ClientMessage {
@@ -116,6 +149,35 @@ impl ClientMessage {
             subscription_id,
             filter,
         }
+    }
+
+    /// Convenience constructor for [`ClientMessage::NegOpen`].
+    #[must_use]
+    pub const fn neg_open(
+        subscription_id: SubscriptionId,
+        filter: Filter,
+        initial_message: String,
+    ) -> Self {
+        Self::NegOpen {
+            subscription_id,
+            filter,
+            initial_message,
+        }
+    }
+
+    /// Convenience constructor for [`ClientMessage::NegMsg`].
+    #[must_use]
+    pub const fn neg_msg(subscription_id: SubscriptionId, message: String) -> Self {
+        Self::NegMsg {
+            subscription_id,
+            message,
+        }
+    }
+
+    /// Convenience constructor for [`ClientMessage::NegClose`].
+    #[must_use]
+    pub const fn neg_close(subscription_id: SubscriptionId) -> Self {
+        Self::NegClose { subscription_id }
     }
 }
 
@@ -165,6 +227,34 @@ impl Serialize for ClientMessage {
                 seq.serialize_element(filter)?;
                 seq.end()
             }
+            Self::NegOpen {
+                subscription_id,
+                filter,
+                initial_message,
+            } => {
+                let mut seq = serializer.serialize_seq(Some(4))?;
+                seq.serialize_element(TAG_NEG_OPEN)?;
+                seq.serialize_element(subscription_id)?;
+                seq.serialize_element(filter)?;
+                seq.serialize_element(initial_message)?;
+                seq.end()
+            }
+            Self::NegMsg {
+                subscription_id,
+                message,
+            } => {
+                let mut seq = serializer.serialize_seq(Some(3))?;
+                seq.serialize_element(TAG_NEG_MSG)?;
+                seq.serialize_element(subscription_id)?;
+                seq.serialize_element(message)?;
+                seq.end()
+            }
+            Self::NegClose { subscription_id } => {
+                let mut seq = serializer.serialize_seq(Some(2))?;
+                seq.serialize_element(TAG_NEG_CLOSE)?;
+                seq.serialize_element(subscription_id)?;
+                seq.end()
+            }
         }
     }
 }
@@ -196,6 +286,9 @@ impl<'de> Deserialize<'de> for ClientMessage {
                     TAG_CLOSE => decode_close(&mut seq),
                     TAG_AUTH => decode_auth(&mut seq),
                     TAG_COUNT => decode_count(&mut seq),
+                    TAG_NEG_OPEN => decode_neg_open(&mut seq),
+                    TAG_NEG_MSG => decode_neg_msg(&mut seq),
+                    TAG_NEG_CLOSE => decode_neg_close(&mut seq),
                     other => Err(de::Error::custom(ClientMessageError::UnknownTag(
                         other.to_owned(),
                     ))),
@@ -294,6 +387,76 @@ where
     })
 }
 
+fn decode_neg_open<'de, A>(seq: &mut A) -> Result<ClientMessage, A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    let subscription_id: SubscriptionId = seq.next_element()?.ok_or_else(|| {
+        de::Error::custom(ClientMessageError::Malformed {
+            tag: TAG_NEG_OPEN,
+            reason: "missing subscription id".to_owned(),
+        })
+    })?;
+    let filter: Filter = seq.next_element()?.ok_or_else(|| {
+        de::Error::custom(ClientMessageError::Malformed {
+            tag: TAG_NEG_OPEN,
+            reason: "missing filter".to_owned(),
+        })
+    })?;
+    // Newer NIP-77 protocol: `["NEG-OPEN", id, filter, msg_hex]`.
+    // Older callers sent a 5-element form with an extra `id_size`
+    // integer between the filter and the message; the relay-side
+    // tolerance is documented in the spec but we accept only the
+    // current 4-element shape on parse — round-tripping our own
+    // serialised form is enough for interop with modern relays.
+    let initial_message: String = seq.next_element()?.ok_or_else(|| {
+        de::Error::custom(ClientMessageError::Malformed {
+            tag: TAG_NEG_OPEN,
+            reason: "missing initial message".to_owned(),
+        })
+    })?;
+    Ok(ClientMessage::NegOpen {
+        subscription_id,
+        filter,
+        initial_message,
+    })
+}
+
+fn decode_neg_msg<'de, A>(seq: &mut A) -> Result<ClientMessage, A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    let subscription_id: SubscriptionId = seq.next_element()?.ok_or_else(|| {
+        de::Error::custom(ClientMessageError::Malformed {
+            tag: TAG_NEG_MSG,
+            reason: "missing subscription id".to_owned(),
+        })
+    })?;
+    let message: String = seq.next_element()?.ok_or_else(|| {
+        de::Error::custom(ClientMessageError::Malformed {
+            tag: TAG_NEG_MSG,
+            reason: "missing message".to_owned(),
+        })
+    })?;
+    Ok(ClientMessage::NegMsg {
+        subscription_id,
+        message,
+    })
+}
+
+fn decode_neg_close<'de, A>(seq: &mut A) -> Result<ClientMessage, A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    let subscription_id: SubscriptionId = seq.next_element()?.ok_or_else(|| {
+        de::Error::custom(ClientMessageError::Malformed {
+            tag: TAG_NEG_CLOSE,
+            reason: "missing subscription id".to_owned(),
+        })
+    })?;
+    Ok(ClientMessage::NegClose { subscription_id })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -384,5 +547,50 @@ mod tests {
         let json = "[]";
         let err = serde_json::from_str::<ClientMessage>(json).unwrap_err();
         assert!(err.to_string().contains("must not be empty"));
+    }
+
+    #[test]
+    fn neg_open_round_trip() {
+        let msg = ClientMessage::neg_open(
+            SubscriptionId::new("sync-1").unwrap(),
+            Filter::new().kind(Kind::TEXT_NOTE),
+            "0123456789abcdef".to_owned(),
+        );
+        let json = serde_json::to_string(&msg).unwrap();
+        assert!(json.starts_with("[\"NEG-OPEN\",\"sync-1\","));
+        assert!(json.ends_with(",\"0123456789abcdef\"]"));
+        let parsed: ClientMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, msg);
+    }
+
+    #[test]
+    fn neg_msg_round_trip() {
+        let msg = ClientMessage::neg_msg(
+            SubscriptionId::new("sync-1").unwrap(),
+            "deadbeef".to_owned(),
+        );
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(json, "[\"NEG-MSG\",\"sync-1\",\"deadbeef\"]");
+        let parsed: ClientMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, msg);
+    }
+
+    #[test]
+    fn neg_close_round_trip() {
+        let msg = ClientMessage::neg_close(SubscriptionId::new("sync-1").unwrap());
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(json, "[\"NEG-CLOSE\",\"sync-1\"]");
+        let parsed: ClientMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, msg);
+    }
+
+    #[test]
+    fn neg_open_missing_initial_message_rejected() {
+        // Filter without the trailing initial-message string should fail
+        // to parse rather than be silently accepted as the legacy
+        // 5-element form.
+        let json = "[\"NEG-OPEN\",\"sync-1\",{}]";
+        let err = serde_json::from_str::<ClientMessage>(json).unwrap_err();
+        assert!(err.to_string().contains("missing initial message"));
     }
 }

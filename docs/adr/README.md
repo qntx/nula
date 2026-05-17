@@ -48,3 +48,4 @@ allowed but should be claimed in a PR within two weeks or recycled.
 | 0007 | Layer-3 storage architecture                       | Accepted |
 | 0008 | Multi-relay orchestration architecture             | Accepted |
 | 0009 | Multi-relay routing & remote signer architecture   | Accepted |
+| 0010 | NIP-77 Negentropy lives in standalone `nula-sync`  | Accepted |

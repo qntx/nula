@@ -25,6 +25,8 @@ const TAG_CLOSED: &str = "CLOSED";
 const TAG_NOTICE: &str = "NOTICE";
 const TAG_AUTH: &str = "AUTH";
 const TAG_COUNT: &str = "COUNT";
+const TAG_NEG_MSG: &str = "NEG-MSG";
+const TAG_NEG_ERR: &str = "NEG-ERR";
 
 /// Errors raised when constructing a [`MachineReadablePrefix`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
@@ -194,6 +196,27 @@ pub enum RelayMessage {
         /// Number of matching events.
         count: u64,
     },
+    /// One step of an in-flight NIP-77 reconciliation, from the relay
+    /// back to the client.
+    ///
+    /// Wire form: `["NEG-MSG", <subscription_id>, <message_hex>]`.
+    NegMsg {
+        /// Subscription identifier from the original `NEG-OPEN`.
+        subscription_id: SubscriptionId,
+        /// Reconciliation payload, lowercase hex-encoded.
+        message: String,
+    },
+    /// Terminal error frame for a NIP-77 reconciliation session.
+    ///
+    /// Wire form: `["NEG-ERR", <subscription_id>, <reason>]`.
+    NegErr {
+        /// Subscription identifier the relay is failing.
+        subscription_id: SubscriptionId,
+        /// Reason string. Conventional prefixes (e.g.
+        /// `"blocked: …"`) are observable via
+        /// [`MachineReadablePrefix::from_reason`].
+        message: String,
+    },
 }
 
 impl Serialize for RelayMessage {
@@ -267,6 +290,26 @@ impl Serialize for RelayMessage {
                 seq.serialize_element(&CountPayload { count: *count })?;
                 seq.end()
             }
+            Self::NegMsg {
+                subscription_id,
+                message,
+            } => {
+                let mut seq = serializer.serialize_seq(Some(3))?;
+                seq.serialize_element(TAG_NEG_MSG)?;
+                seq.serialize_element(subscription_id)?;
+                seq.serialize_element(message)?;
+                seq.end()
+            }
+            Self::NegErr {
+                subscription_id,
+                message,
+            } => {
+                let mut seq = serializer.serialize_seq(Some(3))?;
+                seq.serialize_element(TAG_NEG_ERR)?;
+                seq.serialize_element(subscription_id)?;
+                seq.serialize_element(message)?;
+                seq.end()
+            }
         }
     }
 }
@@ -300,6 +343,8 @@ impl<'de> Deserialize<'de> for RelayMessage {
                     TAG_NOTICE => decode_notice(&mut seq),
                     TAG_AUTH => decode_auth(&mut seq),
                     TAG_COUNT => decode_count(&mut seq),
+                    TAG_NEG_MSG => decode_neg_msg(&mut seq),
+                    TAG_NEG_ERR => decode_neg_err(&mut seq),
                     other => Err(de::Error::custom(RelayMessageError::UnknownTag(
                         other.to_owned(),
                     ))),
@@ -418,6 +463,38 @@ where
     Ok(RelayMessage::Count {
         subscription_id,
         count: payload.count,
+    })
+}
+
+fn decode_neg_msg<'de, A>(seq: &mut A) -> Result<RelayMessage, A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    let subscription_id: SubscriptionId = seq
+        .next_element()?
+        .ok_or_else(|| malformed::<A::Error>(TAG_NEG_MSG, "missing subscription id"))?;
+    let message: String = seq
+        .next_element()?
+        .ok_or_else(|| malformed::<A::Error>(TAG_NEG_MSG, "missing message"))?;
+    Ok(RelayMessage::NegMsg {
+        subscription_id,
+        message,
+    })
+}
+
+fn decode_neg_err<'de, A>(seq: &mut A) -> Result<RelayMessage, A::Error>
+where
+    A: SeqAccess<'de>,
+{
+    let subscription_id: SubscriptionId = seq
+        .next_element()?
+        .ok_or_else(|| malformed::<A::Error>(TAG_NEG_ERR, "missing subscription id"))?;
+    let message: String = seq
+        .next_element()?
+        .ok_or_else(|| malformed::<A::Error>(TAG_NEG_ERR, "missing message"))?;
+    Ok(RelayMessage::NegErr {
+        subscription_id,
+        message,
     })
 }
 
@@ -569,5 +646,35 @@ mod tests {
         let json = "[\"WAT\",\"x\"]";
         let err = serde_json::from_str::<RelayMessage>(json).unwrap_err();
         assert!(err.to_string().contains("unknown relay message tag"));
+    }
+
+    #[test]
+    fn neg_msg_round_trip() {
+        let msg = RelayMessage::NegMsg {
+            subscription_id: sub(),
+            message: "deadbeef".to_owned(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(json, "[\"NEG-MSG\",\"sub-1\",\"deadbeef\"]");
+        let parsed: RelayMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, msg);
+    }
+
+    #[test]
+    fn neg_err_round_trip() {
+        let msg = RelayMessage::NegErr {
+            subscription_id: sub(),
+            message: "blocked: spam".to_owned(),
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        let parsed: RelayMessage = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, msg);
+    }
+
+    #[test]
+    fn neg_msg_missing_payload_rejected() {
+        let json = "[\"NEG-MSG\",\"sub-1\"]";
+        let err = serde_json::from_str::<RelayMessage>(json).unwrap_err();
+        assert!(err.to_string().contains("missing message"));
     }
 }

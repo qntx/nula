@@ -26,6 +26,7 @@ nula-relay-pool = { version = "0.1.0", path = "crates/nula-relay-pool", default-
 nula-relay-builder = { version = "0.1.0", path = "crates/nula-relay-builder", default-features = false }
 nula-gossip = { version = "0.1.0", path = "crates/nula-gossip", default-features = false }
 nula-signer-connect = { version = "0.1.0", path = "crates/nula-signer-connect", default-features = false }
+nula-sync = { version = "0.1.0", path = "crates/nula-sync", default-features = false }
 
 # Serialization
 serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
@@ -67,6 +68,11 @@ url = { version = "2.5.8", default-features = false, features = ["serde"] }
 
 # Containers
 indexmap = { version = "2.14.0", default-features = false, features = ["std", "serde"] }
+
+# NIP-77 Negentropy synchronisation algorithm. Pure-Rust, no
+# transport / no allocation policy of its own; we provide the storage
+# adapter and wire codec in `nula-sync`.
+negentropy = { version = "0.5", default-features = false, features = ["std"] }
 
 # Error handling
 thiserror = "2.0.18"
