@@ -294,13 +294,15 @@ impl Gossip {
 
 /// Builder for a [`Gossip`].
 ///
+/// # Examples
+///
 /// ```rust,no_run
 /// use std::sync::Arc;
 ///
-/// use nula_gossip::Gossip;
+/// use nula_gossip::{Error, Gossip};
 /// use nula_storage::NostrDatabase;
 ///
-/// fn build(db: Arc<dyn NostrDatabase>) -> Gossip {
+/// fn build(db: Arc<dyn NostrDatabase>) -> Result<Gossip, Error> {
 ///     Gossip::builder().database(db).build()
 /// }
 /// ```
@@ -325,7 +327,7 @@ impl GossipBuilder {
     }
 
     /// Attach the persistence backend. **Required** — `build`
-    /// panics without one.
+    /// returns [`Error::MissingDatabase`] without one.
     pub fn database(mut self, db: Arc<dyn nula_storage::NostrDatabase>) -> Self {
         self.db = Some(db);
         self
@@ -333,21 +335,15 @@ impl GossipBuilder {
 
     /// Finalise the builder.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// When [`Self::database`] was not called.
-    #[allow(
-        clippy::panic,
-        reason = "builder pattern requires a panic on misconfiguration"
-    )]
-    #[must_use]
-    pub fn build(self) -> Gossip {
-        let Some(db) = self.db else {
-            panic!("GossipBuilder::build called without a database")
-        };
-        Gossip {
+    /// [`Error::MissingDatabase`] when [`Self::database`] was not
+    /// called.
+    pub fn build(self) -> Result<Gossip, Error> {
+        let db = self.db.ok_or(Error::MissingDatabase)?;
+        Ok(Gossip {
             inner: Arc::new(Inner::new(db, self.options)),
-        }
+        })
     }
 }
 

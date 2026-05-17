@@ -44,7 +44,8 @@ async fn connected_relay() -> (Relay, MockHandle) {
 
     let relay = Relay::builder(endpoint.clone())
         .transport(transport)
-        .build();
+        .build()
+        .expect("transport supplied to builder");
 
     let connect = tokio::spawn({
         let relay = relay.clone();
@@ -129,7 +130,10 @@ async fn publish_when_disconnected_returns_not_connected() {
     let transport = Arc::new(MockTransport::new());
     let endpoint = url();
     let _subscriber = transport.subscribe(&endpoint);
-    let relay = Relay::builder(endpoint).transport(transport).build();
+    let relay = Relay::builder(endpoint)
+        .transport(transport)
+        .build()
+        .expect("transport supplied to builder");
 
     let err = relay
         .publish(signed_event(), PublishOptions::default())

@@ -30,7 +30,8 @@ pub fn make_gossip_with_options(options: GossipOptions) -> (Gossip, Arc<dyn Nost
     let gossip = Gossip::builder()
         .options(options)
         .database(Arc::clone(&db))
-        .build();
+        .build()
+        .expect("database supplied to builder");
     (gossip, db)
 }
 

@@ -27,7 +27,10 @@ use nula_storage_memory::MemoryDatabase;
 #[must_use]
 pub fn make_pool() -> (RelayPool, Arc<dyn NostrDatabase>) {
     let db: Arc<dyn NostrDatabase> = Arc::new(MemoryDatabase::new());
-    let pool = RelayPool::builder().database(Arc::clone(&db)).build();
+    let pool = RelayPool::builder()
+        .database(Arc::clone(&db))
+        .build()
+        .expect("database supplied to builder");
     (pool, db)
 }
 

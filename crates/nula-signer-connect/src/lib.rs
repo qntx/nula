@@ -20,7 +20,7 @@
 //!
 //! # async fn doc(db: Arc<dyn NostrDatabase>) -> Result<(), Box<dyn std::error::Error>> {
 //! let uri: Uri = "bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.example.com".parse()?;
-//! let pool = RelayPool::builder().database(db).build();
+//! let pool = RelayPool::builder().database(db).build()?;
 //! let client = NostrConnect::builder()
 //!     .uri(uri)
 //!     .embedded_pool(pool)

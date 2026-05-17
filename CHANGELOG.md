@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Phase 6.1 — Layer 4 builder API convergence (breaking).** Every
+  Layer 3-4 `*Builder::build()` that previously `panic!`-ed on a
+  missing required input now returns `Result<_, Error>` with a typed
+  `MissingFoo` variant. Callers must add `?` or `.expect(...)` at the
+  call site; the panics they were silently relying on are gone. The
+  exact shape:
+  - `nula_relay::RelayBuilder::build` → `Result<Relay, Error>` with a
+    new `Error::MissingTransport` variant. `nula_relay::Relay::new`
+    (gated on `default-transport`) keeps its infallible signature by
+    bypassing the builder and constructing
+    `nula_net::default::DefaultTransport` directly.
+  - `nula_relay_pool::RelayPoolBuilder::build` →
+    `Result<RelayPool, Error>` with two new variants
+    `Error::MissingDatabase` and `Error::MissingTransport`.
+  - `nula_gossip::GossipBuilder::build` → `Result<Gossip, Error>`
+    with a new `Error::MissingDatabase` variant.
+  - `nula_signer_connect::NostrConnectBuilder::build` keeps its
+    existing `Result` return shape but the two `panic!`-ed
+    branches now surface as `Error::MissingUri` and
+    `Error::MissingPool`.
+  - Four new regression tests cover each of the new error paths
+    (`crates/{nula-relay-pool,nula-gossip,nula-signer-connect}/tests/builder.rs`).
+
 ### Added
 
 - **Phase 5 — multi-relay routing & remote signer (Layer 4 completion).**

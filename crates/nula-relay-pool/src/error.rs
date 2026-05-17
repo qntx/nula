@@ -58,4 +58,18 @@ pub enum Error {
     /// other consumers can still observe it.
     #[error(transparent)]
     Storage(#[from] nula_storage::Error),
+
+    /// [`crate::RelayPoolBuilder::build`] was called without a prior
+    /// [`crate::RelayPoolBuilder::database`] invocation.
+    #[error("RelayPoolBuilder requires a NostrDatabase (call `.database(...)` before `.build()`)")]
+    MissingDatabase,
+
+    /// [`crate::RelayPoolBuilder::build`] was called without a prior
+    /// [`crate::RelayPoolBuilder::transport`] invocation **and** the
+    /// `default-transport` feature is off, so the builder cannot
+    /// default the transport for the caller.
+    #[error(
+        "RelayPoolBuilder requires a WebSocketTransport (call `.transport(...)` or enable the `default-transport` feature)"
+    )]
+    MissingTransport,
 }

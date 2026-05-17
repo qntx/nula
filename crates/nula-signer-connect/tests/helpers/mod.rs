@@ -78,7 +78,10 @@ pub fn make_client_keys(seed: u8) -> Keys {
 /// store.
 pub fn make_pool() -> RelayPool {
     let db: Arc<dyn NostrDatabase> = Arc::new(MemoryDatabase::new());
-    RelayPool::builder().database(db).build()
+    RelayPool::builder()
+        .database(db)
+        .build()
+        .expect("database supplied to builder")
 }
 
 /// In-process NIP-46 signer.
@@ -97,7 +100,10 @@ pub struct MockSigner {
 impl MockSigner {
     pub async fn spawn(keys: Keys, relays: Vec<RelayUrl>) -> Self {
         let db: Arc<dyn NostrDatabase> = Arc::new(MemoryDatabase::new());
-        let pool = RelayPool::builder().database(db).build();
+        let pool = RelayPool::builder()
+            .database(db)
+            .build()
+            .expect("database supplied to builder");
         for url in &relays {
             pool.add_relay(
                 url.clone(),

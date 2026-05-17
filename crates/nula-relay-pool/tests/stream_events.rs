@@ -28,7 +28,8 @@ async fn stream_events_dedups_across_relays() {
     let pool = RelayPool::builder()
         .database(Arc::clone(&db))
         .options(RelayPoolOptions::default().auto_save_events(false))
-        .build();
+        .build()
+        .expect("database supplied to builder");
     let r1 = make_relay().await;
     let r2 = make_relay().await;
 
@@ -97,7 +98,8 @@ async fn stream_events_auto_save_persists_to_pool_database() {
     let pool = RelayPool::builder()
         .database(Arc::clone(&db))
         .options(RelayPoolOptions::default().auto_save_events(true))
-        .build();
+        .build()
+        .expect("database supplied to builder");
     let relay = make_relay().await;
 
     let event = make_text_note("persist", "auto-save");

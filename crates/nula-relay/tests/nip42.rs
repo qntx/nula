@@ -36,7 +36,8 @@ async fn auth_challenge_surfaces_as_notification_and_authenticate_writes_frame()
 
     let relay = Relay::builder(endpoint.clone())
         .transport(transport)
-        .build();
+        .build()
+        .expect("transport supplied to builder");
     let mut notifications = relay
         .notifications()
         .expect("notification stream available");

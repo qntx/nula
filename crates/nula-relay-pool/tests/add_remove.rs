@@ -65,7 +65,8 @@ async fn capacity_enforced() {
             nula_storage_memory::MemoryDatabase::new(),
         ))
         .options(opts)
-        .build();
+        .build()
+        .expect("database supplied to builder");
 
     let r1 = make_relay().await;
     let r2 = make_relay().await;

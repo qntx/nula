@@ -37,7 +37,10 @@ async fn refresh_pulls_nip65_event_from_pool() {
     let server_url = server.url().clone();
 
     let pool_db: Arc<dyn NostrDatabase> = Arc::new(MemoryDatabase::new());
-    let pool = RelayPool::builder().database(pool_db).build();
+    let pool = RelayPool::builder()
+        .database(pool_db)
+        .build()
+        .expect("database supplied to builder");
     pool.add_relay(
         server_url.clone(),
         RelayCapabilities::READ | RelayCapabilities::WRITE,
@@ -78,7 +81,10 @@ async fn refresh_pulls_nip65_event_from_pool() {
 async fn refresh_with_no_discovery_relays_errors() {
     let (gossip, _db) = make_gossip();
     let pool_db: Arc<dyn NostrDatabase> = Arc::new(MemoryDatabase::new());
-    let pool = RelayPool::builder().database(pool_db).build();
+    let pool = RelayPool::builder()
+        .database(pool_db)
+        .build()
+        .expect("database supplied to builder");
     let alice = keys(2);
     let err = gossip
         .refresh(
@@ -105,7 +111,8 @@ async fn warm_up_rehydrates_from_database() {
 
     let gossip = nula_gossip::Gossip::builder()
         .database(Arc::clone(&db))
-        .build();
+        .build()
+        .expect("database supplied to builder");
     gossip
         .warm_up([*alice.public_key()])
         .await

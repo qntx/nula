@@ -48,7 +48,8 @@ async fn connected_relay() -> (Relay, MockHandle) {
 
     let relay = Relay::builder(endpoint.clone())
         .transport(transport)
-        .build();
+        .build()
+        .expect("transport supplied to builder");
 
     let connect = tokio::spawn({
         let relay = relay.clone();

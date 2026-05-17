@@ -27,7 +27,7 @@
 //! use nula_storage::NostrDatabase;
 //!
 //! # async fn doc(db: Arc<dyn NostrDatabase>, user: PublicKey) -> Result<(), Box<dyn std::error::Error>> {
-//! let gossip = Gossip::builder().database(db).build();
+//! let gossip = Gossip::builder().database(db).build()?;
 //! gossip.warm_up([user]).await?;
 //! let outbox = gossip.outbox_relays(&user).await;
 //! let _ = outbox;

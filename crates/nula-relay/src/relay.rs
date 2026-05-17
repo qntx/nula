@@ -64,7 +64,11 @@ impl Relay {
     #[cfg_attr(docsrs, doc(cfg(feature = "default-transport")))]
     #[must_use]
     pub fn new(url: RelayUrl) -> Self {
-        Self::builder(url).build()
+        Self::from_context(ActorContext {
+            url,
+            transport: Arc::new(nula_net::default::DefaultTransport::new()),
+            options: RelayOptions::default(),
+        })
     }
 
     /// Begin configuring a relay.
@@ -278,14 +282,21 @@ impl RelayBuilder {
 
     /// Finalise the builder and spawn the actor task.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics when the `default-transport` feature is **off** and
-    /// no transport was supplied via [`Self::transport`]. With
-    /// `default-transport` on, this never panics — the default
-    /// transport is constructed lazily.
-    #[must_use]
-    pub fn build(self) -> Relay {
+    /// Returns [`Error::MissingTransport`] when the
+    /// `default-transport` feature is **off** and no transport was
+    /// supplied via [`Self::transport`]. With `default-transport`
+    /// on, this never fails — the default transport is constructed
+    /// lazily.
+    #[cfg_attr(
+        feature = "default-transport",
+        allow(
+            clippy::unnecessary_wraps,
+            reason = "MissingTransport branch is cfg-gated; the `Result` shape stays in the stable surface so callers compile across feature toggles"
+        )
+    )]
+    pub fn build(self) -> Result<Relay, Error> {
         let transport: Arc<dyn nula_net::WebSocketTransport> = match self.transport {
             Some(t) => t,
             None => {
@@ -295,18 +306,14 @@ impl RelayBuilder {
                 }
                 #[cfg(not(feature = "default-transport"))]
                 {
-                    panic!(
-                        "RelayBuilder::build called without a transport \
-                         and the `default-transport` feature is off; \
-                         supply one via `RelayBuilder::transport(...)`"
-                    )
+                    return Err(Error::MissingTransport);
                 }
             }
         };
-        Relay::from_context(ActorContext {
+        Ok(Relay::from_context(ActorContext {
             url: self.url,
             transport,
             options: self.options,
-        })
+        }))
     }
 }

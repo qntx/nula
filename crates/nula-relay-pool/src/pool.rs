@@ -132,11 +132,15 @@ impl RelayPool {
             return Err(Error::TooManyRelays { limit: max.get() });
         }
 
-        // Spawn relay actor with the pool's shared transport.
+        // Spawn relay actor with the pool's shared transport. The
+        // builder cannot reach its `MissingTransport` path because we
+        // just supplied a transport, but propagating the `Result`
+        // keeps the call future-proof against new builder
+        // failure modes.
         let relay = RelayBuilder::new(url.clone())
             .transport(Arc::clone(&self.inner.state.transport))
             .options(RelayOptions::default())
-            .build();
+            .build()?;
 
         // Wire its notification stream onto the pool broadcast.
         let forwarder = spawn_forwarder(url.clone(), &relay, self.inner.notification_tx.clone());
@@ -577,7 +581,8 @@ impl RelayPoolBuilder {
 
     /// Supply the event store the pool should fan events into.
     ///
-    /// Required; calling [`Self::build`] without one panics.
+    /// Required; calling [`Self::build`] without one returns
+    /// [`Error::MissingDatabase`].
     pub fn database(mut self, db: Arc<dyn NostrDatabase>) -> Self {
         self.database = Some(db);
         self
@@ -599,20 +604,14 @@ impl RelayPoolBuilder {
 
     /// Finalise the builder.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// - When [`Self::database`] was not called.
-    /// - When the `default-transport` feature is **off** and
-    ///   [`Self::transport`] was not called.
-    #[allow(
-        clippy::panic,
-        reason = "builder pattern requires a panic on misconfiguration"
-    )]
-    #[must_use]
-    pub fn build(self) -> RelayPool {
-        let Some(database) = self.database else {
-            panic!("RelayPoolBuilder::build called without a database")
-        };
+    /// - [`Error::MissingDatabase`] when [`Self::database`] was not
+    ///   called.
+    /// - [`Error::MissingTransport`] when the `default-transport`
+    ///   feature is **off** and [`Self::transport`] was not called.
+    pub fn build(self) -> Result<RelayPool, Error> {
+        let database = self.database.ok_or(Error::MissingDatabase)?;
         let transport: Arc<dyn WebSocketTransport> = match self.transport {
             Some(t) => t,
             None => {
@@ -622,15 +621,14 @@ impl RelayPoolBuilder {
                 }
                 #[cfg(not(feature = "default-transport"))]
                 {
-                    panic!(
-                        "RelayPoolBuilder::build called without a transport \
-                         and the `default-transport` feature is off; \
-                         supply one via `RelayPoolBuilder::transport(...)`"
-                    )
+                    return Err(Error::MissingTransport);
                 }
             }
         };
-        RelayPool::from_parts(SharedState::new(database, transport), self.options)
+        Ok(RelayPool::from_parts(
+            SharedState::new(database, transport),
+            self.options,
+        ))
     }
 }
 

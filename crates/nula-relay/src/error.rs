@@ -119,4 +119,13 @@ pub enum Error {
     /// in flight on this relay.
     #[error("subscription id {0} is already active")]
     DuplicateSubscription(SubscriptionId),
+
+    /// [`crate::RelayBuilder::build`] was called without a prior
+    /// [`crate::RelayBuilder::transport`] invocation **and** the
+    /// `default-transport` feature is off, so the builder cannot
+    /// default the transport for the caller.
+    #[error(
+        "RelayBuilder requires a WebSocketTransport (call `.transport(...)` or enable the `default-transport` feature)"
+    )]
+    MissingTransport,
 }

@@ -70,4 +70,9 @@ pub enum Error {
     /// dropped hints; the cache itself silently ignores them.
     #[error("relay '{0}' rejected by AllowedRelays policy")]
     HintRejected(RelayUrl),
+
+    /// [`crate::GossipBuilder::build`] was called without a prior
+    /// [`crate::GossipBuilder::database`] invocation.
+    #[error("GossipBuilder requires a NostrDatabase (call `.database(...)` before `.build()`)")]
+    MissingDatabase,
 }

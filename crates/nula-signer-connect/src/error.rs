@@ -76,6 +76,19 @@ pub enum Error {
     #[error("adopt_relays() requires an embedded RelayPool (PoolMode::Embedded)")]
     WrongPoolMode,
 
+    /// [`crate::NostrConnectBuilder::build`] was called without a
+    /// prior [`crate::NostrConnectBuilder::uri`] invocation.
+    #[error("NostrConnectBuilder requires a URI (call `.uri(...)` before `.build()`)")]
+    MissingUri,
+
+    /// [`crate::NostrConnectBuilder::build`] was called without a
+    /// prior [`crate::NostrConnectBuilder::pool`] or
+    /// [`crate::NostrConnectBuilder::embedded_pool`] invocation.
+    #[error(
+        "NostrConnectBuilder requires a RelayPool (call `.pool(...)` or `.embedded_pool(...)` before `.build()`)"
+    )]
+    MissingPool,
+
     /// Decryption succeeded but the resulting JSON did not parse as
     /// a NIP-46 envelope.
     #[error("malformed NIP-46 envelope from signer: {0}")]

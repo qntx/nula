@@ -394,6 +394,9 @@ impl NostrConnectBuilder {
     ///
     /// # Errors
     ///
+    /// - [`Error::MissingUri`] when [`Self::uri`] was not called.
+    /// - [`Error::MissingPool`] when neither [`Self::pool`] nor
+    ///   [`Self::embedded_pool`] was called.
     /// - [`Error::Pool`] if the pool refuses to add the URI's relays.
     /// - [`Error::Rejected`] if the bunker rejects the `connect`
     ///   call.
@@ -401,23 +404,9 @@ impl NostrConnectBuilder {
     ///   [`NostrConnectOptions::timeout`] to reply.
     /// - [`Error::Spoofed`] if the `nostrconnect://` flow's secret
     ///   was not echoed inside the timeout.
-    ///
-    /// # Panics
-    ///
-    /// - When [`Self::uri`] was not called.
-    /// - When [`Self::pool`] / [`Self::embedded_pool`] was not
-    ///   called.
-    #[allow(
-        clippy::panic,
-        reason = "builder pattern requires a panic on misconfiguration"
-    )]
     pub async fn build(self) -> Result<NostrConnect, Error> {
-        let Some(uri) = self.uri else {
-            panic!("NostrConnectBuilder::build called without a URI")
-        };
-        let Some(pool_mode) = self.pool else {
-            panic!("NostrConnectBuilder::build requires `pool(...)` or `embedded_pool(...)`")
-        };
+        let uri = self.uri.ok_or(Error::MissingUri)?;
+        let pool_mode = self.pool.ok_or(Error::MissingPool)?;
         let client_keys = self
             .client_keys
             .map_or_else(|| Keys::generate().map_err(Error::auth_url), Ok)?;

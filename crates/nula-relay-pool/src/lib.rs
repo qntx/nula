@@ -31,7 +31,7 @@
 //! use nula_storage::NostrDatabase;
 //!
 //! # async fn doc(db: Arc<dyn NostrDatabase>) -> Result<(), Box<dyn std::error::Error>> {
-//! let pool = RelayPool::builder().database(db).build();
+//! let pool = RelayPool::builder().database(db).build()?;
 //! pool.add_relay(
 //!     RelayUrl::parse("wss://relay.damus.io")?,
 //!     RelayCapabilities::READ | RelayCapabilities::WRITE,

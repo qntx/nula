@@ -33,7 +33,8 @@ async fn connect_round_trip_via_mock_transport() {
 
     let relay = Relay::builder(endpoint.clone())
         .transport(Arc::clone(&transport))
-        .build();
+        .build()
+        .expect("transport supplied to builder");
 
     assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -66,7 +67,8 @@ async fn disconnect_returns_to_disconnected_state() {
 
     let relay = Relay::builder(endpoint.clone())
         .transport(Arc::clone(&transport))
-        .build();
+        .build()
+        .expect("transport supplied to builder");
 
     let connect = tokio::spawn({
         let relay = relay.clone();
@@ -91,7 +93,8 @@ async fn dropping_last_handle_terminates_actor() {
     {
         let _relay = Relay::builder(endpoint.clone())
             .transport(Arc::clone(&transport))
-            .build();
+            .build()
+            .expect("transport supplied to builder");
         // _relay drops at end of block → actor should
         // observe Shutdown command and exit.
     }
@@ -101,5 +104,8 @@ async fn dropping_last_handle_terminates_actor() {
 
     // The mock subscriber map still holds a sender; a fresh relay
     // can be constructed against the same URL without leaks.
-    let _another = Relay::builder(endpoint).transport(transport).build();
+    let _another = Relay::builder(endpoint)
+        .transport(transport)
+        .build()
+        .expect("transport supplied to builder");
 }
