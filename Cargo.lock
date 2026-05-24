@@ -1526,6 +1526,7 @@ dependencies = [
  "nula-core",
  "nula-net",
  "nula-storage",
+ "nula-storage-test-suite",
  "postcard",
  "tempfile",
  "thiserror",
@@ -1539,6 +1540,16 @@ version = "0.1.0"
 dependencies = [
  "nula-core",
  "nula-net",
+ "nula-storage",
+ "nula-storage-test-suite",
+ "tokio",
+]
+
+[[package]]
+name = "nula-storage-test-suite"
+version = "0.1.0"
+dependencies = [
+ "nula-core",
  "nula-storage",
  "tokio",
 ]

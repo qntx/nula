@@ -47,6 +47,9 @@
 // `tempfile` is a dev-dependency consumed by tests under `tests/`;
 // pin it `as _` so cargo's unused_crate_dependencies lint does not
 // fire against the library build.
+// Shared conformance suite is only consumed by `tests/suite.rs`.
+#[cfg(test)]
+use nula_storage_test_suite as _;
 #[cfg(test)]
 use tempfile as _;
 #[cfg(feature = "tracing")]

@@ -37,6 +37,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pattern matches that follow the workspace convention.
 - **ADR-0010** records why Negentropy lives in its own crate rather
   than inside `nula-core` or `nula-relay-pool`.
+- **Phase 6.3 — `nula-storage-test-suite` (publish = false).** New
+  workspace crate that ships a reusable conformance suite any
+  `NostrDatabase` backend can run against itself:
+  - `DatabaseFactory` trait with an `async fn build()` returning
+    `(Arc<dyn NostrDatabase>, Self::Guard)`. Backends that hold
+    out-of-process state (LMDB's `TempDir`) hand the guard back; the
+    suite drops it between cases.
+  - 23 cases across five modules — `save_event`, `query_filters`,
+    `nip09_deletion`, `replaceable`, `concurrency` — covering
+    duplicate / ephemeral / expired / replaced semantics, every
+    `QueryPattern` shape, NIP-09 tombstone semantics, and concurrent
+    multi-writer safety (8 writers × 16 events).
+  - Per-category helpers (`run_save_path`, `run_query_path`,
+    `run_nip09`, `run_replaceable`, `run_concurrency`) for backends
+    that want partial coverage.
+  - `nula-storage-memory` and `nula-storage-lmdb` now declare
+    `nula-storage-test-suite` as a dev-dependency and replace ~1 KLOC
+    of duplicated integration tests with a single `tests/suite.rs`
+    that runs the full suite. Backend-specific edge cases
+    (`memory/tests/capacity.rs`, `lmdb/tests/persistence.rs`) stay
+    where they belong.
 
 ### Changed
 

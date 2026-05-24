@@ -1,6 +1,8 @@
-//! Persistence round-trip: save events, drop the handle, reopen
-//! the same on-disk directory, verify the events are still
-//! retrievable.
+//! Backend-specific: persistence across handle drop + reopen.
+//!
+//! Not part of the shared conformance suite because no other backend
+//! currently models cross-process durability (`MemoryDatabase`
+//! evaporates when the handle drops).
 
 #![allow(
     unused_crate_dependencies,
@@ -14,11 +16,21 @@
     reason = "integration test file, not production code"
 )]
 
-mod helpers;
+use std::path::Path;
 
-use helpers::{keys, text_note, try_open};
 use nula_core::filter::Filter;
 use nula_storage::{NostrDatabase, SaveEventStatus};
+use nula_storage_lmdb::{Error, LmdbDatabase};
+use nula_storage_test_suite::helpers::{keys, text_note};
+
+/// Open a fresh `LmdbDatabase` against `path`, propagating typed
+/// errors. Local helper because the rest of the LMDB tests use the
+/// shared `LmdbFactory` in `suite.rs`.
+async fn try_open(path: impl AsRef<Path>) -> Result<LmdbDatabase, Error> {
+    LmdbDatabase::builder(path.as_ref().to_owned())
+        .build()
+        .await
+}
 
 #[tokio::test]
 async fn events_survive_handle_drop_and_reopen() {
@@ -55,7 +67,7 @@ async fn wipe_persists_across_reopen() {
         let db = try_open(tmp.path()).await.expect("first open");
         db.save_event(&text_note(&k, "transient", 100))
             .await
-            .unwrap();
+            .expect("save");
         db.wipe().await.expect("wipe ok");
     }
 

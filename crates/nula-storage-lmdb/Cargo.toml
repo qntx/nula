@@ -43,7 +43,8 @@ heed = { workspace = true }
 heed = { workspace = true, features = ["posix-sem"] }
 
 [dev-dependencies]
-nula-core = { workspace = true, features = ["nip06"] }
+nula-core               = { workspace = true, features = ["nip06"] }
+nula-storage-test-suite = { workspace = true }
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 

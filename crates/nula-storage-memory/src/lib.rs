@@ -46,6 +46,10 @@
 // Tokio is dev-only; pull it in here so `cargo clippy --tests` does
 // not trip the workspace `unused_crate_dependencies` lint when the
 // integration tests under `tests/` have not been added yet.
+// Same rationale for the shared conformance suite: only the
+// integration test in `tests/suite.rs` consumes it.
+#[cfg(test)]
+use nula_storage_test_suite as _;
 #[cfg(test)]
 use tokio as _;
 

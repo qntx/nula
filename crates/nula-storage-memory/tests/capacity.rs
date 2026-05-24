@@ -1,4 +1,8 @@
-//! Capacity cap eviction.
+//! Backend-specific: capacity cap + eviction + advertised
+//! [`Features::BOUNDED_CAPACITY`] flag.
+//!
+//! Not part of the shared conformance suite because the cap is
+//! a `MemoryDatabase::builder` knob unique to this backend.
 
 #![allow(
     unused_crate_dependencies,
@@ -12,13 +16,11 @@
     reason = "integration test file, not production code"
 )]
 
-mod helpers;
-
 use std::num::NonZeroUsize;
 
-use helpers::{keys, text_note};
 use nula_storage::{Features, NostrDatabase, SaveEventStatus};
 use nula_storage_memory::MemoryDatabase;
+use nula_storage_test_suite::helpers::{keys, text_note};
 
 #[tokio::test]
 async fn bounded_capacity_evicts_oldest() {
@@ -37,7 +39,7 @@ async fn bounded_capacity_evicts_oldest() {
     }
     assert_eq!(db.len(), 3);
 
-    let events = db.query(nula_core::Filter::new()).await.unwrap();
+    let events = db.query(nula_core::Filter::new()).await.expect("query ok");
     let contents: Vec<&str> = events.iter().map(|e| e.content.as_str()).collect();
     assert_eq!(contents, ["e-104", "e-103", "e-102"]);
 }

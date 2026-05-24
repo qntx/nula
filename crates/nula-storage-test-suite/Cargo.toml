@@ -1,5 +1,5 @@
 [package]
-name = "nula-storage-memory"
+name = "nula-storage-test-suite"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,22 +9,20 @@ homepage.workspace = true
 authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "In-memory Nostr event store backend implementing `nula_storage::NostrDatabase`."
+description = "Reusable conformance suite for `nula_storage::NostrDatabase` backends."
 readme = "README.md"
+# Test-only crate: never goes to crates.io.
+publish = false
 
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-nula-core    = { workspace = true }
-nula-net     = { workspace = true }
+nula-core    = { workspace = true, features = ["nip06"] }
 nula-storage = { workspace = true }
 
-[dev-dependencies]
-nula-core               = { workspace = true, features = ["nip06"] }
-nula-storage-test-suite = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util", "time"] }
+tokio = { workspace = true, features = ["macros", "rt", "sync"] }
 
 [lints]
 workspace = true
