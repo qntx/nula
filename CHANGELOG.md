@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7.3.7 — Client-side `AdmitPolicy` middleware.** New
+  `nula_sdk::policy` module + crate-root re-exports
+  (`AdmitPolicy`, `AdmitStatus`, `PolicyError`):
+  - **Trait surface mirrors upstream `nostr-sdk::AdmitPolicy`** —
+    `admit_relay`, `admit_connection`, `admit_event`. Every method
+    has a `Success` default; users override only the gates they
+    care about. Futures are boxed via `nula_net::BoxFuture` for
+    object safety.
+  - **`ClientBuilder::admit_policy(impl Into<Arc<dyn AdmitPolicy>>)`**
+    installs the policy. When a policy is configured the SDK
+    automatically forces `auto_save_events = false` on the
+    underlying pool so the persistence fast-path can no longer
+    bypass `admit_event`.
+  - **Wired gates**:
+    - `Client::add_relay_with_capabilities` (and every
+      capability-specific `add_*_relay` helper that delegates to
+      it) runs `admit_relay`.
+    - `Client::connect_relay` / `try_connect_relay` runs
+      `admit_connection`.
+    - `Client::sync_to_relay` download phase runs `admit_event`
+      *before* `database.save_event`. Rejected events are
+      surfaced on `SyncSummary::rejected_by_policy`
+      (`HashMap<EventId, Option<String>>`) and never persist.
+  - **Read accessors** — `Client::admit_policy()` returns the
+    installed `Arc<dyn AdmitPolicy>` (or `None`); the public
+    `Client::check_admit_event` helper lets callers consuming raw
+    subscription / fetch streams reuse the same gate.
+  - **New `Error` variants** — `Error::PolicyRejected { stage,
+    reason }` (where `stage` is `"relay"` / `"connection"` /
+    `"event"`) and `Error::Policy(PolicyError)` for backend
+    errors.
+
 - **Phase 7.3 — SDK API ergonomics + monitor + subscription
   registry.** New `Client` surface for parity with upstream
   `nostr-sdk::Client`:

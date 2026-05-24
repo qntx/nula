@@ -20,6 +20,7 @@ use tokio::sync::Mutex;
 use crate::client::{Client, ClientConfig, InnerClient, MonitorState};
 use crate::error::Error;
 use crate::monitor::{DEFAULT_MONITOR_CAPACITY, Monitor, MonitorNotification};
+use crate::policy::AdmitPolicy;
 
 /// Fluent configurator for [`Client`].
 ///
@@ -37,6 +38,8 @@ pub struct ClientBuilder {
     /// `Some(capacity)` when [`Self::monitor`] was called; `None`
     /// when callers do not want the status broadcaster.
     pub(crate) monitor_capacity: Option<usize>,
+    /// Optional client-side admission policy.
+    pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
 }
 
 impl ClientBuilder {
@@ -163,6 +166,21 @@ impl ClientBuilder {
         self
     }
 
+    /// Install a client-side [`AdmitPolicy`].
+    ///
+    /// Without this call the SDK applies no admission gate and
+    /// every relay / connection / inbound event is admitted.
+    /// Accepts anything convertible into `Arc<dyn AdmitPolicy>`,
+    /// so both bare values and pre-built `Arc`s work.
+    #[must_use]
+    pub fn admit_policy<P>(mut self, policy: P) -> Self
+    where
+        P: Into<Arc<dyn AdmitPolicy>>,
+    {
+        self.admit_policy = Some(policy.into());
+        self
+    }
+
     /// Build the [`Client`].
     ///
     /// When the `memory-fallback` feature is enabled (default) and
@@ -191,7 +209,18 @@ impl ClientBuilder {
             }
         });
 
-        let mut pool_builder = RelayPool::builder().options(self.pool_options);
+        // When an admission policy is installed, the pool's
+        // auto-save fast path would persist events before
+        // [`AdmitPolicy::admit_event`] runs, defeating the gate.
+        // Disable it so SDK paths that own the persistence
+        // decision (sync download, future fetch_events) call
+        // `database.save_event` themselves *after* the admit
+        // verdict.
+        let mut pool_options = self.pool_options;
+        if self.admit_policy.is_some() {
+            pool_options = pool_options.auto_save_events(false);
+        }
+        let mut pool_builder = RelayPool::builder().options(pool_options);
         if let Some(db) = database {
             pool_builder = pool_builder.database(db);
         }
@@ -221,6 +250,7 @@ impl ClientBuilder {
             },
             subscriptions: Mutex::new(HashMap::new()),
             monitor,
+            admit_policy: self.admit_policy,
         };
         Ok(Client {
             inner: Arc::new(inner),

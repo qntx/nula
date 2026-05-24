@@ -100,6 +100,23 @@ pub enum Error {
     #[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
     #[error("NIP-77 stream ended before reconciliation converged")]
     SyncStreamClosed,
+
+    /// The configured [`crate::policy::AdmitPolicy`] vetoed the
+    /// action. `stage` records which gate fired ("relay",
+    /// "connection", "event"); `reason` is the verbatim string
+    /// the policy returned (or `None` if it did not provide one).
+    #[error("policy rejected {stage}{}", reason.as_deref().map(|r| format!(": {r}")).unwrap_or_default())]
+    PolicyRejected {
+        /// Which admission hook fired the rejection.
+        stage: &'static str,
+        /// The reason string supplied by the policy, when any.
+        reason: Option<String>,
+    },
+
+    /// The configured [`crate::policy::AdmitPolicy`] failed with
+    /// a backend error before producing a verdict.
+    #[error(transparent)]
+    Policy(#[from] crate::policy::PolicyError),
 }
 
 impl From<nula_core::event::EventBuilderError> for Error {

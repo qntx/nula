@@ -111,6 +111,12 @@ pub struct SyncSummary {
     /// `"<sdk reason>"` for client-side failures such as the event
     /// row missing from the local database).
     pub send_failures: HashMap<EventId, String>,
+    /// Events the configured [`crate::policy::AdmitPolicy`] vetoed
+    /// during the download phase. Keyed by [`EventId`]; the value
+    /// is the policy's reason string (or `None` if it did not
+    /// supply one). These events are **not** persisted to the
+    /// local database and are not counted in `received`.
+    pub rejected_by_policy: HashMap<EventId, Option<String>>,
 }
 
 impl SyncSummary {
@@ -130,6 +136,7 @@ impl SyncSummary {
         self.sent.extend(other.sent);
         self.received.extend(other.received);
         self.send_failures.extend(other.send_failures);
+        self.rejected_by_policy.extend(other.rejected_by_policy);
     }
 }
 
@@ -303,7 +310,7 @@ impl Client {
         // Always best-effort NEG-CLOSE so the relay frees the slot,
         // even if reconciliation errored mid-flight.
         let close_msg = ClientMessage::NegClose {
-            subscription_id: sub_id,
+            subscription_id: sub_id.clone(),
         };
         drop(relay.send_msg(close_msg).await);
 
@@ -323,7 +330,8 @@ impl Client {
         // pipeline so the dedup / save_event plumbing stays
         // identical to a normal fetch.
         if opts.direction.do_down() && !summary.remote.is_empty() {
-            self.download_phase(relay_url, &mut summary, opts).await?;
+            self.download_phase(relay_url, &sub_id, &mut summary, opts)
+                .await?;
         }
 
         Ok(summary)
@@ -368,6 +376,7 @@ impl Client {
     async fn download_phase(
         &self,
         relay_url: &RelayUrl,
+        subscription_id: &SubscriptionId,
         summary: &mut SyncSummary,
         opts: &SyncOptions,
     ) -> Result<(), Error> {
@@ -381,6 +390,22 @@ impl Client {
             )
             .await?;
         for event in &events {
+            // Run the admission gate before touching the database.
+            // A `Rejected` verdict drops the event from `received`
+            // and records it on `rejected_by_policy` so the caller
+            // sees what was filtered out.
+            match self
+                .check_admit_event(relay_url, subscription_id, event)
+                .await
+            {
+                Ok(()) => {}
+                Err(Error::PolicyRejected { reason, .. }) => {
+                    summary.rejected_by_policy.insert(event.id, reason);
+                    tick_progress(opts);
+                    continue;
+                }
+                Err(e) => return Err(e),
+            }
             // Persist into the local database. `auto_save` on the
             // pool is on by default, but the user might have
             // disabled it; either way, double-save is idempotent

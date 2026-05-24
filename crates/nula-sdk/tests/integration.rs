@@ -671,3 +671,210 @@ async fn wait_for_connected(
         }
     }
 }
+
+/// Stub admission policy used by the Phase 7.3.7 tests.
+///
+/// Every gate is independently configurable: any url containing
+/// the matching substring is rejected with the configured reason,
+/// every other input is admitted.
+#[derive(Debug, Default)]
+struct StubPolicy {
+    reject_relay_substring: Option<String>,
+    reject_connection_substring: Option<String>,
+    reject_events_after_kind: Option<Kind>,
+}
+
+impl nula_sdk::AdmitPolicy for StubPolicy {
+    fn admit_relay<'a>(
+        &'a self,
+        relay_url: &'a nula_core::RelayUrl,
+    ) -> nula_net::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
+        Box::pin(async move {
+            let Some(needle) = self.reject_relay_substring.as_deref() else {
+                return Ok(nula_sdk::AdmitStatus::Success);
+            };
+            if relay_url.as_str().contains(needle) {
+                Ok(nula_sdk::AdmitStatus::rejected(format!(
+                    "relay url matches `{needle}`"
+                )))
+            } else {
+                Ok(nula_sdk::AdmitStatus::Success)
+            }
+        })
+    }
+
+    fn admit_connection<'a>(
+        &'a self,
+        relay_url: &'a nula_core::RelayUrl,
+    ) -> nula_net::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
+        Box::pin(async move {
+            let Some(needle) = self.reject_connection_substring.as_deref() else {
+                return Ok(nula_sdk::AdmitStatus::Success);
+            };
+            if relay_url.as_str().contains(needle) {
+                Ok(nula_sdk::AdmitStatus::rejected("connection blocked"))
+            } else {
+                Ok(nula_sdk::AdmitStatus::Success)
+            }
+        })
+    }
+
+    fn admit_event<'a>(
+        &'a self,
+        _relay_url: &'a nula_core::RelayUrl,
+        _subscription_id: &'a nula_core::message::SubscriptionId,
+        event: &'a nula_core::Event,
+    ) -> nula_net::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
+        Box::pin(async move {
+            let Some(min_kind) = self.reject_events_after_kind else {
+                return Ok(nula_sdk::AdmitStatus::Success);
+            };
+            if event.kind.as_u16() >= min_kind.as_u16() {
+                Ok(nula_sdk::AdmitStatus::rejected("kind blocked"))
+            } else {
+                Ok(nula_sdk::AdmitStatus::Success)
+            }
+        })
+    }
+}
+
+#[tokio::test]
+async fn admit_policy_rejects_relay_at_add_time() {
+    use std::sync::Arc;
+    let policy: Arc<dyn nula_sdk::AdmitPolicy> = Arc::new(StubPolicy {
+        reject_relay_substring: Some("forbidden".to_owned()),
+        ..StubPolicy::default()
+    });
+
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .admit_policy(policy)
+        .build()
+        .expect("policy builder ok");
+
+    let err = client
+        .add_relay("wss://forbidden.example/")
+        .await
+        .expect_err("add_relay must surface PolicyRejected");
+    assert!(matches!(
+        err,
+        nula_sdk::Error::PolicyRejected { stage: "relay", .. }
+    ));
+
+    // Allowed relay still goes through.
+    client
+        .add_relay("wss://allowed.example/")
+        .await
+        .expect("non-matching url admitted");
+}
+
+#[tokio::test]
+async fn admit_policy_rejects_connection_after_add() {
+    use std::sync::Arc;
+
+    let relay = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let policy: Arc<dyn nula_sdk::AdmitPolicy> = Arc::new(StubPolicy {
+        reject_connection_substring: Some("127.0.0.1".to_owned()),
+        ..StubPolicy::default()
+    });
+
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .admit_policy(policy)
+        .build()
+        .expect("policy builder ok");
+    // add_relay is admitted because admit_relay defaults to Success
+    // for this stub (only admit_connection is configured to reject
+    // 127.0.0.1).
+    client.add_relay(relay.url()).await.expect("add ok");
+
+    let err = client
+        .connect_relay(relay.url())
+        .await
+        .expect_err("connect_relay must surface PolicyRejected");
+    assert!(matches!(
+        err,
+        nula_sdk::Error::PolicyRejected {
+            stage: "connection",
+            ..
+        }
+    ));
+
+    relay.shutdown();
+}
+
+#[cfg(feature = "sync")]
+#[tokio::test]
+async fn admit_policy_rejects_events_during_sync_download() {
+    use std::sync::Arc;
+
+    use nula_storage_memory::MemoryDatabase;
+
+    let keys = deterministic_keys();
+    let blocked_kind = Kind::TEXT_NOTE;
+    let blocked_event = text_note("blocked", "blocked-by-policy")
+        .sign_with_keys(&keys)
+        .expect("sign blocked");
+
+    let relay_storage: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    relay_storage
+        .save_event(&blocked_event)
+        .await
+        .expect("seed relay");
+
+    let relay = MockRelayBuilder::new()
+        .storage(Arc::clone(&relay_storage))
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let client_db: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    let policy: Arc<dyn nula_sdk::AdmitPolicy> = Arc::new(StubPolicy {
+        reject_events_after_kind: Some(blocked_kind),
+        ..StubPolicy::default()
+    });
+
+    let client = Client::builder()
+        .signer(keys.clone())
+        .database_arc(Arc::clone(&client_db))
+        .admit_policy(policy)
+        .build()
+        .expect("policy builder ok");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let filter = Filter::new().kind(blocked_kind).author(*keys.public_key());
+    let opts = nula_sdk::SyncOptions::new()
+        .direction(nula_sdk::SyncDirection::Down)
+        .timeout(Some(Duration::from_secs(5)));
+    let summary = client
+        .sync_to_relay(relay.url(), filter, opts)
+        .await
+        .expect("sync ok");
+
+    assert!(
+        summary.received.is_empty(),
+        "rejected events must not be persisted; got received={:?}",
+        summary.received,
+    );
+    assert!(
+        summary.rejected_by_policy.contains_key(&blocked_event.id),
+        "rejected_by_policy must record the blocked event id; got {:?}",
+        summary.rejected_by_policy,
+    );
+    let stored = client_db
+        .event_by_id(&blocked_event.id)
+        .await
+        .expect("db lookup");
+    assert!(
+        stored.is_none(),
+        "policy-rejected event must not land in the local database",
+    );
+
+    client.shutdown().await;
+    relay.shutdown();
+}

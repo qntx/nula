@@ -32,6 +32,7 @@ use tokio::sync::Mutex;
 use crate::builder::ClientBuilder;
 use crate::error::Error;
 use crate::monitor::Monitor;
+use crate::policy::{AdmitPolicy, AdmitStatus};
 use crate::util::{IntoRelayUrl, collect_relay_urls};
 
 /// Runtime configuration shared by every [`Client`] method.
@@ -66,6 +67,9 @@ pub(crate) struct InnerClient {
     /// Status broadcaster + forwarder abort handle, when the caller
     /// opted in via [`ClientBuilder::monitor`].
     pub(crate) monitor: Option<MonitorState>,
+    /// Optional client-side admission policy. When `None` every
+    /// admission gate short-circuits to [`AdmitStatus::Success`].
+    pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
 }
 
 /// Per-subscription bookkeeping kept on the [`Client`] side.
@@ -222,6 +226,7 @@ impl Client {
         url: RelayUrl,
         capabilities: RelayCapabilities,
     ) -> Result<bool, Error> {
+        self.check_admit_relay(&url).await?;
         Ok(self.inner.pool.add_relay(url, capabilities).await?)
     }
 
@@ -757,6 +762,8 @@ impl Client {
     /// # Errors
     ///
     /// - [`Error::UnknownRelay`] when `url` is not registered.
+    /// - [`Error::PolicyRejected`] when the configured
+    ///   [`AdmitPolicy`] vetoes the connection.
     /// - [`Error::Relay`] propagated from the actor's `connect` future.
     pub async fn connect_relay(&self, url: &RelayUrl) -> Result<(), Error> {
         let relay = self
@@ -765,6 +772,7 @@ impl Client {
             .relay(url)
             .await
             .ok_or_else(|| Error::UnknownRelay { url: url.clone() })?;
+        self.check_admit_connection(url).await?;
         relay.connect().await?;
         Ok(())
     }
@@ -785,11 +793,74 @@ impl Client {
             .relay(url)
             .await
             .ok_or_else(|| Error::UnknownRelay { url: url.clone() })?;
+        self.check_admit_connection(url).await?;
         tokio::time::timeout(timeout, relay.connect())
             .await
             .map_err(|_| Error::SyncStreamClosed)
             .and_then(|res| res.map_err(Error::Relay))?;
         Ok(())
+    }
+
+    /// Borrow the configured [`AdmitPolicy`], if any. Useful for
+    /// callers consuming raw subscription / fetch streams that
+    /// want to apply [`AdmitPolicy::admit_event`] themselves.
+    #[must_use]
+    pub fn admit_policy(&self) -> Option<&Arc<dyn AdmitPolicy>> {
+        self.inner.admit_policy.as_ref()
+    }
+
+    /// Run [`AdmitPolicy::admit_relay`] on the configured policy,
+    /// returning [`Error::PolicyRejected`] on `Rejected` and
+    /// [`Error::Policy`] on backend errors.
+    pub(crate) async fn check_admit_relay(&self, url: &RelayUrl) -> Result<(), Error> {
+        let Some(policy) = &self.inner.admit_policy else {
+            return Ok(());
+        };
+        match policy.admit_relay(url).await? {
+            AdmitStatus::Success => Ok(()),
+            AdmitStatus::Rejected { reason } => Err(Error::PolicyRejected {
+                stage: "relay",
+                reason,
+            }),
+        }
+    }
+
+    /// Run [`AdmitPolicy::admit_connection`].
+    pub(crate) async fn check_admit_connection(&self, url: &RelayUrl) -> Result<(), Error> {
+        let Some(policy) = &self.inner.admit_policy else {
+            return Ok(());
+        };
+        match policy.admit_connection(url).await? {
+            AdmitStatus::Success => Ok(()),
+            AdmitStatus::Rejected { reason } => Err(Error::PolicyRejected {
+                stage: "connection",
+                reason,
+            }),
+        }
+    }
+
+    /// Run [`AdmitPolicy::admit_event`].
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::PolicyRejected`] when the policy rejects.
+    /// - [`Error::Policy`] on backend errors.
+    pub async fn check_admit_event(
+        &self,
+        relay_url: &RelayUrl,
+        subscription_id: &SubscriptionId,
+        event: &Event,
+    ) -> Result<(), Error> {
+        let Some(policy) = &self.inner.admit_policy else {
+            return Ok(());
+        };
+        match policy.admit_event(relay_url, subscription_id, event).await? {
+            AdmitStatus::Success => Ok(()),
+            AdmitStatus::Rejected { reason } => Err(Error::PolicyRejected {
+                stage: "event",
+                reason,
+            }),
+        }
     }
 
     /// Disconnect a single relay.
