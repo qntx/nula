@@ -188,6 +188,58 @@ impl Relay {
         ))
     }
 
+    /// Open a NIP-77 reconciliation session against the relay.
+    ///
+    /// Equivalent to a `subscribe` whose outbound frame is a
+    /// `["NEG-OPEN", id, filter, initial_message_hex]` instead of
+    /// `["REQ", …]`. The returned [`SubscriptionHandle`] yields
+    /// [`crate::SubscriptionItem::NegMsg`] /
+    /// [`crate::SubscriptionItem::NegErr`] frames the relay sends
+    /// back; the higher-level `nula-sdk` driver folds each
+    /// `NegMsg` into a `nula_sync::Reconciliation` and emits the
+    /// next `NEG-MSG` via [`Self::send_msg`].
+    ///
+    /// Sessions are **not** re-issued across reconnects -- the
+    /// Negentropy state machine cannot resume across a fresh
+    /// socket. Drop the handle (or call `send_msg` with a
+    /// `NegClose`) to terminate the session.
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::DuplicateSubscription`] if `id` is already in
+    ///   flight on this relay.
+    /// - [`Error::TooManySubscriptions`] when the configured cap
+    ///   is reached.
+    /// - [`Error::NotConnected`] when the relay is currently
+    ///   down.
+    /// - [`Error::Transport`] when the wire send fails.
+    /// - [`Error::Shutdown`] when the actor has already exited.
+    pub async fn subscribe_neg(
+        &self,
+        id: SubscriptionId,
+        filter: Filter,
+        initial_message_hex: String,
+    ) -> Result<SubscriptionHandle, Error> {
+        let (item_tx, item_rx) = mpsc::unbounded_channel();
+        let (reply_tx, reply_rx) = oneshot::channel();
+        self.inner
+            .command_tx
+            .send(Command::SubscribeNeg {
+                id: id.clone(),
+                filter,
+                initial_message_hex,
+                sink: item_tx,
+                reply: reply_tx,
+            })
+            .map_err(|_| Error::Shutdown)?;
+        reply_rx.await.map_err(|_| Error::Shutdown)??;
+        Ok(SubscriptionHandle::new(
+            id,
+            item_rx,
+            self.inner.close_tx.clone(),
+        ))
+    }
+
     /// Publish an event and wait for the relay's `OK` reply.
     ///
     /// # Errors
@@ -256,10 +308,7 @@ impl Relay {
         let (tx, rx) = oneshot::channel();
         self.inner
             .command_tx
-            .send(Command::SendMsg {
-                message,
-                reply: tx,
-            })
+            .send(Command::SendMsg { message, reply: tx })
             .map_err(|_| Error::Shutdown)?;
         rx.await.map_err(|_| Error::Shutdown)?
     }

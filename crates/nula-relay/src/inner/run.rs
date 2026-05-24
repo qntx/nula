@@ -213,6 +213,15 @@ async fn handle_command(
         } => {
             handle_subscribe(ctx, state, id, filters, options, sink, reply).await;
         }
+        Command::SubscribeNeg {
+            id,
+            filter,
+            initial_message_hex,
+            sink,
+            reply,
+        } => {
+            handle_subscribe_neg(ctx, state, id, filter, initial_message_hex, sink, reply).await;
+        }
         Command::Publish {
             event,
             options,
@@ -344,6 +353,15 @@ async fn reissue_subscriptions(state: &mut ActorState) {
         return;
     };
     for (id, entry) in &state.subscriptions {
+        if entry.skip_reissue {
+            // NIP-77 reconciliation sessions cannot be resumed
+            // across a reconnect; the Negentropy state machine
+            // would diverge from the relay's view. The session is
+            // surfaced as a `NegErr { message: "closed: ..." }`
+            // by the dispatch path when the relay drops it on
+            // reconnect, so the caller will see a clean shutdown.
+            continue;
+        }
         drop(send_req(sink, id.clone(), entry.filters.clone()).await);
     }
 }
@@ -380,6 +398,7 @@ async fn handle_subscribe(
             filters: filters.clone(),
             options,
             sink,
+            skip_reissue: false,
         },
     );
 
@@ -389,6 +408,56 @@ async fn handle_subscribe(
         // The wire is gone. The dispatch loop will pick up the
         // disconnect on the next read; surface the error here so
         // the caller does not have to wait for that to happen.
+        drop(reply.send(Err(err)));
+        return;
+    }
+    drop(reply.send(Ok(())));
+}
+
+async fn handle_subscribe_neg(
+    ctx: &StaticCtx,
+    state: &mut ActorState,
+    id: SubscriptionId,
+    filter: Filter,
+    initial_message_hex: String,
+    sink: SubscriptionSink,
+    reply: Reply<Result<(), Error>>,
+) {
+    if state.subscriptions.contains_key(&id) {
+        drop(reply.send(Err(Error::DuplicateSubscription(id))));
+        return;
+    }
+    if state.subscriptions.len() >= ctx.options.limits.max_subscriptions {
+        drop(reply.send(Err(Error::TooManySubscriptions {
+            limit: ctx.options.limits.max_subscriptions,
+        })));
+        return;
+    }
+
+    state.subscriptions.insert(
+        id.clone(),
+        SubscriptionEntry {
+            filters: vec![filter.clone()],
+            options: SubscribeOptions::new(),
+            sink,
+            skip_reissue: true,
+        },
+    );
+
+    let Some(wire_sink) = state.sink.as_mut() else {
+        // Removed the entry on the failure path so the slot does
+        // not leak into the actor's bookkeeping.
+        state.subscriptions.remove(&id);
+        drop(reply.send(Err(Error::NotConnected)));
+        return;
+    };
+    let neg_open = nula_core::ClientMessage::NegOpen {
+        subscription_id: id.clone(),
+        filter,
+        initial_message: initial_message_hex,
+    };
+    if let Err(err) = super::outbound::send_msg(wire_sink, neg_open).await {
+        state.subscriptions.remove(&id);
         drop(reply.send(Err(err)));
         return;
     }

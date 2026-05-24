@@ -13,6 +13,7 @@ use futures::{SinkExt, StreamExt};
 use nula_core::message::{MachineReadablePrefix, RelayMessage};
 use nula_core::{ClientMessage, Event, EventId, Filter, JsonUtil, SubscriptionId};
 use nula_storage::{NostrDatabase, SaveEventStatus};
+use nula_sync::Responder;
 use serde_json::Value;
 use tokio::net::TcpStream;
 use tokio::sync::broadcast;
@@ -49,6 +50,7 @@ pub(crate) async fn handle_connection(
 ) {
     let (mut sink, mut stream) = ws.split();
     let mut subscriptions: HashMap<SubscriptionId, Vec<Filter>> = HashMap::new();
+    let mut neg_sessions: HashMap<SubscriptionId, Responder> = HashMap::new();
     let mut live = ctx.broadcast.subscribe();
 
     // Optional NIP-42 challenge — fires once at the top of the loop.
@@ -87,6 +89,7 @@ pub(crate) async fn handle_connection(
                 if handle_inbound_frame(
                     &ctx,
                     &mut subscriptions,
+                    &mut neg_sessions,
                     &mut sink,
                     &mut authenticated,
                     next,
@@ -110,9 +113,14 @@ use std::ops::ControlFlow;
 /// Handle one frame from the WebSocket stream. Extracted from the
 /// main `select!` body so the orchestration loop stays well below
 /// clippy's `cognitive_complexity` ceiling.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "per-connection state fan-in keeps the orchestration loop flat"
+)]
 async fn handle_inbound_frame(
     ctx: &ConnectionContext,
     subscriptions: &mut HashMap<SubscriptionId, Vec<Filter>>,
+    neg_sessions: &mut HashMap<SubscriptionId, Responder>,
     sink: &mut Sink,
     authenticated: &mut bool,
     frame: Option<Result<WsMessage, tokio_tungstenite::tungstenite::Error>>,
@@ -172,7 +180,7 @@ async fn handle_inbound_frame(
         return ControlFlow::Continue(());
     }
 
-    if dispatch(ctx, subscriptions, sink, msg, authenticated)
+    if dispatch(ctx, subscriptions, neg_sessions, sink, msg, authenticated)
         .await
         .is_err()
     {
@@ -184,9 +192,14 @@ async fn handle_inbound_frame(
 #[derive(Debug)]
 struct DispatchError;
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "per-connection state fan-in keeps dispatch flat"
+)]
 async fn dispatch(
     ctx: &ConnectionContext,
     subscriptions: &mut HashMap<SubscriptionId, Vec<Filter>>,
+    neg_sessions: &mut HashMap<SubscriptionId, Responder>,
     sink: &mut Sink,
     msg: ClientMessage,
     authenticated: &mut bool,
@@ -224,6 +237,29 @@ async fn dispatch(
                 count,
             };
             send(sink, &frame).await
+        }
+        ClientMessage::NegOpen {
+            subscription_id,
+            filter,
+            initial_message,
+        } => {
+            handle_neg_open(
+                ctx,
+                neg_sessions,
+                sink,
+                subscription_id,
+                filter,
+                initial_message,
+            )
+            .await
+        }
+        ClientMessage::NegMsg {
+            subscription_id,
+            message,
+        } => handle_neg_msg(neg_sessions, sink, subscription_id, message).await,
+        ClientMessage::NegClose { subscription_id } => {
+            neg_sessions.remove(&subscription_id);
+            Ok(())
         }
         // `ClientMessage` is `#[non_exhaustive]`; future variants
         // surface as a NOTICE so the test harness sees the gap.
@@ -413,6 +449,139 @@ async fn handle_req(
 
     subscriptions.insert(subscription_id, filters);
     Ok(())
+}
+
+async fn handle_neg_open(
+    ctx: &ConnectionContext,
+    neg_sessions: &mut HashMap<SubscriptionId, Responder>,
+    sink: &mut Sink,
+    subscription_id: SubscriptionId,
+    filter: Filter,
+    initial_message_hex: String,
+) -> Result<(), DispatchError> {
+    if neg_sessions.contains_key(&subscription_id) {
+        return send_neg_err(
+            sink,
+            subscription_id,
+            MachineReadablePrefix::Duplicate,
+            "subscription already open",
+        )
+        .await;
+    }
+
+    // Per-filter admit gate -- mirror REQ semantics so policy still
+    // applies to NIP-77 reads.
+    if let AdmitVerdict::Reject(reason) = ctx.read_policy.admit_filter(&filter).await {
+        return send_neg_err(sink, subscription_id, MachineReadablePrefix::Restricted, &reason)
+            .await;
+    }
+
+    let storage = match nula_sync::from_database(ctx.storage.as_ref(), filter).await {
+        Ok(s) => s,
+        Err(e) => {
+            return send_neg_err(
+                sink,
+                subscription_id,
+                MachineReadablePrefix::Error,
+                format!("storage backend error: {e}"),
+            )
+            .await;
+        }
+    };
+
+    let mut responder = match Responder::with_defaults(storage) {
+        Ok(r) => r,
+        Err(e) => {
+            return send_neg_err(
+                sink,
+                subscription_id,
+                MachineReadablePrefix::Error,
+                format!("negentropy init error: {e}"),
+            )
+            .await;
+        }
+    };
+
+    let reply_hex = match responder.reconcile_hex(&initial_message_hex) {
+        Ok(hex) => hex,
+        Err(e) => {
+            return send_neg_err(
+                sink,
+                subscription_id,
+                MachineReadablePrefix::Invalid,
+                format!("negentropy reconcile error: {e}"),
+            )
+            .await;
+        }
+    };
+
+    neg_sessions.insert(subscription_id.clone(), responder);
+    send(
+        sink,
+        &RelayMessage::NegMsg {
+            subscription_id,
+            message: reply_hex,
+        },
+    )
+    .await
+}
+
+async fn handle_neg_msg(
+    neg_sessions: &mut HashMap<SubscriptionId, Responder>,
+    sink: &mut Sink,
+    subscription_id: SubscriptionId,
+    message_hex: String,
+) -> Result<(), DispatchError> {
+    let Some(responder) = neg_sessions.get_mut(&subscription_id) else {
+        return send_neg_err(
+            sink,
+            subscription_id,
+            MachineReadablePrefix::Invalid,
+            "no open NIP-77 session for this subscription id",
+        )
+        .await;
+    };
+
+    let reply_hex = match responder.reconcile_hex(&message_hex) {
+        Ok(hex) => hex,
+        Err(e) => {
+            // Drop the broken session; the client must reopen.
+            neg_sessions.remove(&subscription_id);
+            return send_neg_err(
+                sink,
+                subscription_id,
+                MachineReadablePrefix::Invalid,
+                format!("negentropy reconcile error: {e}"),
+            )
+            .await;
+        }
+    };
+
+    send(
+        sink,
+        &RelayMessage::NegMsg {
+            subscription_id,
+            message: reply_hex,
+        },
+    )
+    .await
+}
+
+async fn send_neg_err(
+    sink: &mut Sink,
+    subscription_id: SubscriptionId,
+    prefix: MachineReadablePrefix,
+    detail: impl std::fmt::Display,
+) -> Result<(), DispatchError> {
+    let message = format!("{}: {detail}", prefix.as_str());
+    send(
+        sink,
+        &RelayMessage::NegErr {
+            subscription_id,
+            message,
+        },
+    )
+    .await
 }
 
 fn encode_relay(msg: &RelayMessage) -> String {

@@ -25,6 +25,11 @@ pub(super) struct SubscriptionEntry {
     pub(super) filters: Vec<Filter>,
     pub(super) options: SubscribeOptions,
     pub(super) sink: SubscriptionSink,
+    /// `true` for NIP-77 reconciliation sessions opened via
+    /// [`crate::Relay::subscribe_neg`]. `reissue_subscriptions`
+    /// skips these on reconnect because the Negentropy state
+    /// machine cannot be resumed across a fresh socket.
+    pub(super) skip_reissue: bool,
 }
 
 /// What a publish call needs while the actor is waiting for an `OK`

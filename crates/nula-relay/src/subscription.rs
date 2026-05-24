@@ -33,6 +33,21 @@ pub enum SubscriptionItem {
         /// to recover a structured prefix.
         message: String,
     },
+    /// The relay sent a NIP-77 `NEG-MSG` reconciliation step. Only
+    /// arrives on subscriptions opened via
+    /// [`crate::Relay::subscribe_neg`].
+    NegMsg {
+        /// Reconciliation payload, lowercase hex-encoded.
+        message: String,
+    },
+    /// The relay sent a NIP-77 `NEG-ERR` terminal error frame. The
+    /// stream ends after this item; check the conventional
+    /// [`nula_core::message::MachineReadablePrefix`] prefix on
+    /// `message` for the failure class.
+    NegErr {
+        /// Reason string supplied by the relay.
+        message: String,
+    },
 }
 
 /// Caller-facing subscription stream.

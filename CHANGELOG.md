@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 6.6 — NIP-77 client driver and fuzz workspace upgrade.**
+  - **`Relay::send_msg(ClientMessage)`** — actor command + public
+    API on `nula-relay::Relay` for shipping arbitrary
+    `ClientMessage` variants over the live socket. Used by the new
+    NIP-77 driver to emit `NegMsg` / `NegClose` frames.
+  - **`Relay::subscribe_neg(id, filter, initial_message_hex)`**
+    — opens a NIP-77 reconciliation session as a regular
+    subscription whose outbound frame is `["NEG-OPEN", id, filter,
+    initial_hex]` instead of `["REQ", …]`. The returned
+    `SubscriptionHandle` yields the new
+    `SubscriptionItem::NegMsg` / `SubscriptionItem::NegErr`
+    variants. Sessions are not re-issued on reconnect (the
+    Negentropy state machine cannot resume across a fresh socket).
+  - **`Client::sync_to_relay(relay_url, filter, timeout)`** —
+    Layer-5 NIP-77 driver in `nula-sdk` that:
+    1. sources local `(EventId, Timestamp)` pairs from the
+       configured database,
+    2. opens a session via `Relay::subscribe_neg`,
+    3. folds each `NegMsg` reply through
+       `nula_sync::Reconciliation::reconcile_hex` and ships the
+       next `NegMsg` via `Relay::send_msg`,
+    4. returns a typed `SyncOutput { have, need }` describing the
+       per-side delta.
+    Adds `Error::UnknownRelay`, `Error::SyncFailed`, and
+    `Error::SyncStreamClosed` variants.
+  - **`ClientBuilder::database_arc(Arc<dyn NostrDatabase>)`** —
+    sibling of `signer_arc` for sharing the database between the
+    client and external callers (test seeders, background
+    workers).
+  - **`MockRelayBuilder` learned NIP-77.** `nula-relay-builder`
+    now drives a per-subscription `nula_sync::Responder`,
+    handling `NegOpen` / `NegMsg` / `NegClose` frames and
+    emitting structured `NegErr` reasons (NIP-20 prefixed) for
+    every failure path. Pulls `nula-sync = { features =
+    ["storage"] }` as a runtime dep.
+  - **`nula-fuzz` moved to `crates/nula-fuzz`** — explicit
+    `[workspace] exclude = ["crates/nula-fuzz"]` keeps the
+    cargo-fuzz nightly RUSTFLAGS isolated, but the source now
+    lives alongside every other workspace crate. New harnesses:
+    `nip77_payload_decode` (decoder is total + round-trip
+    property), `client_message_parse` /
+    `relay_message_parse` (Serialize/Deserialize symmetry).
 - **Phase 6.5 — `nula-cli` binary crate.** New publish-on-crates.io
   crate that ships a single `nula` binary wrapping `nula-sdk` and
   `nula-relay-builder`. Subcommands:

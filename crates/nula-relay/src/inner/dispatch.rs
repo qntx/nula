@@ -172,6 +172,24 @@ fn dispatch_relay_message(
             // NIP-45 COUNT replies are not part of Phase 2; route
             // them as a no-op for now.
         }
+        RelayMessage::NegMsg {
+            subscription_id,
+            message,
+        } => {
+            if let Some(entry) = state.subscriptions.get(&subscription_id) {
+                drop(entry.sink.send(SubscriptionItem::NegMsg { message }));
+            }
+        }
+        RelayMessage::NegErr {
+            subscription_id,
+            message,
+        } => {
+            // NEG-ERR is terminal; remove the entry so the
+            // SubscriptionHandle stream ends after this item.
+            if let Some(entry) = state.subscriptions.remove(&subscription_id) {
+                drop(entry.sink.send(SubscriptionItem::NegErr { message }));
+            }
+        }
         // `RelayMessage` is `#[non_exhaustive]`; unknown variants
         // are silently dropped — surfacing them would force callers
         // to handle a moving target.

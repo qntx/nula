@@ -1620,6 +1620,7 @@ dependencies = [
  "nula-relay",
  "nula-storage",
  "nula-storage-memory",
+ "nula-sync",
  "serde_json",
  "thiserror",
  "tokio",

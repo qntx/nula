@@ -25,7 +25,7 @@ default = ["gossip", "sync", "memory-fallback", "default-transport"]
 
 # Layer-4 add-ons
 gossip            = ["dep:nula-gossip"]
-sync              = ["dep:nula-sync"]
+sync              = ["dep:nula-sync", "nula-sync/storage"]
 nip46             = ["dep:nula-signer-connect"]
 default-transport = ["nula-relay-pool/default-transport"]
 # Pull `nula-storage-memory` as a runtime dep so `ClientBuilder::build`

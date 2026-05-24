@@ -80,6 +80,20 @@ impl ClientBuilder {
         self
     }
 
+    /// Attach an event database that is already wrapped in
+    /// `Arc<dyn NostrDatabase>`.
+    ///
+    /// Use when the same database needs to be shared with code
+    /// outside the [`Client`] (e.g. a test harness that pre-seeds
+    /// events through the same handle the client will read from,
+    /// or an application that hands the database out to a
+    /// background worker).
+    #[must_use]
+    pub fn database_arc(mut self, database: Arc<dyn NostrDatabase>) -> Self {
+        self.database = Some(database);
+        self
+    }
+
     /// Attach a pre-built [`Gossip`] router for NIP-65 outbox /
     /// inbox / DM-relay aggregation.
     ///

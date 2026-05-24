@@ -71,6 +71,35 @@ pub enum Error {
     /// A `&str` / `String` could not be parsed as a [`nula_core::RelayUrl`].
     #[error(transparent)]
     RelayUrl(#[from] nula_core::types::RelayUrlError),
+
+    /// The relay url passed to a per-relay method is not registered
+    /// on the underlying pool. Add it via
+    /// [`crate::Client::add_relay`] first, or pick one of the
+    /// urls returned by [`crate::Client::relays`].
+    #[error("unknown relay url: {url}")]
+    UnknownRelay {
+        /// The url the caller asked for.
+        url: nula_core::types::RelayUrl,
+    },
+
+    /// The remote peer returned a `NEG-ERR` frame mid-session.
+    /// Inspect [`nula_core::message::MachineReadablePrefix`] on
+    /// `reason` to recover the structured class.
+    #[cfg(feature = "sync")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
+    #[error("relay-side NIP-77 error: {reason}")]
+    SyncFailed {
+        /// The reason string the relay supplied.
+        reason: String,
+    },
+
+    /// The reconciliation handle ended before the session
+    /// converged. Usually means the relay closed the connection
+    /// while a `NEG-MSG` exchange was in flight.
+    #[cfg(feature = "sync")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
+    #[error("NIP-77 stream ended before reconciliation converged")]
+    SyncStreamClosed,
 }
 
 impl From<nula_core::event::EventBuilderError> for Error {

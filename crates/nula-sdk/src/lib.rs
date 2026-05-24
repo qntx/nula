@@ -50,6 +50,9 @@
 pub mod builder;
 pub mod client;
 pub mod error;
+#[cfg(feature = "sync")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
+pub mod sync;
 pub mod util;
 
 // Pin optional or "still-to-be-wired" crates so the workspace
@@ -85,4 +88,7 @@ use tracing as _;
 pub use self::builder::ClientBuilder;
 pub use self::client::Client;
 pub use self::error::Error;
+#[cfg(feature = "sync")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
+pub use self::sync::SyncOutput;
 pub use self::util::IntoRelayUrl;

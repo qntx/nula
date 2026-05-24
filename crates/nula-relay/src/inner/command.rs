@@ -49,6 +49,20 @@ pub(crate) enum Command {
         reply: Reply<Result<(), Error>>,
     },
 
+    /// Register a NIP-77 reconciliation session. The actor
+    /// allocates a subscription slot (so inbound `NEG-MSG` /
+    /// `NEG-ERR` frames route correctly) and emits a
+    /// `["NEG-OPEN", …]` frame instead of a `["REQ", …]`.
+    /// Sessions are not re-issued across reconnects -- see
+    /// [`super::state::SubscriptionEntry::skip_reissue`].
+    SubscribeNeg {
+        id: SubscriptionId,
+        filter: Filter,
+        initial_message_hex: String,
+        sink: SubscriptionSink,
+        reply: Reply<Result<(), Error>>,
+    },
+
     /// Publish an event. Replies once the relay returns `OK <id>` or
     /// the configured publish timeout fires.
     Publish {

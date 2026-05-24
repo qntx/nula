@@ -172,3 +172,113 @@ async fn send_event_to_unparseable_url_fails_with_relay_url_error() {
         "expected RelayUrl error, got {err:?}"
     );
 }
+
+#[cfg(feature = "sync")]
+#[tokio::test]
+async fn sync_to_relay_classifies_have_and_need() {
+    use std::sync::Arc;
+
+    use nula_storage_memory::MemoryDatabase;
+
+    let keys = deterministic_keys();
+
+    // Build the events. `shared_event` ends up on both replicas;
+    // `local_only` is on the client; `relay_only` is on the relay.
+    let shared_event = text_note("shared", "shared-content")
+        .sign_with_keys(&keys)
+        .expect("sign shared");
+    let local_only = text_note("local-only", "local-only-content")
+        .sign_with_keys(&keys)
+        .expect("sign local-only");
+    let relay_only = text_note("relay-only", "relay-only-content")
+        .sign_with_keys(&keys)
+        .expect("sign relay-only");
+
+    // Stand up a fresh in-process relay backed by a memory database
+    // so we can pre-seed events the client does not have.
+    let relay_storage: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    relay_storage
+        .save_event(&shared_event)
+        .await
+        .expect("relay seed shared");
+    relay_storage
+        .save_event(&relay_only)
+        .await
+        .expect("relay seed relay-only");
+    let relay = MockRelayBuilder::new()
+        .storage(Arc::clone(&relay_storage))
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    // Pre-seed the client's database before passing it to the
+    // builder so the sync session sees `shared_event` + `local_only`.
+    let client_db: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    client_db
+        .save_event(&shared_event)
+        .await
+        .expect("client seed shared");
+    client_db
+        .save_event(&local_only)
+        .await
+        .expect("client seed local-only");
+
+    let client = Client::builder()
+        .signer(keys.clone())
+        .database_arc(Arc::clone(&client_db))
+        .build()
+        .expect("client builds");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let filter = Filter::new()
+        .kind(Kind::TEXT_NOTE)
+        .author(*keys.public_key());
+    let outcome = client
+        .sync_to_relay(relay.url(), filter, Some(Duration::from_secs(5)))
+        .await
+        .expect("sync converges");
+
+    assert!(
+        outcome.have.contains(&local_only.id),
+        "client-only event must be classified as `have`; got have={:?} need={:?}",
+        outcome.have,
+        outcome.need,
+    );
+    assert!(
+        outcome.need.contains(&relay_only.id),
+        "relay-only event must be classified as `need`; got have={:?} need={:?}",
+        outcome.have,
+        outcome.need,
+    );
+    assert!(
+        !outcome.have.contains(&shared_event.id),
+        "shared event must not appear in `have`",
+    );
+    assert!(
+        !outcome.need.contains(&shared_event.id),
+        "shared event must not appear in `need`",
+    );
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
+#[cfg(feature = "sync")]
+#[tokio::test]
+async fn sync_to_unknown_relay_fails_with_typed_error() {
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .build()
+        .expect("default features build");
+
+    let unknown = nula_core::RelayUrl::parse("wss://relay.unknown.example").expect("parses");
+    let err = client
+        .sync_to_relay(&unknown, Filter::new(), Some(Duration::from_millis(50)))
+        .await
+        .expect_err("relay never registered");
+    assert!(
+        matches!(err, nula_sdk::Error::UnknownRelay { .. }),
+        "got {err:?}"
+    );
+}
