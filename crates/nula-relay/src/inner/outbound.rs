@@ -58,6 +58,21 @@ pub(super) async fn send_auth(sink: &mut WebSocketSink, event: Event) -> Result<
     Ok(bytes)
 }
 
+/// Send an arbitrary [`ClientMessage`] frame.
+///
+/// Used by [`crate::Relay::send_msg`] so callers can ship message
+/// variants this crate does not have a bespoke `send_*` helper for
+/// (e.g. NIP-77 `NegOpen` / `NegMsg` / `NegClose`).
+pub(super) async fn send_msg(
+    sink: &mut WebSocketSink,
+    message: ClientMessage,
+) -> Result<usize, Error> {
+    let frame = encode(&message)?;
+    let bytes = frame_byte_len(&frame);
+    sink.send(frame).await?;
+    Ok(bytes)
+}
+
 /// Best-effort byte length for stats accounting. Control frames
 /// (ping/pong/close) are not counted; they don't carry application
 /// data.

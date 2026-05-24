@@ -9,7 +9,7 @@
 //! as [`crate::Error::Shutdown`].
 
 use nula_core::Filter;
-use nula_core::{Event, SubscriptionId};
+use nula_core::{ClientMessage, Event, SubscriptionId};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::error::Error;
@@ -62,6 +62,18 @@ pub(crate) enum Command {
     #[cfg(feature = "nip42")]
     Authenticate {
         event: Event,
+        reply: Reply<Result<(), Error>>,
+    },
+
+    /// Ship an arbitrary [`ClientMessage`] frame over the current
+    /// connection. The actor serialises the message, pushes it on
+    /// the sink, and replies as soon as the underlying transport
+    /// accepts (or rejects) the write -- there is no per-message
+    /// `OK` correlation, since the message types this command
+    /// targets (e.g. NIP-77 `NegOpen`) drive their own reply
+    /// streams through normal subscription notifications.
+    SendMsg {
+        message: ClientMessage,
         reply: Reply<Result<(), Error>>,
     },
 

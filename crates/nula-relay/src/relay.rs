@@ -8,7 +8,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use nula_core::{Event, Filter, RelayUrl, SubscriptionId};
+use nula_core::{ClientMessage, Event, Filter, RelayUrl, SubscriptionId};
 use nula_net::IntoWebSocketTransport;
 use tokio::sync::{mpsc, oneshot};
 
@@ -225,6 +225,41 @@ impl Relay {
         self.inner
             .command_tx
             .send(Command::Authenticate { event, reply: tx })
+            .map_err(|_| Error::Shutdown)?;
+        rx.await.map_err(|_| Error::Shutdown)?
+    }
+
+    /// Ship an arbitrary [`ClientMessage`] frame over the current
+    /// connection.
+    ///
+    /// Use this for message variants this crate does not have a
+    /// bespoke `publish` / `subscribe` / `authenticate` method
+    /// for, e.g. NIP-77 `NegOpen` / `NegMsg` / `NegClose` driving
+    /// a sync session. The actor performs the serialise + write
+    /// then replies; there is **no per-message `OK` correlation**.
+    /// Reply traffic the relay sends back (NIP-77 `NegMsg` /
+    /// `NegErr` etc.) is delivered through the relay's normal
+    /// subscription notification stream — the caller is
+    /// responsible for opening the matching subscription channel
+    /// before issuing the send.
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::NotConnected`] when the relay is currently down.
+    /// - [`Error::Json`] / [`Error::SerializeClientMessage`] when
+    ///   the message cannot be serialised (effectively unreachable
+    ///   for round-trip-safe [`ClientMessage`] variants).
+    /// - [`Error::Transport`] when the underlying WebSocket sink
+    ///   refuses the write.
+    /// - [`Error::Shutdown`] when the actor has already exited.
+    pub async fn send_msg(&self, message: ClientMessage) -> Result<(), Error> {
+        let (tx, rx) = oneshot::channel();
+        self.inner
+            .command_tx
+            .send(Command::SendMsg {
+                message,
+                reply: tx,
+            })
             .map_err(|_| Error::Shutdown)?;
         rx.await.map_err(|_| Error::Shutdown)?
     }

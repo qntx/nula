@@ -224,6 +224,9 @@ async fn handle_command(
         Command::Authenticate { event, reply } => {
             handle_authenticate(state, event, reply).await;
         }
+        Command::SendMsg { message, reply } => {
+            handle_send_msg(state, message, reply).await;
+        }
         Command::Shutdown => {
             // Already filtered at the loop level; reaching this arm
             // would be a logic bug. Treating it as a shutdown is the
@@ -450,6 +453,19 @@ async fn handle_authenticate(
     use super::outbound::send_auth;
     let result = match state.sink.as_mut() {
         Some(wire_sink) => send_auth(wire_sink, event).await.map(|_| ()),
+        None => Err(Error::NotConnected),
+    };
+    drop(reply.send(result));
+}
+
+async fn handle_send_msg(
+    state: &mut ActorState,
+    message: nula_core::ClientMessage,
+    reply: Reply<Result<(), Error>>,
+) {
+    use super::outbound::send_msg;
+    let result = match state.sink.as_mut() {
+        Some(wire_sink) => send_msg(wire_sink, message).await.map(|_| ()),
         None => Err(Error::NotConnected),
     };
     drop(reply.send(result));
