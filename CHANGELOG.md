@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7.2.1 — `nula-storage-sqlite` crate.** New
+  publish-on-crates.io backend implementing
+  `nula_storage::NostrDatabase` on top of a vendored SQLite file
+  (durable append-only event log) paired with an in-process
+  `nula_storage_memory::MemoryDatabase` for the hot read path. On
+  startup the backend replays every stored record through the
+  memory replica, so every NIP-09 / NIP-40 / NIP-62 / replaceable
+  / addressable rule the memory crate already enforces also
+  governs the SQLite store.
+  - **`SqliteDatabase::open(path)`** — open / create a SQLite
+    file. The parent directory is `mkdir -p`'d on demand.
+  - **`SqliteDatabase::open_in_memory()`** — `:memory:` database
+    for tests; data vanishes with the handle.
+  - **`Backend::Sqlite`** added to the storage feature enum.
+  - Vendored SQLite via `rusqlite/bundled` by default (toggle off
+    via `default-features = false` to link against the system
+    SQLite).
+  - Conformance: passes the full `nula-storage-test-suite` and
+    adds three SQLite-specific durability tests
+    (`events_survive_a_reopen`, `wipe_persists_across_reopen`,
+    `in_memory_database_does_not_persist`).
 - **Phase 7.1 — full Up/Down/Both NIP-77 sync semantics.** The
   `Client::sync_to_relay` reconciliation driver now also performs
   the actual event exchange the protocol's `(have, need)` split

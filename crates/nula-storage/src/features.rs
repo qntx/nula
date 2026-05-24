@@ -19,6 +19,8 @@ pub enum Backend {
     Memory,
     /// LMDB-backed persistent store (`nula-storage-lmdb`).
     Lmdb,
+    /// SQLite-backed persistent store (`nula-storage-sqlite`).
+    Sqlite,
     /// Custom third-party backend; the inner `&'static str` is the
     /// crate name for telemetry.
     Custom(&'static str),
@@ -31,6 +33,7 @@ impl Backend {
         match self {
             Self::Memory => "memory",
             Self::Lmdb => "lmdb",
+            Self::Sqlite => "sqlite",
             Self::Custom(name) => name,
         }
     }

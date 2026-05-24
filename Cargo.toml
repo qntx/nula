@@ -27,6 +27,7 @@ nula-relay = { version = "0.1.0", path = "crates/nula-relay", default-features =
 nula-storage = { version = "0.1.0", path = "crates/nula-storage", default-features = false }
 nula-storage-memory = { version = "0.1.0", path = "crates/nula-storage-memory", default-features = false }
 nula-storage-lmdb = { version = "0.1.0", path = "crates/nula-storage-lmdb", default-features = false }
+nula-storage-sqlite = { version = "0.1.0", path = "crates/nula-storage-sqlite", default-features = false }
 nula-relay-pool = { version = "0.1.0", path = "crates/nula-relay-pool", default-features = false }
 nula-relay-builder = { version = "0.1.0", path = "crates/nula-relay-builder", default-features = false }
 nula-gossip = { version = "0.1.0", path = "crates/nula-gossip", default-features = false }
@@ -117,6 +118,12 @@ heed = { version = "0.20", default-features = false, features = ["read-txn-no-tl
 postcard = { version = "1.1", default-features = false, features = ["use-std"] }
 flume = { version = "0.11", default-features = false, features = ["async"] }
 tempfile = "3.16"
+
+# Storage (nula-storage-sqlite). `bundled` ships a vendored SQLite so
+# the crate works out of the box on every supported target. Off-by-default
+# at the workspace level so callers wanting to link against the
+# system SQLite can opt out via `default-features = false`.
+rusqlite = { version = "0.32.1", default-features = false, features = ["bundled"] }
 
 # CLI (consumed by `nula-cli`)
 clap = { version = "4.6.0", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions", "env", "wrap_help"] }
