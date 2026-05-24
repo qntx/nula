@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7.2.2 — `nula-keyring` crate.** New
+  publish-on-crates.io crate persisting `nula-core::Keys` in the
+  operating system's native secret store:
+  - macOS Keychain (via `keyring` `apple-native`)
+  - Linux Secret Service over D-Bus (via `linux-native` with
+    `linux-native-sync-persistent` headless fallback)
+  - Windows Credential Manager (via `windows-native`)
+
+  Public surface:
+  - **`Keyring::new(service)`** — scope every entry to a single
+    reverse-domain service identifier.
+  - **`Keyring::{set, get, delete}`** — async APIs, running the
+    blocking native calls on tokio's blocking pool.
+  - **`Keyring::{set_blocking, get_blocking, delete_blocking}`**
+    — sync siblings for CLI / system tray call sites.
+  - `delete` is idempotent (`NoEntry` normalised to `Ok`).
+  - Typed errors: `Keyring(keyring::Error)`,
+    `InvalidSecret(SecretKeyError)`, `Join(JoinError)`.
 - **Phase 7.2.1 — `nula-storage-sqlite` crate.** New
   publish-on-crates.io backend implementing
   `nula_storage::NostrDatabase` on top of a vendored SQLite file

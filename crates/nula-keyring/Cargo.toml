@@ -1,0 +1,31 @@
+[package]
+name = "nula-keyring"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Persist nostr `Keys` in the operating system's secure keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager)."
+readme = "README.md"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+nula-core    = { workspace = true }
+
+keyring      = { workspace = true }
+thiserror    = { workspace = true }
+tokio        = { workspace = true, features = ["sync", "rt-multi-thread"] }
+
+[dev-dependencies]
+nula-core = { workspace = true, features = ["nip06"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util", "time"] }
+
+[lints]
+workspace = true

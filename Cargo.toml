@@ -32,6 +32,7 @@ nula-relay-pool = { version = "0.1.0", path = "crates/nula-relay-pool", default-
 nula-relay-builder = { version = "0.1.0", path = "crates/nula-relay-builder", default-features = false }
 nula-gossip = { version = "0.1.0", path = "crates/nula-gossip", default-features = false }
 nula-signer-connect = { version = "0.1.0", path = "crates/nula-signer-connect", default-features = false }
+nula-keyring = { version = "0.1.0", path = "crates/nula-keyring", default-features = false }
 nula-sync = { version = "0.1.0", path = "crates/nula-sync", default-features = false }
 nula-storage-test-suite = { version = "0.1.0", path = "crates/nula-storage-test-suite", default-features = false }
 nula-sdk = { version = "0.1.0", path = "crates/nula-sdk", default-features = false }
@@ -124,6 +125,14 @@ tempfile = "3.16"
 # at the workspace level so callers wanting to link against the
 # system SQLite can opt out via `default-features = false`.
 rusqlite = { version = "0.32.1", default-features = false, features = ["bundled"] }
+
+# Secret storage (nula-keyring). `apple-native`, `linux-native`, and
+# `windows-native` route to the OS keychain (macOS Keychain, Linux
+# Secret Service via secret-service / kwallet, Windows Credential
+# Manager). The `linux-native-sync-persistent` flag falls back to a
+# blocking impl when the async D-Bus path is unavailable (headless
+# Linux containers).
+keyring = { version = "3.6", default-features = false, features = ["apple-native", "linux-native", "linux-native-sync-persistent", "windows-native"] }
 
 # CLI (consumed by `nula-cli`)
 clap = { version = "4.6.0", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions", "env", "wrap_help"] }
