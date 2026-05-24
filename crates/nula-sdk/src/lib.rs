@@ -51,6 +51,7 @@ pub mod builder;
 pub mod client;
 pub mod error;
 pub mod monitor;
+pub mod nips;
 pub mod policy;
 #[cfg(feature = "sync")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
@@ -91,6 +92,7 @@ pub use self::builder::ClientBuilder;
 pub use self::client::{Client, SubscriptionRecord};
 pub use self::error::Error;
 pub use self::monitor::{Monitor, MonitorNotification};
+pub use self::nips::nip17::ReceivedPrivateMsg;
 pub use self::policy::{AdmitPolicy, AdmitStatus, PolicyError};
 #[cfg(feature = "sync")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sync")))]

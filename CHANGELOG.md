@@ -9,6 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7.4 — NIP-17 private direct messages on `Client`.** New
+  `nula_sdk::nips::nip17` module wires the wire-level helpers
+  from `nula_core::nips::nip17` (kind-14 rumor + NIP-59 gift wrap
+  + kind-10050 DM-relays list) to the SDK facade:
+  - **`Client::send_private_msg(sender_keys, recipients, message,
+    reply_to)`** — builds the unsigned chat-message rumor,
+    delegates to `wrap_for_many` to produce one gift wrap per
+    recipient + one self-wrap, and ships every wrap through the
+    pool. Returns `Output<Vec<EventId>>` -- the outer wrap ids in
+    emission order plus the merged per-relay accept / reject
+    aggregates.
+  - **`Client::send_private_msg_to(urls, …)`** — same pipeline
+    restricted to a caller-chosen relay subset.
+  - **`Client::receive_private_msgs(receiver_keys, since,
+    timeout) -> Vec<ReceivedPrivateMsg>`** — pulls every kind-1059
+    gift wrap addressed to `receiver_keys`'s public key, drops
+    unreadable wraps silently per NIP-17, and surfaces the
+    decrypted unsigned rumor plus the outer envelope coordinates
+    (`wrap_id`, `wrap_pubkey`, `wrap_created_at`).
+  - **`Client::set_dm_relays(relays)` /
+    `Client::get_dm_relays(pubkey, timeout) -> Option<Vec<RelayUrl>>`**
+    — publish / fetch the kind-10050 DM-relays advertisement.
+    `set_dm_relays` reuses the existing
+    `Client::sign_event_builder` + `send_event` chain; the getter
+    queries by author + kind + limit 1.
+  - **`ReceivedPrivateMsg`** struct re-exported at the crate
+    root.
+  - **New `Error::Nip17(Nip17Error)`** variant for forwarded
+    NIP-17 / NIP-59 / NIP-44 failures.
+  - **Design decision on signers**: the helpers take `&Keys`
+    explicitly rather than going through the configured signer.
+    NIP-59 sealing needs both Schnorr signing *and* NIP-44 ECDH
+    secret access, which the dyn-safe `NostrSigner` trait does
+    not surface as a single sync handle. Local-keypair callers
+    pay no extra cost (they already have the `Keys`); NIP-46 /
+    hardware signers cannot perform NIP-17 today, period -- the
+    spec gap is upstream.
+  - **3 new integration tests** (`nip17_round_trip_alice_to_bob_via_mock_relay`,
+    `nip17_send_private_msg_rejects_empty_recipients`,
+    `nip17_set_and_get_dm_relays_round_trip`).
+
 - **Phase 7.3.7 — Client-side `AdmitPolicy` middleware.** New
   `nula_sdk::policy` module + crate-root re-exports
   (`AdmitPolicy`, `AdmitStatus`, `PolicyError`):

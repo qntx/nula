@@ -117,6 +117,12 @@ pub enum Error {
     /// a backend error before producing a verdict.
     #[error(transparent)]
     Policy(#[from] crate::policy::PolicyError),
+
+    /// NIP-17 private-message helper failed (empty recipients,
+    /// malformed kind-10050 list, or a forwarded NIP-59 / NIP-44
+    /// gift-wrap error).
+    #[error(transparent)]
+    Nip17(#[from] nula_core::nips::nip17::Nip17Error),
 }
 
 impl From<nula_core::event::EventBuilderError> for Error {

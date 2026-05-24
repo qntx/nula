@@ -656,6 +656,151 @@ async fn connect_relay_and_disconnect_relay_target_a_single_endpoint() {
     relay.shutdown();
 }
 
+#[tokio::test]
+async fn nip17_round_trip_alice_to_bob_via_mock_relay() {
+    use std::sync::Arc;
+
+    use nula_core::nips::nip17::Recipient;
+    use nula_storage_memory::MemoryDatabase;
+
+    // Shared backing relay so both clients see the same event stream.
+    let relay_storage: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    let relay = MockRelayBuilder::new()
+        .storage(Arc::clone(&relay_storage))
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let alice_keys = Keys::generate().expect("alice keys");
+    let bob_keys = Keys::generate().expect("bob keys");
+
+    let alice = Client::builder()
+        .signer(alice_keys.clone())
+        .build()
+        .expect("alice builds");
+    alice
+        .add_relay(relay.url())
+        .await
+        .expect("alice add relay");
+    alice.connect().await;
+
+    let bob = Client::builder()
+        .signer(bob_keys.clone())
+        .build()
+        .expect("bob builds");
+    bob.add_relay(relay.url()).await.expect("bob add relay");
+    bob.connect().await;
+
+    let bob_recipient = Recipient {
+        public_key: *bob_keys.public_key(),
+        relay_hint: None,
+    };
+    let plaintext = "alice -> bob: hello via gift wrap";
+    let output = alice
+        .send_private_msg(&alice_keys, &[bob_recipient], plaintext, None)
+        .await
+        .expect("send_private_msg");
+    // Two wraps go out: one for Bob and one self-wrap for Alice.
+    assert_eq!(
+        output.value.len(),
+        2,
+        "expected 2 wraps (recipient + self), got {}",
+        output.value.len(),
+    );
+
+    let received = bob
+        .receive_private_msgs(&bob_keys, None, Some(Duration::from_secs(5)))
+        .await
+        .expect("bob fetches dms");
+    assert_eq!(
+        received.len(),
+        1,
+        "Bob must see exactly one wrap, got {}",
+        received.len(),
+    );
+    let msg = received.first().expect("len already asserted");
+    assert_eq!(msg.rumor.content, plaintext);
+    assert_eq!(
+        msg.rumor.pubkey,
+        *alice_keys.public_key(),
+        "rumor.pubkey must equal Alice (deniable but truthful when honest)",
+    );
+
+    // Alice's self-wrap is also visible when she queries.
+    let alice_inbox = alice
+        .receive_private_msgs(&alice_keys, None, Some(Duration::from_secs(5)))
+        .await
+        .expect("alice fetches own copy");
+    assert_eq!(
+        alice_inbox.len(),
+        1,
+        "Alice's self-wrap must be readable; got {}",
+        alice_inbox.len(),
+    );
+    let alice_self = alice_inbox.first().expect("len already asserted");
+    assert_eq!(alice_self.rumor.content, plaintext);
+
+    alice.shutdown().await;
+    bob.shutdown().await;
+    relay.shutdown();
+}
+
+#[tokio::test]
+async fn nip17_send_private_msg_rejects_empty_recipients() {
+    let alice_keys = Keys::generate().expect("alice keys");
+    let alice = Client::builder()
+        .signer(alice_keys.clone())
+        .build()
+        .expect("alice builds");
+
+    let err = alice
+        .send_private_msg(&alice_keys, &[], "noop", None)
+        .await
+        .expect_err("empty recipients must be rejected");
+    assert!(
+        matches!(
+            err,
+            nula_sdk::Error::Nip17(nula_core::nips::nip17::Nip17Error::NoRecipients)
+        ),
+        "got {err:?}",
+    );
+}
+
+#[tokio::test]
+async fn nip17_set_and_get_dm_relays_round_trip() {
+    let relay = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let keys = deterministic_keys();
+    let client = Client::builder()
+        .signer(keys.clone())
+        .build()
+        .expect("client builds");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let advertised = vec![
+        nula_core::RelayUrl::parse("wss://dm-relay-1.example/").expect("url1"),
+        nula_core::RelayUrl::parse("wss://dm-relay-2.example/").expect("url2"),
+    ];
+    client
+        .set_dm_relays(&advertised)
+        .await
+        .expect("set_dm_relays publishes kind 10050");
+
+    let fetched = client
+        .get_dm_relays(keys.public_key(), Some(Duration::from_secs(5)))
+        .await
+        .expect("get_dm_relays succeeds")
+        .expect("kind 10050 was published");
+    assert_eq!(fetched, advertised, "DM-relays round-trip must preserve order");
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
 /// Drain a monitor receiver until a `StatusChanged { status: Connected }` arrives.
 /// Returns `false` if the channel closes first.
 async fn wait_for_connected(
