@@ -1488,6 +1488,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "nula-sdk"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "nula-core",
+ "nula-gossip",
+ "nula-net",
+ "nula-relay",
+ "nula-relay-builder",
+ "nula-relay-pool",
+ "nula-signer-connect",
+ "nula-storage",
+ "nula-storage-memory",
+ "nula-sync",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
 name = "nula-signer-connect"
 version = "0.1.0"
 dependencies = [

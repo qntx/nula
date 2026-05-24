@@ -1,0 +1,71 @@
+[package]
+name = "nula-sdk"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Layer-5 Nostr SDK facade: Client + ClientBuilder composing nula-core, nula-relay-pool, nula-gossip, nula-sync."
+readme = "README.md"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+# Defaults compose the most commonly-needed Layer-5 capabilities:
+# NIP-65 outbox routing, NIP-77 reconciliation, an in-memory database
+# fallback, and a tokio-tungstenite WebSocket transport (via
+# `nula-relay-pool`'s `default-transport`).
+default = ["gossip", "sync", "memory-fallback", "default-transport"]
+
+# Layer-4 add-ons
+gossip            = ["dep:nula-gossip"]
+sync              = ["dep:nula-sync"]
+nip46             = ["dep:nula-signer-connect"]
+default-transport = ["nula-relay-pool/default-transport"]
+# Pull `nula-storage-memory` as a runtime dep so `ClientBuilder::build`
+# can default to `MemoryDatabase::new()` when the caller skipped
+# `.database(...)`. Turn this off to enforce explicit database
+# configuration.
+memory-fallback   = ["dep:nula-storage-memory"]
+
+# Tracing spans on every public Client method. Field names follow
+# ADR-0005.
+tracing = ["dep:tracing"]
+
+[dependencies]
+nula-core            = { workspace = true }
+nula-net             = { workspace = true }
+nula-relay           = { workspace = true }
+nula-relay-pool      = { workspace = true }
+nula-storage         = { workspace = true }
+
+# Optional Layer-4 dependencies, gated.
+nula-gossip          = { workspace = true, optional = true }
+nula-signer-connect  = { workspace = true, optional = true }
+nula-storage-memory  = { workspace = true, optional = true }
+nula-sync            = { workspace = true, optional = true }
+
+futures.workspace    = true
+thiserror.workspace  = true
+tokio = { workspace = true, features = ["sync", "rt"] }
+tokio-stream.workspace = true
+
+# Optional observability.
+tracing = { workspace = true, optional = true }
+
+[dev-dependencies]
+nula-core               = { workspace = true, features = ["nip06"] }
+nula-net                = { workspace = true, features = ["mock"] }
+nula-relay-builder      = { workspace = true, features = ["memory"] }
+nula-storage-memory     = { workspace = true }
+nula-sync               = { workspace = true, features = ["storage"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util", "time"] }
+
+[lints]
+workspace = true

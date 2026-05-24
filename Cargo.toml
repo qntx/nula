@@ -28,6 +28,7 @@ nula-gossip = { version = "0.1.0", path = "crates/nula-gossip", default-features
 nula-signer-connect = { version = "0.1.0", path = "crates/nula-signer-connect", default-features = false }
 nula-sync = { version = "0.1.0", path = "crates/nula-sync", default-features = false }
 nula-storage-test-suite = { version = "0.1.0", path = "crates/nula-storage-test-suite", default-features = false }
+nula-sdk = { version = "0.1.0", path = "crates/nula-sdk", default-features = false }
 
 # Serialization
 serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }

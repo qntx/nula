@@ -147,6 +147,6 @@ async fn refresh_one_kind(
             );
         }
         #[cfg(not(feature = "tracing"))]
-        let _ = res;
+        drop(res);
     }
 }
