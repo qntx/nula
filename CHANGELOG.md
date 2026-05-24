@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7.3 — SDK API ergonomics + monitor + subscription
+  registry.** New `Client` surface for parity with upstream
+  `nostr-sdk::Client`:
+  - **`Monitor` + `MonitorNotification::StatusChanged`** —
+    opt-in (`ClientBuilder::monitor()` /
+    `monitor_with_capacity(n)`) broadcast of every relay's
+    `RelayStatus` transition. Backed by a `tokio::broadcast`
+    channel; multiple subscribers see the same frames.
+  - **`Client::subscriptions()` / `subscription(id)` /
+    `unsubscribe_all()`** — read the registry of every active
+    subscription (id → relay set + filters) maintained by the
+    SDK layer. `subscribe*` paths now insert; `unsubscribe`
+    removes; `unsubscribe_all` fans out + drains.
+  - **`Client::wait_for_connection(timeout)`** — block until
+    every registered relay reaches `RelayStatus::Connected` or
+    `timeout` elapses. Listens on the pool's notification
+    channel for prompt wake-ups.
+  - **`Client::send_msg(ClientMessage)`** — pool-level fan-out
+    of an arbitrary `ClientMessage`; mirrors the per-relay
+    `Relay::send_msg`.
+  - **Capability convenience methods** —
+    `add_discovery_relay`, `add_read_relay`,
+    `add_write_relay`, `add_gossip_relay`. New
+    `RelayCapabilities::GOSSIP` bit distinguishes user-pinned
+    NIP-65 routing relays from peer-listed ones (`DISCOVERY`).
+  - **Per-relay control** — `connect_relay(url)`,
+    `try_connect_relay(url, timeout)`,
+    `disconnect_relay(url)`. Typed `Error::UnknownRelay` when
+    `url` is not in the pool.
+  - **Bulk removal** — `remove_all_relays()`,
+    `force_remove_all_relays()`.
 - **Phase 7.2.3 — gossip persistence delegated to storage
   backends.** `nula-gossip` already wrote every ingested
   NIP-65 / NIP-17 event back through its configured

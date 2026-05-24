@@ -11,24 +11,27 @@
 //! deliberate departures from the upstream `nostr_sdk::Client`
 //! shape.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
 use futures::StreamExt;
 use nula_core::event::{Event, EventBuilder, EventId};
 use nula_core::filter::Filter;
-use nula_core::message::SubscriptionId;
+use nula_core::message::{ClientMessage, SubscriptionId};
 use nula_core::signer::NostrSigner;
 use nula_core::types::RelayUrl;
 #[cfg(feature = "gossip")]
 use nula_gossip::Gossip;
 use nula_net::BoxStream;
-use nula_relay::{Relay, SubscribeOptions};
-use nula_relay_pool::{Output, RelayCapabilities, RelayPool};
+use nula_relay::{Relay, RelayStatus, SubscribeOptions};
+use nula_relay_pool::{Output, PoolNotification, RelayCapabilities, RelayPool};
 use nula_storage::{Events, NostrDatabase};
+use tokio::sync::Mutex;
 
 use crate::builder::ClientBuilder;
 use crate::error::Error;
+use crate::monitor::Monitor;
 use crate::util::{IntoRelayUrl, collect_relay_urls};
 
 /// Runtime configuration shared by every [`Client`] method.
@@ -56,6 +59,43 @@ pub(crate) struct InnerClient {
     #[cfg(feature = "gossip")]
     pub(crate) gossip: Option<Gossip>,
     pub(crate) config: ClientConfig,
+    /// Client-side registry of every active subscription. Keyed by
+    /// `SubscriptionId`, the value records which relays the
+    /// subscription was issued against and the filter set used.
+    pub(crate) subscriptions: Mutex<HashMap<SubscriptionId, SubscriptionRecord>>,
+    /// Status broadcaster + forwarder abort handle, when the caller
+    /// opted in via [`ClientBuilder::monitor`].
+    pub(crate) monitor: Option<MonitorState>,
+}
+
+/// Per-subscription bookkeeping kept on the [`Client`] side.
+///
+/// `RelayPool` itself is intentionally registry-less (every
+/// `SubscriptionHandle` carries its own auto-close lifecycle);
+/// the SDK layer adds this map so callers can list active
+/// subscriptions and broadcast cancellations without keeping the
+/// handles alive themselves.
+#[derive(Debug, Clone)]
+pub struct SubscriptionRecord {
+    /// Relays the subscription targets.
+    pub relays: Vec<RelayUrl>,
+    /// Filter set the subscription was issued with.
+    pub filters: Vec<Filter>,
+}
+
+/// State for the optional [`Monitor`] forwarder.
+#[derive(Debug)]
+pub(crate) struct MonitorState {
+    /// Broadcaster handed back to callers.
+    pub(crate) monitor: Monitor,
+    /// Forwarder task; aborted on shutdown.
+    pub(crate) forwarder: tokio::task::AbortHandle,
+}
+
+impl Drop for MonitorState {
+    fn drop(&mut self) {
+        self.forwarder.abort();
+    }
 }
 
 impl Default for Client {
@@ -137,9 +177,7 @@ impl Client {
     /// Pool-level notification receiver. See
     /// [`nula_relay_pool::PoolNotification`] for the event variants.
     #[must_use]
-    pub fn notifications(
-        &self,
-    ) -> tokio::sync::broadcast::Receiver<nula_relay_pool::PoolNotification> {
+    pub fn notifications(&self) -> tokio::sync::broadcast::Receiver<PoolNotification> {
         self.inner.pool.notifications()
     }
 
@@ -449,7 +487,23 @@ impl Client {
         filter: Filter,
         options: SubscribeOptions,
     ) -> Result<Output<SubscriptionId>, Error> {
-        Ok(self.inner.pool.subscribe(id, vec![filter], options).await?)
+        let output = self
+            .inner
+            .pool
+            .subscribe(id.clone(), vec![filter.clone()], options)
+            .await?;
+        let relays: Vec<RelayUrl> = output.success.iter().cloned().collect();
+        if !relays.is_empty() {
+            let mut subs = self.inner.subscriptions.lock().await;
+            subs.insert(
+                id.clone(),
+                SubscriptionRecord {
+                    relays,
+                    filters: vec![filter],
+                },
+            );
+        }
+        Ok(output)
     }
 
     /// [`Self::subscribe`] restricted to a caller-chosen relay set.
@@ -471,11 +525,22 @@ impl Client {
     {
         let id = SubscriptionId::generate()?;
         let urls = collect_relay_urls(urls)?;
-        Ok(self
+        let output = self
             .inner
             .pool
-            .subscribe_to(urls, id, vec![filter], options)
-            .await?)
+            .subscribe_to(urls.clone(), id.clone(), vec![filter.clone()], options)
+            .await?;
+        if !output.success.is_empty() {
+            let mut subs = self.inner.subscriptions.lock().await;
+            subs.insert(
+                id.clone(),
+                SubscriptionRecord {
+                    relays: urls.into_iter().collect(),
+                    filters: vec![filter],
+                },
+            );
+        }
+        Ok(output)
     }
 
     /// Cancel a subscription on every relay that carries it.
@@ -484,7 +549,264 @@ impl Client {
     /// the unsubscribe; relays without the subscription are silently
     /// ignored.
     pub async fn unsubscribe(&self, id: &SubscriptionId) -> Output<()> {
+        {
+            let mut subs = self.inner.subscriptions.lock().await;
+            subs.remove(id);
+        }
         self.inner.pool.unsubscribe(id).await
+    }
+
+    /// Cancel every active subscription on every relay it touches.
+    /// Returns the merged per-relay [`Output`].
+    pub async fn unsubscribe_all(&self) -> Output<()> {
+        let ids: Vec<SubscriptionId> = {
+            let subs = self.inner.subscriptions.lock().await;
+            subs.keys().cloned().collect()
+        };
+        let mut merged: Output<()> = Output::default();
+        for id in ids {
+            let per_id = self.unsubscribe(&id).await;
+            merged.success.extend(per_id.success);
+            for (url, reason) in per_id.failed {
+                merged.failed.insert(url, reason);
+            }
+        }
+        merged
+    }
+
+    /// Snapshot of every active subscription, keyed by id, with the
+    /// per-subscription relay set and filter list.
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, SubscriptionRecord> {
+        let subs = self.inner.subscriptions.lock().await;
+        subs.clone()
+    }
+
+    /// Look up a single subscription by id.
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<SubscriptionRecord> {
+        let subs = self.inner.subscriptions.lock().await;
+        subs.get(id).cloned()
+    }
+
+    /// Status-only broadcaster. `None` when the
+    /// [`ClientBuilder::monitor`] opt-in was not invoked.
+    ///
+    /// [`ClientBuilder::monitor`]: crate::ClientBuilder::monitor
+    #[must_use]
+    pub fn monitor(&self) -> Option<&Monitor> {
+        self.inner.monitor.as_ref().map(|state| &state.monitor)
+    }
+
+    /// Block until every relay registered on the pool is
+    /// [`RelayStatus::Connected`] or `timeout` elapses.
+    ///
+    /// Returns `true` when every relay reached `Connected` within
+    /// the deadline; `false` when the timeout fired with at least
+    /// one relay still in another state. Listens on the pool's
+    /// notification channel so the call wakes up as soon as the
+    /// last laggard transitions.
+    pub async fn wait_for_connection(&self, timeout: Duration) -> bool {
+        // Fast path: poll the current state once before subscribing
+        // to notifications.
+        let mut rx = self.inner.pool.notifications();
+        if self.all_relays_connected().await {
+            return true;
+        }
+        let deadline = tokio::time::Instant::now() + timeout;
+        loop {
+            let now = tokio::time::Instant::now();
+            if now >= deadline {
+                return false;
+            }
+            let remaining = deadline - now;
+            let recv = tokio::time::timeout(remaining, rx.recv()).await;
+            match recv {
+                Ok(Ok(PoolNotification::Status { .. })) if self.all_relays_connected().await => {
+                    return true;
+                }
+                Ok(Ok(_)) => {}
+                Ok(Err(_)) | Err(_) => return false,
+            }
+        }
+    }
+
+    async fn all_relays_connected(&self) -> bool {
+        let relays = self.inner.pool.relays().await;
+        if relays.is_empty() {
+            return false;
+        }
+        relays
+            .values()
+            .all(|relay| relay.status() == RelayStatus::Connected)
+    }
+
+    /// Fan-out an arbitrary [`ClientMessage`] to every relay in the
+    /// pool. Returns the merged per-relay [`Output`].
+    ///
+    /// Use this for message variants the SDK's bespoke
+    /// `send_event` / `subscribe` / `sync` paths do not model -- the
+    /// most common case being NIP-77 `NegMsg` / `NegClose` frames
+    /// the sync driver ships.
+    pub async fn send_msg(&self, message: ClientMessage) -> Output<()> {
+        self.inner.pool.send_msg(message).await
+    }
+
+    /// Register a relay with [`RelayCapabilities::DISCOVERY`].
+    ///
+    /// Convenience wrapper around
+    /// [`Self::add_relay_with_capabilities`] for relays the caller
+    /// wants to use only for NIP-65 discovery (peers' inbox/outbox
+    /// metadata).
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::add_relay`].
+    pub async fn add_discovery_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: IntoRelayUrl,
+    {
+        let url = url.into_relay_url()?;
+        self.add_relay_with_capabilities(url, RelayCapabilities::DISCOVERY)
+            .await
+    }
+
+    /// Register a relay with [`RelayCapabilities::READ`].
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::add_relay`].
+    pub async fn add_read_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: IntoRelayUrl,
+    {
+        let url = url.into_relay_url()?;
+        self.add_relay_with_capabilities(url, RelayCapabilities::READ)
+            .await
+    }
+
+    /// Register a relay with [`RelayCapabilities::WRITE`].
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::add_relay`].
+    pub async fn add_write_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: IntoRelayUrl,
+    {
+        let url = url.into_relay_url()?;
+        self.add_relay_with_capabilities(url, RelayCapabilities::WRITE)
+            .await
+    }
+
+    /// Register a relay with [`RelayCapabilities::GOSSIP`].
+    ///
+    /// Use this for relays the caller explicitly pins for NIP-65
+    /// routing. Compare with [`Self::add_discovery_relay`], which
+    /// flags relays as merely seen on a peer's published list.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::add_relay`].
+    pub async fn add_gossip_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: IntoRelayUrl,
+    {
+        let url = url.into_relay_url()?;
+        self.add_relay_with_capabilities(url, RelayCapabilities::GOSSIP)
+            .await
+    }
+
+    /// Remove every relay currently in the pool. Errors that fire on
+    /// individual relays are accumulated in the returned
+    /// [`Output`]; an individual failure does **not** abort the
+    /// rest.
+    pub async fn remove_all_relays(&self) -> Output<()> {
+        let urls = self.inner.pool.relays().await;
+        let mut output: Output<()> = Output::default();
+        for url in urls.into_keys() {
+            match self.inner.pool.remove_relay(&url, false).await {
+                Ok(()) => {
+                    output.success.insert(url);
+                }
+                Err(e) => {
+                    output.failed.insert(url, e.to_string());
+                }
+            }
+        }
+        output
+    }
+
+    /// Force-remove every relay (ignores lingering subscriptions).
+    pub async fn force_remove_all_relays(&self) -> Output<()> {
+        let urls = self.inner.pool.relays().await;
+        let mut output: Output<()> = Output::default();
+        for url in urls.into_keys() {
+            match self.inner.pool.remove_relay(&url, true).await {
+                Ok(()) => {
+                    output.success.insert(url);
+                }
+                Err(e) => {
+                    output.failed.insert(url, e.to_string());
+                }
+            }
+        }
+        output
+    }
+
+    /// Connect a single relay.
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::UnknownRelay`] when `url` is not registered.
+    /// - [`Error::Relay`] propagated from the actor's `connect` future.
+    pub async fn connect_relay(&self, url: &RelayUrl) -> Result<(), Error> {
+        let relay = self
+            .inner
+            .pool
+            .relay(url)
+            .await
+            .ok_or_else(|| Error::UnknownRelay { url: url.clone() })?;
+        relay.connect().await?;
+        Ok(())
+    }
+
+    /// Connect a single relay with a per-attempt timeout.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::connect_relay`].
+    pub async fn try_connect_relay(
+        &self,
+        url: &RelayUrl,
+        timeout: Duration,
+    ) -> Result<(), Error> {
+        let relay = self
+            .inner
+            .pool
+            .relay(url)
+            .await
+            .ok_or_else(|| Error::UnknownRelay { url: url.clone() })?;
+        tokio::time::timeout(timeout, relay.connect())
+            .await
+            .map_err(|_| Error::SyncStreamClosed)
+            .and_then(|res| res.map_err(Error::Relay))?;
+        Ok(())
+    }
+
+    /// Disconnect a single relay.
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::UnknownRelay`] when `url` is not registered.
+    /// - [`Error::Relay`] from the underlying actor.
+    pub async fn disconnect_relay(&self, url: &RelayUrl) -> Result<(), Error> {
+        let relay = self
+            .inner
+            .pool
+            .relay(url)
+            .await
+            .ok_or_else(|| Error::UnknownRelay { url: url.clone() })?;
+        relay.disconnect().await?;
+        Ok(())
     }
 }
 

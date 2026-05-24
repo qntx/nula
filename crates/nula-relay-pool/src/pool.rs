@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures::stream::{FuturesUnordered, StreamExt};
+use nula_core::message::ClientMessage;
 use nula_core::{Event, EventId, Filter, RelayUrl, SubscriptionId};
 use nula_net::WebSocketTransport;
 use nula_relay::{
@@ -440,6 +441,31 @@ impl RelayPool {
             }
         }
         Ok(output)
+    }
+
+    /// Fan-out an arbitrary [`ClientMessage`] to every relay
+    /// currently registered in the pool. Per-relay failures are
+    /// recorded in the returned [`Output`]; an individual error
+    /// does **not** abort the others.
+    ///
+    /// Used by NIP-77 sync sessions to ship `NegMsg` / `NegClose`
+    /// frames the pool's bespoke methods do not model. The matching
+    /// per-relay reply traffic still routes through the relay's
+    /// normal subscription notification stream.
+    pub async fn send_msg(&self, message: ClientMessage) -> Output<()> {
+        let snapshot = self.relays().await;
+        let mut output: Output<()> = Output::default();
+        for (url, relay) in snapshot {
+            match relay.send_msg(message.clone()).await {
+                Ok(()) => {
+                    output.success.insert(url);
+                }
+                Err(e) => {
+                    output.failed.insert(url, e.to_string());
+                }
+            }
+        }
+        output
     }
 
     /// Cancel a subscription on every relay that carries it. Relays

@@ -28,7 +28,7 @@ use nula_net as _;
 use nula_relay::SubscribeOptions;
 use nula_relay_builder::MockRelayBuilder;
 use nula_relay_pool as _;
-use nula_sdk::Client;
+use nula_sdk::{Client, MonitorNotification};
 #[cfg(feature = "nip46")]
 use nula_signer_connect as _;
 use nula_storage as _;
@@ -484,4 +484,190 @@ async fn sync_direction_up_skips_download_phase() {
 
     client.shutdown().await;
     relay.shutdown();
+}
+
+#[tokio::test]
+async fn subscribe_registers_in_subscriptions_map() {
+    let relay = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .build()
+        .expect("default features build");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let filter = Filter::new().kind(Kind::TEXT_NOTE).limit(0);
+    let output = client
+        .subscribe(filter, SubscribeOptions::default())
+        .await
+        .expect("subscribe");
+
+    let active = client.subscriptions().await;
+    assert!(
+        active.contains_key(&output.value),
+        "subscribe must register the id; active={:?}",
+        active.keys().collect::<Vec<_>>(),
+    );
+
+    // unsubscribe_all clears the registry.
+    let _ = client.unsubscribe_all().await;
+    assert!(
+        client.subscriptions().await.is_empty(),
+        "unsubscribe_all must drain the registry",
+    );
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
+#[tokio::test]
+async fn monitor_observes_relay_status_transitions() {
+    let relay = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .monitor()
+        .build()
+        .expect("monitor builds");
+
+    let monitor = client.monitor().expect("monitor opt-in returns Some");
+    let rx = monitor.subscribe();
+
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let saw_connected = tokio::time::timeout(Duration::from_secs(5), wait_for_connected(rx))
+        .await
+        .unwrap_or(false);
+    assert!(saw_connected, "monitor must observe a Connected transition");
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
+#[tokio::test]
+async fn wait_for_connection_returns_true_after_connect() {
+    let relay = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .build()
+        .expect("default features build");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let connected = client.wait_for_connection(Duration::from_secs(5)).await;
+    assert!(connected, "wait_for_connection must succeed within 5s");
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
+#[tokio::test]
+async fn wait_for_connection_times_out_when_no_relays_registered() {
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .build()
+        .expect("default features build");
+
+    // No relays ever registered -- the call must time out.
+    let connected = client
+        .wait_for_connection(Duration::from_millis(100))
+        .await;
+    assert!(
+        !connected,
+        "wait_for_connection must return false with zero relays",
+    );
+}
+
+#[tokio::test]
+async fn add_capability_helpers_route_to_the_right_bit() {
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .build()
+        .expect("default features build");
+
+    let inserted_discovery = client
+        .add_discovery_relay("wss://discovery.example/")
+        .await
+        .expect("add discovery");
+    let inserted_read = client
+        .add_read_relay("wss://read.example/")
+        .await
+        .expect("add read");
+    let inserted_write = client
+        .add_write_relay("wss://write.example/")
+        .await
+        .expect("add write");
+    let inserted_gossip = client
+        .add_gossip_relay("wss://gossip.example/")
+        .await
+        .expect("add gossip");
+
+    assert!(inserted_discovery, "discovery relay must be a fresh insert");
+    assert!(inserted_read, "read relay must be a fresh insert");
+    assert!(inserted_write, "write relay must be a fresh insert");
+    assert!(inserted_gossip, "gossip relay must be a fresh insert");
+
+    let relays = client.relays().await;
+    assert_eq!(relays.len(), 4, "all four relays must be registered");
+}
+
+#[tokio::test]
+async fn connect_relay_and_disconnect_relay_target_a_single_endpoint() {
+    let relay = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .build()
+        .expect("default features build");
+    client.add_relay(relay.url()).await.expect("add relay");
+
+    client
+        .connect_relay(relay.url())
+        .await
+        .expect("connect_relay succeeds");
+    client
+        .disconnect_relay(relay.url())
+        .await
+        .expect("disconnect_relay succeeds");
+
+    let unknown = nula_core::RelayUrl::parse("wss://unknown.example/").expect("url");
+    let err = client
+        .connect_relay(&unknown)
+        .await
+        .expect_err("unknown relay must fail typed");
+    assert!(matches!(err, nula_sdk::Error::UnknownRelay { .. }));
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
+/// Drain a monitor receiver until a `StatusChanged { status: Connected }` arrives.
+/// Returns `false` if the channel closes first.
+async fn wait_for_connected(
+    mut rx: tokio::sync::broadcast::Receiver<MonitorNotification>,
+) -> bool {
+    loop {
+        match rx.recv().await {
+            Ok(MonitorNotification::StatusChanged { status, .. }) if status.is_connected() => {
+                return true;
+            }
+            Ok(_) => {}
+            Err(_) => return false,
+        }
+    }
 }

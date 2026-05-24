@@ -50,6 +50,7 @@
 pub mod builder;
 pub mod client;
 pub mod error;
+pub mod monitor;
 #[cfg(feature = "sync")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
 pub mod sync;
@@ -86,8 +87,9 @@ use tokio_stream as _;
 use tracing as _;
 
 pub use self::builder::ClientBuilder;
-pub use self::client::Client;
+pub use self::client::{Client, SubscriptionRecord};
 pub use self::error::Error;
+pub use self::monitor::{Monitor, MonitorNotification};
 #[cfg(feature = "sync")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
 pub use self::sync::{SyncDirection, SyncOptions, SyncProgress, SyncSummary};

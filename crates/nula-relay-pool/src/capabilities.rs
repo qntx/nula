@@ -30,6 +30,11 @@ bitflags! {
         const WRITE     = 0b0000_0010;
         /// Listed in a peer's NIP-65 outbox/inbox metadata.
         const DISCOVERY = 0b0000_0100;
+        /// Relay added explicitly for NIP-65 gossip routing
+        /// (outbox/inbox/dm relay aggregation). Distinguishes a
+        /// user-pinned gossip relay from a relay merely seen on a
+        /// peer's published NIP-65 list (`DISCOVERY`).
+        const GOSSIP    = 0b0000_1000;
     }
 }
 

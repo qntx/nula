@@ -7,16 +7,19 @@
 //! sits behind its own feature flag, and slots that are only
 //! useful in tests (mock transports) live in `nula-net`.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use nula_core::signer::NostrSigner;
 #[cfg(feature = "gossip")]
 use nula_gossip::Gossip;
-use nula_relay_pool::{RelayPool, RelayPoolOptions};
+use nula_relay_pool::{PoolNotification, RelayPool, RelayPoolOptions};
 use nula_storage::NostrDatabase;
+use tokio::sync::Mutex;
 
-use crate::client::{Client, ClientConfig, InnerClient};
+use crate::client::{Client, ClientConfig, InnerClient, MonitorState};
 use crate::error::Error;
+use crate::monitor::{DEFAULT_MONITOR_CAPACITY, Monitor, MonitorNotification};
 
 /// Fluent configurator for [`Client`].
 ///
@@ -31,6 +34,9 @@ pub struct ClientBuilder {
     pub(crate) pool_options: RelayPoolOptions,
     pub(crate) websocket_transport: Option<Arc<dyn nula_net::WebSocketTransport>>,
     pub(crate) automatic_authentication: bool,
+    /// `Some(capacity)` when [`Self::monitor`] was called; `None`
+    /// when callers do not want the status broadcaster.
+    pub(crate) monitor_capacity: Option<usize>,
 }
 
 impl ClientBuilder {
@@ -138,6 +144,25 @@ impl ClientBuilder {
         self
     }
 
+    /// Opt into the status-broadcasting [`crate::Monitor`]. Without
+    /// this call [`crate::Client::monitor`] returns `None`.
+    ///
+    /// Uses a 64-slot channel by default; for a custom capacity see
+    /// [`Self::monitor_with_capacity`].
+    #[must_use]
+    pub const fn monitor(mut self) -> Self {
+        self.monitor_capacity = Some(DEFAULT_MONITOR_CAPACITY);
+        self
+    }
+
+    /// Same as [`Self::monitor`] but with a caller-chosen broadcast
+    /// channel capacity.
+    #[must_use]
+    pub const fn monitor_with_capacity(mut self, capacity: usize) -> Self {
+        self.monitor_capacity = Some(capacity);
+        self
+    }
+
     /// Build the [`Client`].
     ///
     /// When the `memory-fallback` feature is enabled (default) and
@@ -175,6 +200,17 @@ impl ClientBuilder {
         }
         let pool = pool_builder.build()?;
 
+        let monitor = self.monitor_capacity.map(|capacity| {
+            let monitor = Monitor::with_capacity(capacity);
+            let sender = monitor.sender().clone();
+            let rx = pool.notifications();
+            let task = tokio::spawn(forward_monitor_notifications(rx, sender));
+            MonitorState {
+                monitor,
+                forwarder: task.abort_handle(),
+            }
+        });
+
         let inner = InnerClient {
             pool,
             signer: self.signer,
@@ -183,6 +219,8 @@ impl ClientBuilder {
             config: ClientConfig {
                 automatic_authentication: self.automatic_authentication,
             },
+            subscriptions: Mutex::new(HashMap::new()),
+            monitor,
         };
         Ok(Client {
             inner: Arc::new(inner),
@@ -193,3 +231,21 @@ impl ClientBuilder {
 // Re-export the pool builder so callers tuning advanced relay-pool
 // settings can do it without an extra import.
 pub use nula_relay_pool::RelayPoolBuilder as PoolBuilder;
+
+/// Forward every [`PoolNotification::Status`] frame onto the
+/// monitor broadcaster. Stops when the pool channel closes.
+async fn forward_monitor_notifications(
+    mut rx: tokio::sync::broadcast::Receiver<PoolNotification>,
+    sender: tokio::sync::broadcast::Sender<MonitorNotification>,
+) {
+    while let Ok(notification) = rx.recv().await {
+        let PoolNotification::Status { url, status } = notification else {
+            continue;
+        };
+        // Drop the SendError silently -- no subscriber is fine.
+        drop(sender.send(MonitorNotification::StatusChanged {
+            relay_url: url,
+            status,
+        }));
+    }
+}
