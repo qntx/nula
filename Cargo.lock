@@ -1698,6 +1698,8 @@ dependencies = [
  "nula-relay-pool",
  "nula-storage",
  "nula-storage-memory",
+ "nula-storage-sqlite",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",

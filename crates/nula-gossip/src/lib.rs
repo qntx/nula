@@ -34,6 +34,19 @@
 //! # Ok(()) }
 //! ```
 //!
+//! # Persistence
+//!
+//! `nula-gossip` keeps its routing graph in memory but writes every
+//! ingested NIP-65 / NIP-17 event back through the configured
+//! [`nula_storage::NostrDatabase`]. On startup the caller invokes
+//! [`Gossip::warm_up`] for the public keys they care about and the
+//! cache rebuilds itself from disk. There is **no** dedicated
+//! `nula-gossip-sqlite` crate -- pick the backend you already use
+//! for events (`nula-storage-sqlite` for survive-a-reboot,
+//! `nula-storage-lmdb` for high-throughput, `nula-storage-memory`
+//! for ephemeral processes) and the gossip layer inherits its
+//! durability story for free.
+//!
 //! # Feature flags
 //!
 //! | Feature   | Default | Description                                      |
@@ -42,6 +55,7 @@
 //!
 //! [NIP-17]: https://github.com/nostr-protocol/nips/blob/master/17.md
 //! [`Filter`]: nula_core::Filter
+//! [`Gossip::warm_up`]: crate::Gossip::warm_up
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/nula-gossip")]
@@ -60,6 +74,10 @@ use nula_net as _;
 use nula_relay_builder as _;
 #[cfg(test)]
 use nula_storage_memory as _;
+#[cfg(test)]
+use nula_storage_sqlite as _;
+#[cfg(test)]
+use tempfile as _;
 #[cfg(feature = "tracing")]
 use tracing as _;
 

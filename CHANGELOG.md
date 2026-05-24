@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7.2.3 — gossip persistence delegated to storage
+  backends.** `nula-gossip` already wrote every ingested
+  NIP-65 / NIP-17 event back through its configured
+  `NostrDatabase`; this phase made that contract first-class:
+  - Crate-level "Persistence" doc section documents the design
+    decision (no dedicated `nula-gossip-sqlite` crate -- pick the
+    backend you use for events and gossip inherits its durability
+    story).
+  - New integration test
+    `crates/nula-gossip/tests/persistence.rs`:
+    `warm_up_rehydrates_routes_from_sqlite_after_restart` --
+    ingest an NIP-65 list against a `SqliteDatabase`-backed
+    gossip, drop the whole handle stack, reopen the same SQLite
+    file, build a fresh gossip handle, call `warm_up`, and assert
+    the outbox / inbox come back from disk.
 - **Phase 7.2.2 — `nula-keyring` crate.** New
   publish-on-crates.io crate persisting `nula-core::Keys` in the
   operating system's native secret store:

@@ -44,6 +44,8 @@ nula-net            = { workspace = true, features = ["mock"] }
 nula-relay-builder  = { workspace = true, features = ["memory"] }
 nula-relay-pool     = { workspace = true, features = ["default-transport"] }
 nula-storage-memory = { workspace = true }
+nula-storage-sqlite = { workspace = true }
+tempfile.workspace  = true
 tokio = { workspace = true, features = [
     "macros",
     "rt-multi-thread",
