@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7.1 — full Up/Down/Both NIP-77 sync semantics.** The
+  `Client::sync_to_relay` reconciliation driver now also performs
+  the actual event exchange the protocol's `(have, need)` split
+  implies:
+  - **`SyncDirection { Up, Down, Both }`** — direction of the
+    desired exchange. Default is `Down` (pull relay-only events
+    into the local database).
+  - **`SyncSummary { local, remote, sent, received,
+    send_failures }`** — observable side effects per call. `local`
+    / `remote` survive even on `dry_run`; `sent` /
+    `received` / `send_failures` populate during the upload /
+    download phases.
+  - **`SyncProgress { total, current }` + `SyncOptions::with_progress(watch::Sender)`**
+    — streaming progress watch channel. The reconciliation loop
+    bumps `total` each round; the upload / download loops bump
+    `current` per processed event.
+  - **`SyncOptions::dry_run(true)`** — skip the upload + download
+    phases entirely; only the reconciliation summary survives.
+  - **`Client::sync_with(urls, filter, opts)`** — pool-level
+    fan-out that runs `sync_to_relay` against each url and merges
+    the per-relay summaries.
 - **Phase 6.6 — NIP-77 client driver and fuzz workspace upgrade.**
   - **`Relay::send_msg(ClientMessage)`** — actor command + public
     API on `nula-relay::Relay` for shipping arbitrary

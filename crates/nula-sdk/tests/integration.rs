@@ -234,30 +234,42 @@ async fn sync_to_relay_classifies_have_and_need() {
     let filter = Filter::new()
         .kind(Kind::TEXT_NOTE)
         .author(*keys.public_key());
+
+    // Dry-run with SyncDirection::Both classifies the local /
+    // remote diff without performing any actual upload or
+    // download.
+    let opts = nula_sdk::SyncOptions::new()
+        .direction(nula_sdk::SyncDirection::Both)
+        .timeout(Some(Duration::from_secs(5)))
+        .dry_run(true);
     let outcome = client
-        .sync_to_relay(relay.url(), filter, Some(Duration::from_secs(5)))
+        .sync_to_relay(relay.url(), filter, opts)
         .await
         .expect("sync converges");
 
     assert!(
-        outcome.have.contains(&local_only.id),
-        "client-only event must be classified as `have`; got have={:?} need={:?}",
-        outcome.have,
-        outcome.need,
+        outcome.local.contains(&local_only.id),
+        "client-only event must be classified as `local`; got local={:?} remote={:?}",
+        outcome.local,
+        outcome.remote,
     );
     assert!(
-        outcome.need.contains(&relay_only.id),
-        "relay-only event must be classified as `need`; got have={:?} need={:?}",
-        outcome.have,
-        outcome.need,
+        outcome.remote.contains(&relay_only.id),
+        "relay-only event must be classified as `remote`; got local={:?} remote={:?}",
+        outcome.local,
+        outcome.remote,
     );
     assert!(
-        !outcome.have.contains(&shared_event.id),
-        "shared event must not appear in `have`",
+        !outcome.local.contains(&shared_event.id),
+        "shared event must not appear in `local`",
     );
     assert!(
-        !outcome.need.contains(&shared_event.id),
-        "shared event must not appear in `need`",
+        !outcome.remote.contains(&shared_event.id),
+        "shared event must not appear in `remote`",
+    );
+    assert!(
+        outcome.is_empty_exchange(),
+        "dry_run must not exchange any events",
     );
 
     client.shutdown().await;
@@ -274,11 +286,202 @@ async fn sync_to_unknown_relay_fails_with_typed_error() {
 
     let unknown = nula_core::RelayUrl::parse("wss://relay.unknown.example").expect("parses");
     let err = client
-        .sync_to_relay(&unknown, Filter::new(), Some(Duration::from_millis(50)))
+        .sync_to_relay(
+            &unknown,
+            Filter::new(),
+            nula_sdk::SyncOptions::new().timeout(Some(Duration::from_millis(50))),
+        )
         .await
         .expect_err("relay never registered");
     assert!(
         matches!(err, nula_sdk::Error::UnknownRelay { .. }),
         "got {err:?}"
     );
+}
+
+#[cfg(feature = "sync")]
+#[tokio::test]
+async fn sync_direction_both_uploads_and_downloads_events() {
+    use std::sync::Arc;
+
+    use nula_storage_memory::MemoryDatabase;
+
+    let keys = deterministic_keys();
+
+    let local_only = text_note("L1", "local-uploaded")
+        .sign_with_keys(&keys)
+        .expect("sign local-only");
+    let relay_only = text_note("R1", "relay-downloaded")
+        .sign_with_keys(&keys)
+        .expect("sign relay-only");
+
+    let relay_storage: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    relay_storage
+        .save_event(&relay_only)
+        .await
+        .expect("seed relay");
+    let relay = MockRelayBuilder::new()
+        .storage(Arc::clone(&relay_storage))
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let client_db: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    client_db
+        .save_event(&local_only)
+        .await
+        .expect("seed client");
+
+    let client = Client::builder()
+        .signer(keys.clone())
+        .database_arc(Arc::clone(&client_db))
+        .build()
+        .expect("client builds");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let filter = Filter::new().kind(Kind::TEXT_NOTE).author(*keys.public_key());
+    let opts = nula_sdk::SyncOptions::new()
+        .direction(nula_sdk::SyncDirection::Both)
+        .timeout(Some(Duration::from_secs(10)));
+    let summary = client
+        .sync_to_relay(relay.url(), filter, opts)
+        .await
+        .expect("bidirectional sync converges");
+
+    assert!(summary.sent.contains(&local_only.id), "local_only must be uploaded");
+    assert!(
+        summary.received.contains(&relay_only.id),
+        "relay_only must be downloaded",
+    );
+    assert!(summary.send_failures.is_empty(), "got failures: {:?}", summary.send_failures);
+
+    // The client database now holds both events.
+    let after = client_db
+        .event_by_id(&relay_only.id)
+        .await
+        .expect("db query ok");
+    assert!(after.is_some(), "download phase persisted relay_only into the client db");
+
+    // The relay database now holds both events too.
+    let on_relay = relay_storage
+        .event_by_id(&local_only.id)
+        .await
+        .expect("relay db query ok");
+    assert!(on_relay.is_some(), "upload phase persisted local_only into the relay");
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
+#[cfg(feature = "sync")]
+#[tokio::test]
+async fn sync_progress_watch_channel_reports_totals() {
+    use std::sync::Arc;
+
+    use nula_storage_memory::MemoryDatabase;
+    use tokio::sync::watch;
+
+    let keys = deterministic_keys();
+    let relay_only = text_note("watch-target", "watch")
+        .sign_with_keys(&keys)
+        .expect("sign");
+
+    let relay_storage: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    relay_storage
+        .save_event(&relay_only)
+        .await
+        .expect("seed relay");
+    let relay = MockRelayBuilder::new()
+        .storage(Arc::clone(&relay_storage))
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let client = Client::builder()
+        .signer(keys.clone())
+        .build()
+        .expect("client builds");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let (tx, rx) = watch::channel(nula_sdk::SyncProgress::default());
+    let filter = Filter::new().kind(Kind::TEXT_NOTE).author(*keys.public_key());
+    let opts = nula_sdk::SyncOptions::new()
+        .direction(nula_sdk::SyncDirection::Down)
+        .timeout(Some(Duration::from_secs(5)))
+        .with_progress(tx);
+    let summary = client
+        .sync_to_relay(relay.url(), filter, opts)
+        .await
+        .expect("sync converges");
+
+    assert_eq!(summary.received.len(), 1);
+    let final_progress = *rx.borrow();
+    assert!(
+        final_progress.total >= 1,
+        "progress total must reflect at least one classified event, got {final_progress:?}",
+    );
+    assert!(
+        final_progress.current >= 1,
+        "progress current must reflect the downloaded event, got {final_progress:?}",
+    );
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
+#[cfg(feature = "sync")]
+#[tokio::test]
+async fn sync_direction_up_skips_download_phase() {
+    use std::sync::Arc;
+
+    use nula_storage_memory::MemoryDatabase;
+
+    let keys = deterministic_keys();
+    let relay_only = text_note("R-only", "relay-not-downloaded")
+        .sign_with_keys(&keys)
+        .expect("sign");
+
+    let relay_storage: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    relay_storage
+        .save_event(&relay_only)
+        .await
+        .expect("seed relay");
+    let relay = MockRelayBuilder::new()
+        .storage(Arc::clone(&relay_storage))
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let client_db: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    let client = Client::builder()
+        .signer(keys.clone())
+        .database_arc(Arc::clone(&client_db))
+        .build()
+        .expect("client builds");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let filter = Filter::new().kind(Kind::TEXT_NOTE).author(*keys.public_key());
+    let opts = nula_sdk::SyncOptions::new()
+        .direction(nula_sdk::SyncDirection::Up)
+        .timeout(Some(Duration::from_secs(5)));
+    let summary = client
+        .sync_to_relay(relay.url(), filter, opts)
+        .await
+        .expect("sync converges");
+
+    // Up direction must not classify any need ids and must not
+    // download anything.
+    assert!(summary.remote.is_empty(), "Up must not classify remote-only");
+    assert!(summary.received.is_empty(), "Up must not download events");
+    let after = client_db
+        .event_by_id(&relay_only.id)
+        .await
+        .expect("db query ok");
+    assert!(after.is_none(), "Up direction must not persist relay-only events locally");
+
+    client.shutdown().await;
+    relay.shutdown();
 }

@@ -90,5 +90,5 @@ pub use self::client::Client;
 pub use self::error::Error;
 #[cfg(feature = "sync")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sync")))]
-pub use self::sync::SyncOutput;
+pub use self::sync::{SyncDirection, SyncOptions, SyncProgress, SyncSummary};
 pub use self::util::IntoRelayUrl;
