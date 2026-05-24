@@ -49,3 +49,4 @@ allowed but should be claimed in a PR within two weeks or recycled.
 | 0008 | Multi-relay orchestration architecture             | Accepted |
 | 0009 | Multi-relay routing & remote signer architecture   | Accepted |
 | 0010 | NIP-77 Negentropy lives in standalone `nula-sync`  | Accepted |
+| 0011 | Layer-5 SDK facade lives in `nula-sdk`             | Accepted |

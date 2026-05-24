@@ -48,6 +48,25 @@ impl IntoRelayUrl for &String {
     }
 }
 
+/// Collect an iterator of [`IntoRelayUrl`] inputs into a `Vec<RelayUrl>`.
+///
+/// Used internally by the multi-target `Client::send_event_to`,
+/// `Client::subscribe_to`, and friends to accept heterogenous
+/// iterators of `&str` / `String` / `RelayUrl` without forcing
+/// callers to do the conversion themselves.
+///
+/// # Errors
+///
+/// Returns the first [`RelayUrlError`] encountered while parsing
+/// any element of `iter`.
+pub fn collect_relay_urls<I, U>(iter: I) -> Result<Vec<RelayUrl>, RelayUrlError>
+where
+    I: IntoIterator<Item = U>,
+    U: IntoRelayUrl,
+{
+    iter.into_iter().map(IntoRelayUrl::into_relay_url).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -68,6 +87,25 @@ mod tests {
     #[test]
     fn invalid_str_errors() {
         let err = "not a url".into_relay_url().unwrap_err();
+        assert!(matches!(err, RelayUrlError::Parse(_)));
+    }
+
+    #[test]
+    fn collect_relay_urls_mixed_inputs() {
+        let urls = collect_relay_urls([
+            "wss://relay.one.com",
+            "wss://relay.two.com",
+            "wss://relay.three.com",
+        ])
+        .unwrap();
+        assert_eq!(urls.len(), 3);
+        assert_eq!(urls.first().map(RelayUrl::host), Some("relay.one.com"));
+        assert_eq!(urls.get(2).map(RelayUrl::host), Some("relay.three.com"));
+    }
+
+    #[test]
+    fn collect_relay_urls_surfaces_first_error() {
+        let err = collect_relay_urls(["wss://relay.ok.com", "not a url"]).unwrap_err();
         assert!(matches!(err, RelayUrlError::Parse(_)));
     }
 }

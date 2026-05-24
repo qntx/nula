@@ -9,6 +9,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 6.4 — Layer-5 SDK facade (`nula-sdk` crate).** New
+  publish-on-crates.io crate that composes Layer 1-4 into a single
+  `Client` + `ClientBuilder` modelled on the upstream
+  `nostr_sdk::Client`. Surface:
+  - **Lifecycle & getters** — `new`, `builder`, `pool`, `signer`,
+    `database`, `gossip` (feature `gossip`), `is_shutdown`,
+    `shutdown`, `notifications`, `automatic_authentication`.
+  - **Relay management** — `add_relay`,
+    `add_relay_with_capabilities`, `remove_relay`,
+    `force_remove_relay`, `relay`, `relays`, `connect`,
+    `try_connect`, `disconnect`. All `add_*` variants accept any
+    `impl IntoRelayUrl` (`&str`, `String`, `&RelayUrl`,
+    `RelayUrl`).
+  - **Publishing & signing** — `sign_event_builder`, `send_event`,
+    `send_event_to`, `send_event_builder`,
+    `send_event_builder_to`. `send_*_to` accept any
+    `IntoIterator<Item = impl IntoRelayUrl>`.
+  - **Fetching & streaming** — `fetch_events`,
+    `fetch_events_from`, `stream_events`, `stream_events_from`
+    (`close_on_eose` baked in; multi-relay dedup via
+    `RelayPoolOptions::dedup_cache_size`).
+  - **Subscriptions** — `subscribe`, `subscribe_with_id`,
+    `subscribe_to`, `unsubscribe`.
+  - **`ClientBuilder` setters (10)** — `signer`, `signer_arc`,
+    `database`, `gossip` (feature `gossip`),
+    `websocket_transport`, `pool_options`,
+    `automatic_authentication`, `build()`.
+  - **Feature flags (defaults on the right)** — `gossip` ✅,
+    `sync` ✅, `memory-fallback` ✅, `default-transport` ✅,
+    `nip46` ❌, `tracing` ❌.
+  - **Error surface** — typed `#[non_exhaustive]` enum wrapping
+    `nula_relay_pool::Error`, `nula_relay::Error`,
+    `nula_core::event::EventBuilderError`,
+    `nula_core::signer::SignerError`,
+    `nula_core::message::SubscriptionIdError`,
+    `nula_core::types::RelayUrlError`, `nula_gossip::Error`
+    (feature `gossip`), `nula_sync::Error` /
+    `nula_storage::Error` (feature `sync`), and a typed
+    `SignerNotConfigured` variant.
+  - **Tests** — 5 unit (`IntoRelayUrl` + `collect_relay_urls`
+    cases) + 5 integration (`add_relay` parse path, signer-not-
+    configured, end-to-end publish + fetch against
+    `MockRelayBuilder`, subscribe + unsubscribe round trip,
+    unparseable url error path) + 1 quickstart doctest. Workspace
+    total: 1121 → 1128.
+- **ADR-0011** records the public-surface decisions, the
+  deliberate departures from `nostr_sdk::Client` (no fluent
+  builder return types, no deprecated `add_*_relay` shorthands, no
+  `wait_for_connection`), and the deferred surface (`Client::sync`
+  waits on a future `Relay::send_msg` API; NIP-17 DM helpers and
+  NIP-65 outbox helpers ship in a later phase as additive
+  `nula-sdk::nips::*` modules).
 - **Phase 6.2 — NIP-77 Negentropy sync (`nula-sync` crate).** New
   Layer-3 crate that wraps the upstream
   [`negentropy = "0.5"`](https://crates.io/crates/negentropy) state

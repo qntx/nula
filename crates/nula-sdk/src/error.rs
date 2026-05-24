@@ -57,6 +57,17 @@ pub enum Error {
     #[error("no signer configured on this client")]
     SignerNotConfigured,
 
+    /// Wraps a [`nula_core::signer::SignerError`] returned by the
+    /// configured signer's `get_public_key` / `sign_event`
+    /// (or NIP-04 / NIP-44 cipher) futures.
+    #[error(transparent)]
+    Signer(#[from] nula_core::signer::SignerError),
+
+    /// [`nula_core::SubscriptionId::generate`] failed (OS RNG
+    /// exhaustion).
+    #[error(transparent)]
+    SubscriptionIdGeneration(#[from] nula_core::message::SubscriptionIdError),
+
     /// A `&str` / `String` could not be parsed as a [`nula_core::RelayUrl`].
     #[error(transparent)]
     RelayUrl(#[from] nula_core::types::RelayUrlError),
