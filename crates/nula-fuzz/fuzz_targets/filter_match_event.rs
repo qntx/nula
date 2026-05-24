@@ -14,7 +14,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use nula_core::event::Event;
-use nula_core::filter::Filter;
+use nula_core::filter::{Filter, MatchEventOptions};
 
 fuzz_target!(|data: &[u8]| {
     // Split the corpus into two halves: one for the filter, one for
@@ -37,7 +37,7 @@ fuzz_target!(|data: &[u8]| {
 
         if let Ok(event) = serde_json::from_slice::<Event>(event_bytes) {
             // The matcher must never panic, regardless of the input.
-            let _ = filter.matches(&event);
+            let _ = filter.match_event(&event, MatchEventOptions::default());
         }
     }
 });

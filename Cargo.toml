@@ -1,5 +1,10 @@
 [workspace]
 members = ["crates/*"]
+# `nula-fuzz` is detached from the parent workspace because
+# `cargo-fuzz` injects nightly-only `RUSTFLAGS` (sanitizer +
+# coverage instrumentation) the rest of the workspace does not
+# tolerate on stable.
+exclude = ["crates/nula-fuzz"]
 default-members = ["crates/nula-core"]
 resolver = "3"
 

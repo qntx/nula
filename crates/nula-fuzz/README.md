@@ -21,12 +21,15 @@ cargo install cargo-fuzz
 | `nip19_round_trip`      | NIP-19 `decode → encode → decode` is idempotent and deterministic    |
 | `nip44_decrypt`         | `nip44::decrypt` returns a `Result` for any input, never panics      |
 | `filter_match_event`    | `Filter` JSON round-trips byte-identically; `matches` never panics   |
+| `nip77_payload_decode`  | NIP-77 Negentropy `decode_payload` is total; round-trips re-encode   |
+| `client_message_parse`  | `ClientMessage` `from_str` is total; successful parses round-trip    |
+| `relay_message_parse`   | `RelayMessage` `from_str` is total; successful parses round-trip     |
 
 ## Quick start
 
 ```bash
 # Run from the workspace root.
-cd fuzz
+cd crates/nula-fuzz
 
 # Build every target (verifies the harness compiles).
 cargo +nightly fuzz build
@@ -35,7 +38,10 @@ cargo +nightly fuzz build
 cargo +nightly fuzz run canonical_bytes_cross -- -max_total_time=10
 cargo +nightly fuzz run nip19_round_trip      -- -max_total_time=10
 cargo +nightly fuzz run nip44_decrypt          -- -max_total_time=10
-cargo +nightly fuzz run filter_match_event     -- -max_total_time=10
+cargo +nightly fuzz run filter_match_event    -- -max_total_time=10
+cargo +nightly fuzz run nip77_payload_decode  -- -max_total_time=10
+cargo +nightly fuzz run client_message_parse  -- -max_total_time=10
+cargo +nightly fuzz run relay_message_parse   -- -max_total_time=10
 
 # Long-running soak: an hour per target gives meaningful coverage.
 cargo +nightly fuzz run canonical_bytes_cross -- -max_total_time=3600 -workers=8 -jobs=8
@@ -43,10 +49,10 @@ cargo +nightly fuzz run canonical_bytes_cross -- -max_total_time=3600 -workers=8
 
 ## Triage
 
-Crashes land in `fuzz/artifacts/<target>/`. Reproduce with:
+Crashes land in `crates/nula-fuzz/artifacts/<target>/`. Reproduce with:
 
 ```bash
-cargo +nightly fuzz run <target> fuzz/artifacts/<target>/crash-<hash>
+cargo +nightly fuzz run <target> crates/nula-fuzz/artifacts/<target>/crash-<hash>
 ```
 
 Then minimise and capture as a regression test inside the corresponding
@@ -56,7 +62,7 @@ Then minimise and capture as a regression test inside the corresponding
 
 1. Drop a new `fuzz_targets/<name>.rs` containing a `fuzz_target!`
    block.
-2. Add the matching `[[bin]]` stanza to `fuzz/Cargo.toml`.
+2. Add the matching `[[bin]]` stanza to `crates/nula-fuzz/Cargo.toml`.
 3. Document the property under test in the table above.
 
 Keep targets focused: one invariant per harness keeps crashes
