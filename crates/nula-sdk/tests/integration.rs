@@ -767,6 +767,160 @@ async fn nip17_send_private_msg_rejects_empty_recipients() {
 }
 
 #[tokio::test]
+async fn nip65_set_and_get_relay_list_round_trip() {
+    use nula_core::nips::nip65::{RelayList, RelayMarker};
+
+    let relay = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    let keys = deterministic_keys();
+    let client = Client::builder()
+        .signer(keys.clone())
+        .build()
+        .expect("client builds");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let mut list = RelayList::new();
+    list.insert(
+        nula_core::RelayUrl::parse("wss://r1.example/").expect("url"),
+        RelayMarker::Read,
+    );
+    list.insert(
+        nula_core::RelayUrl::parse("wss://w1.example/").expect("url"),
+        RelayMarker::Write,
+    );
+    list.insert(
+        nula_core::RelayUrl::parse("wss://both.example/").expect("url"),
+        RelayMarker::ReadWrite,
+    );
+
+    let output = client
+        .set_relay_list(&list)
+        .await
+        .expect("set_relay_list publishes kind 10002");
+    assert!(
+        !output.success.is_empty(),
+        "at least one relay must accept the kind-10002 event",
+    );
+
+    let fetched = client
+        .get_relay_list(keys.public_key(), Some(Duration::from_secs(5)))
+        .await
+        .expect("get_relay_list succeeds")
+        .expect("kind 10002 was published");
+    assert_eq!(
+        fetched, list,
+        "round-trip relay list must match (insertion-order via BTreeMap key)",
+    );
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
+#[tokio::test]
+async fn nip65_get_relay_list_returns_none_when_unpublished() {
+    let relay = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("mock relay binds");
+    let keys = deterministic_keys();
+    let client = Client::builder()
+        .signer(keys.clone())
+        .build()
+        .expect("client builds");
+    client.add_relay(relay.url()).await.expect("add relay");
+    client.connect().await;
+
+    let none = client
+        .get_relay_list(keys.public_key(), Some(Duration::from_millis(200)))
+        .await
+        .expect("get_relay_list succeeds with no event");
+    assert!(none.is_none(), "no kind-10002 was ever published");
+
+    client.shutdown().await;
+    relay.shutdown();
+}
+
+#[cfg(feature = "gossip")]
+#[tokio::test]
+async fn nip65_refresh_relay_metadata_drives_gossip_routing() {
+    use std::sync::Arc;
+
+    use nula_core::nips::nip65::{RelayList, RelayMarker};
+    use nula_storage_memory::MemoryDatabase;
+
+    // Shared backing relay so the publishing client and the
+    // refreshing client both see the same kind-10002 event stream.
+    let relay_storage: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    let relay = MockRelayBuilder::new()
+        .storage(Arc::clone(&relay_storage))
+        .run()
+        .await
+        .expect("mock relay binds");
+
+    // Publisher: Alice publishes her NIP-65 list so the relay
+    // archive reflects an outbox advertisement.
+    let alice_keys = Keys::generate().expect("alice keys");
+    let alice = Client::builder()
+        .signer(alice_keys.clone())
+        .build()
+        .expect("alice builds");
+    alice.add_relay(relay.url()).await.expect("add relay");
+    alice.connect().await;
+    let mut alice_list = RelayList::new();
+    let outbox = nula_core::RelayUrl::parse("wss://outbox.example/").expect("url");
+    let inbox = nula_core::RelayUrl::parse("wss://inbox.example/").expect("url");
+    alice_list.insert(outbox.clone(), RelayMarker::Write);
+    alice_list.insert(inbox.clone(), RelayMarker::Read);
+    alice
+        .set_relay_list(&alice_list)
+        .await
+        .expect("alice publishes kind-10002");
+
+    // Subscriber: Bob runs a fresh client with gossip enabled and
+    // wants to discover Alice's relays via refresh_relay_metadata.
+    let gossip_db: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    let gossip = nula_gossip::Gossip::builder()
+        .database(Arc::clone(&gossip_db))
+        .build()
+        .expect("gossip builds");
+    let bob = Client::builder()
+        .signer(Keys::generate().expect("bob keys"))
+        .database_arc(Arc::clone(&gossip_db))
+        .gossip(gossip)
+        .build()
+        .expect("bob builds with gossip");
+    bob.add_relay(relay.url()).await.expect("add relay");
+    bob.connect().await;
+
+    let ingested = bob
+        .refresh_relay_metadata([*alice_keys.public_key()], Some(Duration::from_secs(5)))
+        .await
+        .expect("refresh succeeds");
+    assert_eq!(
+        ingested, 1,
+        "exactly the kind-10002 should be ingested (no kind-10050 was published); got {ingested}",
+    );
+
+    let outbox_relays = bob
+        .gossip()
+        .expect("gossip wired")
+        .outbox_relays(alice_keys.public_key())
+        .await;
+    assert!(
+        outbox_relays.contains(&outbox),
+        "Alice's outbox relay must be visible after refresh; got {outbox_relays:?}",
+    );
+
+    alice.shutdown().await;
+    bob.shutdown().await;
+    relay.shutdown();
+}
+
+#[tokio::test]
 async fn nip17_set_and_get_dm_relays_round_trip() {
     let relay = MockRelayBuilder::new()
         .run()

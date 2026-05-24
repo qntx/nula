@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 7.5 — NIP-65 relay-list helpers + gossip refresh on
+  `Client`.** New `nula_sdk::nips::nip65` module wires
+  `nula_core::nips::nip65` (kind-10002 `RELAY_LIST` codec,
+  `RelayList` / `RelayMarker` types) to the SDK facade:
+  - **`Client::set_relay_list(list: &RelayList) -> Output<EventId>`**
+    signs the kind-10002 event, broadcasts it, and -- when the
+    `gossip` feature is on and a `Gossip` is wired -- feeds the
+    freshly-built event into `Gossip::process` so the routing
+    graph reflects the new list immediately, without a refetch.
+  - **`Client::get_relay_list(pubkey, timeout) -> Option<RelayList>`**
+    fetches the latest kind-10002 for `pubkey` and parses it.
+    `Ok(None)` when nothing was published; `Error::Nip65` on a
+    malformed event (wrong kind, bad url, unknown marker).
+  - **`Client::refresh_relay_metadata(pubkeys, timeout) -> usize`**
+    (`gossip`-only) re-fetches every relay-routing-relevant list
+    (kind 10002 NIP-65 + kind 10050 NIP-17) for the supplied
+    pubkeys and pushes every result through `Gossip::process`.
+    Returns the number of events successfully ingested. Per-event
+    fetch failures are silently aggregated -- a partial refresh
+    is strictly better than an aborted one.
+  - **`RelayList` / `RelayMarker` / `RelayListError`** are
+    re-exported from `nula_sdk::nips::nip65`, so callers writing
+    `client.set_relay_list(&list)` only need a single use.
+  - **New `Error::Nip65(RelayListError)`** variant.
+  - **3 new integration tests**
+    (`nip65_set_and_get_relay_list_round_trip`,
+    `nip65_get_relay_list_returns_none_when_unpublished`,
+    `nip65_refresh_relay_metadata_drives_gossip_routing`).
+
 - **Phase 7.4 — NIP-17 private direct messages on `Client`.** New
   `nula_sdk::nips::nip17` module wires the wire-level helpers
   from `nula_core::nips::nip17` (kind-14 rumor + NIP-59 gift wrap

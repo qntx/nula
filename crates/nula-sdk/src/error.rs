@@ -123,6 +123,12 @@ pub enum Error {
     /// gift-wrap error).
     #[error(transparent)]
     Nip17(#[from] nula_core::nips::nip17::Nip17Error),
+
+    /// NIP-65 relay-list helper failed -- the served kind-10002
+    /// event was malformed (wrong kind, unparseable url,
+    /// unknown marker).
+    #[error(transparent)]
+    Nip65(#[from] nula_core::nips::nip65::RelayListError),
 }
 
 impl From<nula_core::event::EventBuilderError> for Error {

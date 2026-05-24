@@ -6,3 +6,4 @@
 //! database.
 
 pub mod nip17;
+pub mod nip65;
