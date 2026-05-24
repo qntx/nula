@@ -29,6 +29,7 @@ nula-signer-connect = { version = "0.1.0", path = "crates/nula-signer-connect", 
 nula-sync = { version = "0.1.0", path = "crates/nula-sync", default-features = false }
 nula-storage-test-suite = { version = "0.1.0", path = "crates/nula-storage-test-suite", default-features = false }
 nula-sdk = { version = "0.1.0", path = "crates/nula-sdk", default-features = false }
+nula-cli = { version = "0.1.0", path = "crates/nula-cli", default-features = false }
 
 # Serialization
 serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
@@ -112,8 +113,15 @@ postcard = { version = "1.1", default-features = false, features = ["use-std"] }
 flume = { version = "0.11", default-features = false, features = ["async"] }
 tempfile = "3.16"
 
+# CLI (consumed by `nula-cli`)
+clap = { version = "4.6.0", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions", "env", "wrap_help"] }
+anyhow = { version = "1.0.100", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3.21", default-features = false, features = ["fmt", "ansi", "env-filter", "smallvec", "tracing-log"] }
+
 # Testing
 hex-literal = "1.1.0"
+assert_cmd = "2.0.18"
+predicates = "3.1.4"
 
 # Benchmarking
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }

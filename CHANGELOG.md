@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 6.5 — `nula-cli` binary crate.** New publish-on-crates.io
+  crate that ships a single `nula` binary wrapping `nula-sdk` and
+  `nula-relay-builder`. Subcommands:
+  - **`nula keys generate`** — OS-RNG keypair, prints `nsec` /
+    `npub` / hex as a stable-shape JSON object.
+  - **`nula keys parse <INPUT>`** — accepts `nsec1...` /
+    `npub1...` / 64-char hex; dumps every other form.
+  - **`nula relay run [--bind ADDR]`** — start an in-process mock
+    relay via `nula-relay-builder::MockRelayBuilder`; emits the
+    listening URL and blocks until `Ctrl-C`.
+  - **`nula event publish --relay URL [--relay URL ...] --secret
+    NSEC|HEX --content TEXT [--content-file PATH | -] [--kind N]
+    [--timeout SECS]`** — signs a kind-N event and ships it to
+    every relay; exits non-zero when every relay rejected the
+    publish. The `--secret` flag also reads `$NULA_SECRET`
+    (hidden from `--help` output to avoid leaking secrets into
+    process listings).
+  - **`nula event fetch --relay URL [--relay URL ...] [--author
+    NPUB|HEX]... [--kind N]... [--limit N] [--since UNIX]
+    [--until UNIX] [--timeout SECS]`** — one-shot `REQ` against
+    the relay set, prints the deduplicated `Events` array.
+  - Every subcommand emits exactly one JSON object on `stdout`
+    (pretty-printed; `jq -c .` for compact); tracing logs go to
+    `stderr` under `RUST_LOG` (default `info`).
+- **CLI integration tests (`tests/cli.rs`, 7 cases)** — driven via
+  `assert_cmd`: `keys generate` JSON shape, `keys parse` round
+  trip (nsec / npub variants + garbage-input failure), `event
+  publish` / `event fetch` flag requirements, and a full
+  publish + fetch round-trip against an in-process
+  `MockRelayBuilder`-spawned relay.
+- **Workspace dependency additions** — `clap = "4.6"` (derive +
+  env + wrap_help), `anyhow = "1.0"`, `tracing-subscriber = "0.3"`,
+  plus `assert_cmd = "2.0"` / `predicates = "3.1"` for CLI tests.
 - **Phase 6.4 — Layer-5 SDK facade (`nula-sdk` crate).** New
   publish-on-crates.io crate that composes Layer 1-4 into a single
   `Client` + `ClientBuilder` modelled on the upstream
