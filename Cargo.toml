@@ -51,7 +51,7 @@ aes = "0.9.0"
 # helpers on `cbc::Encryptor` / `cbc::Decryptor`. NIP-04 ciphertexts
 # already require allocation for the wire payload, so there is no
 # `no_std` use case to preserve here.
-cbc = { version = "0.2.0", features = ["alloc"] }
+cbc = { version = "0.2.1", features = ["alloc"] }
 chacha20 = "0.10.0"
 chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc"] }
 hkdf = "0.13.0"
