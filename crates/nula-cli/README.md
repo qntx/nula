@@ -2,15 +2,19 @@
 
 Command-line interface for the [`nula`](https://github.com/qntx/nula)
 workspace. Wraps `nula-sdk` and `nula-relay-builder` into a single
-`nula` binary with four subcommand groups:
+`nula` binary with six subcommand groups:
 
-| Group   | Subcommand      | Purpose                                               |
-| ------- | --------------- | ----------------------------------------------------- |
-| `keys`  | `generate`      | Generate a Nostr keypair, print `nsec` / `npub` / hex |
-| `keys`  | `parse <INPUT>` | Convert any of `nsec` / `npub` / hex into all forms   |
-| `relay` | `run`           | Start an in-process relay (`MockRelayBuilder`)        |
-| `event` | `publish`       | Sign a text note and publish to one or more relays    |
-| `event` | `fetch`         | One-shot `REQ` fetch with NIP-01 filter knobs         |
+| Group    | Subcommand      | Purpose                                               |
+| -------- | --------------- | ----------------------------------------------------- |
+| `keys`   | `generate`      | Generate a Nostr keypair, print `nsec` / `npub` / hex |
+| `keys`   | `parse <INPUT>` | Convert any of `nsec` / `npub` / hex into all forms   |
+| `relay`  | `run`           | Start an in-process relay (`MockRelayBuilder`)        |
+| `event`  | `publish`       | Sign a text note and publish to one or more relays    |
+| `event`  | `fetch`         | One-shot `REQ` fetch with NIP-01 filter knobs         |
+| `dm`     | `send`          | Gift-wrap (NIP-17) a private message and publish it   |
+| `dm`     | `recv`          | Fetch + decrypt NIP-17 private messages for you       |
+| `relays` | `set`           | Publish a NIP-65 relay list (kind 10002)              |
+| `relays` | `get`           | Fetch + parse a peer's NIP-65 relay list              |
 
 ## Install
 
@@ -43,6 +47,28 @@ nula event fetch \
     --author npub1... \
     --kind 1 \
     --limit 10
+
+# Send a NIP-17 private message (gift-wrapped)
+NULA_SECRET=nsec1... nula dm send \
+    --relay ws://127.0.0.1:7777 \
+    --to npub1... \
+    --content "secret hello"
+
+# Receive + decrypt your private messages
+NULA_SECRET=nsec1... nula dm recv \
+    --relay ws://127.0.0.1:7777
+
+# Publish a NIP-65 relay list
+NULA_SECRET=nsec1... nula relays set \
+    --relay ws://127.0.0.1:7777 \
+    --read wss://read.example \
+    --write wss://write.example \
+    --both wss://both.example
+
+# Fetch a peer's relay list
+nula relays get \
+    --relay ws://127.0.0.1:7777 \
+    --pubkey npub1...
 ```
 
 ## Output

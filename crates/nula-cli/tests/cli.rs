@@ -172,3 +172,169 @@ fn publish_then_fetch_round_trip() {
     relay.shutdown();
     drop(runtime);
 }
+
+/// Generate a fresh keypair via `nula keys generate` and return
+/// `(nsec, npub)`.
+fn generate_keypair() -> (String, String) {
+    let generated = nula().args(["keys", "generate"]).assert().success();
+    let value: serde_json::Value =
+        serde_json::from_slice(&generated.get_output().stdout).expect("valid JSON");
+    let nsec = value["secret_key"]["bech32"]
+        .as_str()
+        .expect("nsec present")
+        .to_owned();
+    let npub = value["public_key"]["bech32"]
+        .as_str()
+        .expect("npub present")
+        .to_owned();
+    (nsec, npub)
+}
+
+#[test]
+fn dm_send_then_recv_round_trip() {
+    use nula_relay_builder::MockRelayBuilder;
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .expect("build runtime");
+    let relay = runtime.block_on(async {
+        MockRelayBuilder::new()
+            .run()
+            .await
+            .expect("mock relay binds")
+    });
+    let relay_url = relay.url().as_str().to_owned();
+
+    let (alice_nsec, _alice_npub) = generate_keypair();
+    let (bob_nsec, bob_npub) = generate_keypair();
+
+    // Alice gift-wraps a private message to Bob.
+    let send = nula()
+        .args([
+            "dm",
+            "send",
+            "--relay",
+            &relay_url,
+            "--secret",
+            &alice_nsec,
+            "--to",
+            &bob_npub,
+            "--content",
+            "secret hello",
+        ])
+        .assert()
+        .success();
+    let send_value: serde_json::Value =
+        serde_json::from_slice(&send.get_output().stdout).expect("valid JSON");
+    assert_eq!(send_value["kind"], "dm_sent");
+    // Two wraps: one for Bob, one self-wrap for Alice.
+    assert_eq!(send_value["wrap_ids"].as_array().expect("array").len(), 2);
+
+    // Bob fetches + decrypts.
+    let recv = nula()
+        .args(["dm", "recv", "--relay", &relay_url, "--secret", &bob_nsec])
+        .assert()
+        .success();
+    let recv_value: serde_json::Value =
+        serde_json::from_slice(&recv.get_output().stdout).expect("valid JSON");
+    assert_eq!(recv_value["kind"], "dm_received");
+    assert_eq!(recv_value["count"], 1);
+    assert_eq!(recv_value["messages"][0]["content"], "secret hello");
+
+    relay.shutdown();
+    drop(runtime);
+}
+
+#[test]
+fn relays_set_then_get_round_trip() {
+    use nula_relay_builder::MockRelayBuilder;
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .expect("build runtime");
+    let relay = runtime.block_on(async {
+        MockRelayBuilder::new()
+            .run()
+            .await
+            .expect("mock relay binds")
+    });
+    let relay_url = relay.url().as_str().to_owned();
+
+    let (nsec, npub) = generate_keypair();
+
+    // Publish a relay list with one read, one write, one both.
+    let set = nula()
+        .args([
+            "relays",
+            "set",
+            "--relay",
+            &relay_url,
+            "--secret",
+            &nsec,
+            "--read",
+            "wss://read.example/",
+            "--write",
+            "wss://write.example/",
+            "--both",
+            "wss://both.example/",
+        ])
+        .assert()
+        .success();
+    let set_value: serde_json::Value =
+        serde_json::from_slice(&set.get_output().stdout).expect("valid JSON");
+    assert_eq!(set_value["kind"], "relay_list_published");
+    assert_eq!(set_value["success"].as_array().expect("array").len(), 1);
+
+    // Fetch it back.
+    let get = nula()
+        .args([
+            "relays", "get", "--relay", &relay_url, "--pubkey", &npub,
+        ])
+        .assert()
+        .success();
+    let get_value: serde_json::Value =
+        serde_json::from_slice(&get.get_output().stdout).expect("valid JSON");
+    assert_eq!(get_value["kind"], "relay_list");
+    assert_eq!(get_value["found"], true);
+    // `read` contains read + both; `write` contains write + both.
+    let read = get_value["read"].as_array().expect("array");
+    let write = get_value["write"].as_array().expect("array");
+    assert!(read.iter().any(|u| u == "wss://read.example/"));
+    assert!(read.iter().any(|u| u == "wss://both.example/"));
+    assert!(write.iter().any(|u| u == "wss://write.example/"));
+    assert!(write.iter().any(|u| u == "wss://both.example/"));
+
+    relay.shutdown();
+    drop(runtime);
+}
+
+#[test]
+fn dm_send_requires_to_flag() {
+    nula()
+        .args([
+            "dm", "send", "--relay", "wss://x.example/", "--secret", "garbage", "--content", "hi",
+        ])
+        .assert()
+        .failure();
+}
+
+#[test]
+fn relays_set_requires_at_least_one_relay_entry() {
+    // No --read/--write/--both supplied: must fail before networking.
+    let (nsec, _npub) = generate_keypair();
+    nula()
+        .args([
+            "relays",
+            "set",
+            "--relay",
+            "wss://x.example/",
+            "--secret",
+            &nsec,
+        ])
+        .assert()
+        .failure();
+}

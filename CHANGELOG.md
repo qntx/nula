@@ -9,6 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 8 — `nula-cli` private messages + relay lists.** The
+  `nula` binary gains two subcommand groups wrapping the Phase
+  7.4 / 7.5 SDK facades:
+  - **`nula dm send`** — gift-wrap (NIP-17) a private message to
+    one or more `--to` recipients and publish every wrap. Emits
+    `{ "kind": "dm_sent", "wrap_ids": [...], "success": [...],
+    "failed": [...] }`.
+  - **`nula dm recv`** — fetch kind-1059 wraps addressed to the
+    caller, decrypt the inner rumors, and emit
+    `{ "kind": "dm_received", "count": N, "messages": [...] }`
+    with each message's `sender`, `created_at`, `rumor_kind`, and
+    `content`. Honours `--since`.
+  - **`nula relays set`** — compose a NIP-65 relay list from
+    `--read` / `--write` / `--both` flags, sign the kind-10002
+    event, and publish it.
+  - **`nula relays get`** — fetch + parse a peer's relay list by
+    `--pubkey`, emitting the read / write / full breakdown.
+  - **Shared key parsing** — `parse_secret` / `parse_public_key`
+    hoisted into `commands/mod.rs` and reused by `event`, `dm`,
+    and `relays`.
+  - **4 new e2e CLI tests** (`dm_send_then_recv_round_trip`,
+    `relays_set_then_get_round_trip`, `dm_send_requires_to_flag`,
+    `relays_set_requires_at_least_one_relay_entry`) bring the CLI
+    suite to 11.
+
+### Fixed
+
+- **`nula-sdk` failed to compile without the `sync` feature.**
+  `Client::try_connect_relay` mapped connect timeouts to the
+  `sync`-gated `Error::SyncStreamClosed` variant, so any build
+  that did not enable `sync` (e.g. `nula-cli`, which only turns
+  on `memory-fallback` + `default-transport`) failed to compile.
+  The timeout now maps to a new, non-gated
+  `Error::ConnectTimeout { url }`, which is also the semantically
+  correct error (the previous variant claimed a NIP-77 stream had
+  closed). Regression-tested via
+  `try_connect_relay_times_out_with_connect_timeout_error` and the
+  no-default-features build.
+- **`nula-sdk` relied on incidental feature unification for
+  `nula-core/nip17`.** The `nips::nip17` / `nips::nip65` facades
+  reference `nula-core`'s gift-wrap helpers unconditionally, but
+  the dependency only enabled them by accident through other
+  crates in the default build graph. `nula-sdk` now declares
+  `nula-core = { features = ["nip17"] }` explicitly (which pulls
+  `nip44` + `nip59`), so every feature combination builds.
+
 - **Phase 7.5 — NIP-65 relay-list helpers + gossip refresh on
   `Client`.** New `nula_sdk::nips::nip65` module wires
   `nula_core::nips::nip65` (kind-10002 `RELAY_LIST` codec,

@@ -3,13 +3,13 @@
 use std::io::Read;
 use std::time::Duration;
 
-use anyhow::{Context, Result, anyhow, bail};
-use nula_core::nips::nip19::FromBech32;
-use nula_core::{EventBuilder, Filter, Keys, Kind, PublicKey, SecretKey, Timestamp};
+use anyhow::{Context, Result, bail};
+use nula_core::{EventBuilder, Filter, Kind, Timestamp};
 use nula_sdk::Client;
 use serde_json::json;
 
 use crate::cli::{FetchArgs, PublishArgs};
+use crate::commands::{parse_public_key, parse_secret};
 use crate::output::write_json;
 
 /// `nula event publish`. Signs a kind-`args.kind` event with
@@ -152,23 +152,4 @@ fn read_content(args: &PublishArgs) -> Result<String> {
         return Ok(buf);
     }
     std::fs::read_to_string(path).with_context(|| format!("read content file {}", path.display()))
-}
-
-/// Accept `nsec1...` or 64-char hex for the secret key.
-fn parse_secret(raw: &str) -> Result<Keys> {
-    if let Ok(sk) = SecretKey::from_bech32(raw) {
-        return Ok(Keys::from_secret_key(sk));
-    }
-    if let Ok(sk) = SecretKey::parse(raw) {
-        return Ok(Keys::from_secret_key(sk));
-    }
-    Err(anyhow!("secret must be nsec1... or 64-char hex"))
-}
-
-/// Accept `npub1...` or 64-char hex for an author public key.
-fn parse_public_key(raw: &str) -> Result<PublicKey> {
-    if let Ok(pk) = PublicKey::from_bech32(raw) {
-        return Ok(pk);
-    }
-    PublicKey::parse(raw).map_err(Into::into)
 }
