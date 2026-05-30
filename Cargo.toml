@@ -110,7 +110,7 @@ bytes = { version = "1.11.1", default-features = false, features = ["std"] }
 # `flume` is the bounded MPSC channel feeding the single-writer ingester.
 heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
 postcard = { version = "1.1", default-features = false, features = ["use-std"] }
-flume = { version = "0.11", default-features = false, features = ["async"] }
+flume = { version = "0.12", default-features = false, features = ["async"] }
 tempfile = "3.16"
 
 # Storage (nula-storage-sqlite). `bundled` ships a vendored SQLite so
