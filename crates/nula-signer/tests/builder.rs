@@ -1,4 +1,4 @@
-//! Regression coverage for [`nula_signer_connect::NostrConnectBuilder`]
+//! Regression coverage for [`nula_signer::NostrConnectBuilder`]
 //! misconfiguration paths. The builder used to `panic!` on a missing
 //! URI / pool; Phase 6.1 turned both into typed errors.
 
@@ -12,7 +12,7 @@
     reason = "this is an integration test file, not production code"
 )]
 
-use nula_signer_connect::{Error, NostrConnect};
+use nula_signer::{Error, NostrConnect};
 
 #[tokio::test]
 async fn build_without_uri_returns_missing_uri() {

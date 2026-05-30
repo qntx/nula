@@ -1,5 +1,5 @@
 [package]
-name = "nula-signer-connect"
+name = "nula-signer"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +9,7 @@ homepage.workspace = true
 authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "NIP-46 (Nostr Connect) remote signer client built on top of `nula-relay-pool`. Implements `nula_core::NostrSigner`."
+description = "NIP-46 (Nostr Connect) remote signer client built on top of `nula-relay`. Implements `nula_core::NostrSigner`."
 readme = "README.md"
 
 [package.metadata.docs.rs]

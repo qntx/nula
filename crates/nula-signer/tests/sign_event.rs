@@ -17,7 +17,7 @@ use std::time::Duration;
 use nula_core::Kind;
 use nula_core::event::EventBuilder;
 use nula_core::signer::NostrSigner;
-use nula_signer_connect::{NostrConnect, NostrConnectOptions};
+use nula_signer::{NostrConnect, NostrConnectOptions};
 
 mod helpers;
 use helpers::{bunker_uri, make_client_keys, make_pool, spawn_environment};

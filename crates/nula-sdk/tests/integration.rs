@@ -28,7 +28,7 @@ use nula_relay::SubscribeOptions;
 use nula_relay::server::MockRelayBuilder;
 use nula_sdk::{Client, MonitorNotification};
 #[cfg(feature = "nip46")]
-use nula_signer_connect as _;
+use nula_signer as _;
 use nula_storage as _;
 use nula_sync as _;
 use thiserror as _;

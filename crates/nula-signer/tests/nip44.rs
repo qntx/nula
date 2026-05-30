@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use nula_core::Keys;
 use nula_core::nips::nip44;
-use nula_signer_connect::{NostrConnect, NostrConnectOptions};
+use nula_signer::{NostrConnect, NostrConnectOptions};
 
 mod helpers;
 use helpers::{bunker_uri, make_client_keys, make_pool, spawn_environment};

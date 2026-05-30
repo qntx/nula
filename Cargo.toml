@@ -25,7 +25,7 @@ nula-core = { version = "0.1.0", path = "crates/nula-core", default-features = f
 nula-relay = { version = "0.1.0", path = "crates/nula-relay", default-features = false }
 nula-storage = { version = "0.1.0", path = "crates/nula-storage", default-features = false }
 nula-gossip = { version = "0.1.0", path = "crates/nula-gossip", default-features = false }
-nula-signer-connect = { version = "0.1.0", path = "crates/nula-signer-connect", default-features = false }
+nula-signer = { version = "0.1.0", path = "crates/nula-signer", default-features = false }
 nula-keyring = { version = "0.1.0", path = "crates/nula-keyring", default-features = false }
 nula-sync = { version = "0.1.0", path = "crates/nula-sync", default-features = false }
 nula-sdk = { version = "0.1.0", path = "crates/nula-sdk", default-features = false }

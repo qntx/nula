@@ -1,8 +1,7 @@
 //! NIP-46 (Nostr Connect) remote signer client.
 //!
-//! `nula-signer-connect` is Layer 4 of the `nula` workspace. It
-//! bridges a [`nula_relay::pool::RelayPool`] to a remote NIP-46
-//! signer (a "bunker") and exposes the resulting handle as a
+//! `nula-signer` bridges a [`nula_relay::pool::RelayPool`] to a remote
+//! NIP-46 signer (a "bunker") and exposes the resulting handle as a
 //! [`nula_core::NostrSigner`].
 //!
 //! See [ADR-0009](../../docs/adr/0009-multi-relay-routing-remote-signer.md)
@@ -14,7 +13,7 @@
 //! use std::sync::Arc;
 //!
 //! use nula_core::nips::nip46::Uri;
-//! use nula_signer_connect::NostrConnect;
+//! use nula_signer::NostrConnect;
 //! use nula_relay::pool::RelayPool;
 //! use nula_storage::NostrDatabase;
 //!
@@ -40,7 +39,7 @@
 //! | `tracing`           |   ❌    | Emit structured spans on every dispatch.            |
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc(html_root_url = "https://docs.rs/nula-signer-connect")]
+#![doc(html_root_url = "https://docs.rs/nula-signer")]
 #![forbid(unsafe_code)]
 
 // `nula-storage` is referenced by transitive `RelayPool::database()`

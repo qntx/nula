@@ -26,7 +26,7 @@ default = ["gossip", "sync", "memory-fallback", "default-transport"]
 # Layer-4 add-ons
 gossip            = ["dep:nula-gossip"]
 sync              = ["dep:nula-sync", "nula-sync/storage"]
-nip46             = ["dep:nula-signer-connect"]
+nip46             = ["dep:nula-signer"]
 default-transport = ["nula-relay/default-transport"]
 # Enable `nula-storage`'s in-memory backend so `ClientBuilder::build`
 # can default to `MemoryDatabase::new()` when the caller skipped
@@ -49,7 +49,7 @@ nula-storage         = { workspace = true }
 
 # Optional Layer-4 dependencies, gated.
 nula-gossip          = { workspace = true, optional = true }
-nula-signer-connect  = { workspace = true, optional = true }
+nula-signer          = { workspace = true, optional = true }
 nula-sync            = { workspace = true, optional = true }
 
 futures.workspace    = true

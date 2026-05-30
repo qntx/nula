@@ -3,7 +3,7 @@
 //! [`Client`] composes the lower layers — `nula-core` (events,
 //! filters, signers), `nula-relay-pool` (multi-relay coordinator),
 //! `nula-gossip` (NIP-65 outbox routing), `nula-sync` (NIP-77
-//! Negentropy), `nula-signer-connect` (NIP-46 remote signer) — into
+//! Negentropy), `nula-signer` (NIP-46 remote signer) — into
 //! a single ergonomic surface modelled on
 //! [`nostr_sdk::Client`](https://docs.rs/nostr-sdk/latest/nostr_sdk/client/struct.Client.html)
 //! from the upstream `rust-nostr` reference.
@@ -40,7 +40,7 @@
 //! | `sync`              |   ✅    | NIP-77 reconciliation via [`nula_sync`].                                          |
 //! | `memory-fallback`   |   ✅    | Default to [`nula_storage::memory::MemoryDatabase`] when no database is configured.|
 //! | `default-transport` |   ✅    | Pull a tokio-tungstenite WebSocket transport from `nula-relay-pool`.              |
-//! | `nip46`             |   ❌    | NIP-46 remote signer integration via [`nula_signer_connect`].                     |
+//! | `nip46`             |   ❌    | NIP-46 remote signer integration via [`nula_signer`].                     |
 //! | `tracing`           |   ❌    | Emit `tracing` spans on every public `Client` method (ADR-0005 field names).      |
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -74,7 +74,7 @@ pub use nula_core::{
 pub use nula_gossip::Gossip;
 pub use nula_relay::pool::{Output, PoolNotification, RelayCapabilities, RelayPoolOptions};
 #[cfg(feature = "nip46")]
-use nula_signer_connect as _;
+use nula_signer as _;
 #[cfg(test)]
 use nula_sync as _;
 #[cfg(feature = "sync")]

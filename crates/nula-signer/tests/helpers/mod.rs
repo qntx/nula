@@ -1,4 +1,4 @@
-//! Shared fixtures for `nula-signer-connect` integration tests.
+//! Shared fixtures for `nula-signer` integration tests.
 //!
 //! The centerpiece is [`MockSigner`] — a self-contained NIP-46
 //! "bunker" that subscribes to the rendezvous relay, decrypts every

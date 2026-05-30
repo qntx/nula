@@ -17,7 +17,7 @@ on for typical Nostr client work.
 | ------------------ | :-----: | -------------------------------------------------------------------------- |
 | `gossip`           |   ✅    | NIP-65 outbox routing helpers (re-export [`nula_gossip::Gossip`]).         |
 | `sync`             |   ✅    | NIP-77 reconciliation via [`nula_sync`].                                   |
-| `nip46`            |   ❌    | NIP-46 remote signer integration via [`nula_signer_connect`].              |
+| `nip46`            |   ❌    | NIP-46 remote signer integration via [`nula_signer`].              |
 | `default-transport`|   ✅    | Pull a tokio-tungstenite WebSocket transport from `nula-relay-pool`.       |
 | `tracing`          |   ❌    | Emit `tracing` spans on every public `Client` method (ADR-0005 fields).    |
 
