@@ -21,7 +21,7 @@ use nula_gossip::ListKind;
 use nula_relay_builder::MockRelayBuilder;
 use nula_relay_pool::{RelayCapabilities, RelayPool};
 use nula_storage::NostrDatabase;
-use nula_storage_memory::MemoryDatabase;
+use nula_storage::memory::MemoryDatabase;
 
 mod helpers;
 use helpers::{build_relay_list, keys, make_gossip, relay_list_from_iter, url};

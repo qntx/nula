@@ -17,7 +17,7 @@ use std::time::Duration;
 use futures::StreamExt;
 use nula_relay_pool::{RelayCapabilities, RelayPool, RelayPoolOptions};
 use nula_storage::NostrDatabase;
-use nula_storage_memory::MemoryDatabase;
+use nula_storage::memory::MemoryDatabase;
 
 mod helpers;
 use helpers::{make_relay, make_text_note};

@@ -62,7 +62,7 @@ async fn capacity_enforced() {
 
     let pool = RelayPool::builder()
         .database(std::sync::Arc::new(
-            nula_storage_memory::MemoryDatabase::new(),
+            nula_storage::memory::MemoryDatabase::new(),
         ))
         .options(opts)
         .build()

@@ -65,17 +65,13 @@
 // workspace `unused_crate_dependencies` lint fires at the lib root
 // even for test-only deps, so hedge them here. They are exercised
 // by `tests/refresh.rs` via `nula_relay_builder::MockRelayBuilder`,
-// `tests/process.rs` via `nula_storage_memory::MemoryDatabase`, and
+// `tests/process.rs` via `nula_storage::memory::MemoryDatabase`, and
 // `tests/refresh.rs` via `nula_net::default::DefaultTransport`
 // (transitively, through `nula_relay_pool`).
 #[cfg(test)]
 use nula_net as _;
 #[cfg(test)]
 use nula_relay_builder as _;
-#[cfg(test)]
-use nula_storage_memory as _;
-#[cfg(test)]
-use nula_storage_sqlite as _;
 #[cfg(test)]
 use tempfile as _;
 #[cfg(feature = "tracing")]

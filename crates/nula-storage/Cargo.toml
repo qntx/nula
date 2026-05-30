@@ -16,11 +16,75 @@ readme = "README.md"
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[features]
+# Default to the lightweight, pure-Rust in-memory backend so
+# `nula-storage = "0.1"` is immediately usable with zero C deps.
+default = ["memory"]
+
+# In-memory backend (`memory` module). Pure Rust, no extra deps.
+memory = []
+
+# LMDB persistent backend (`lmdb` module) via `heed` + `postcard`.
+lmdb = ["dep:heed", "dep:flume", "dep:postcard", "dep:tokio"]
+
+# SQLite persistent backend (`sqlite` module): a durable append-only
+# log paired with the in-memory replica, so it pulls `memory`.
+sqlite = ["memory", "dep:rusqlite", "dep:postcard", "dep:tokio"]
+
+# Reusable conformance suite (`test_suite` module) for backend authors.
+test-suite = ["dep:tokio"]
+
+# Tracing spans on backend hot paths (no call sites yet).
+tracing = ["dep:tracing"]
+
 [dependencies]
 nula-core = { workspace = true }
 
 bitflags  = "2.6"
 thiserror.workspace = true
 
+# Backend dependencies (feature-gated).
+flume    = { workspace = true, optional = true }
+postcard = { workspace = true, optional = true }
+rusqlite = { workspace = true, optional = true }
+tokio    = { workspace = true, optional = true, features = ["sync", "rt-multi-thread", "macros"] }
+tracing  = { workspace = true, optional = true }
+
+# LMDB engine. macOS / iOS need POSIX semaphores under the App Sandbox.
+[target.'cfg(not(any(target_os = "macos", target_os = "ios")))'.dependencies]
+heed = { workspace = true, optional = true }
+
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+heed = { workspace = true, optional = true, features = ["posix-sem"] }
+
+[dev-dependencies]
+nula-core = { workspace = true, features = ["nip06"] }
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util", "time"] }
+
 [lints]
 workspace = true
+
+[[test]]
+name = "memory_suite"
+required-features = ["memory", "test-suite"]
+
+[[test]]
+name = "memory_capacity"
+required-features = ["memory"]
+
+[[test]]
+name = "lmdb_suite"
+required-features = ["lmdb", "test-suite"]
+
+[[test]]
+name = "lmdb_persistence"
+required-features = ["lmdb"]
+
+[[test]]
+name = "sqlite_suite"
+required-features = ["sqlite", "test-suite"]
+
+[[test]]
+name = "sqlite_persistence"
+required-features = ["sqlite"]

@@ -38,7 +38,7 @@
 //! | ------------------- | :-----: | --------------------------------------------------------------------------------- |
 //! | `gossip`            |   ✅    | NIP-65 outbox routing helpers (re-export [`nula_gossip::Gossip`]).                |
 //! | `sync`              |   ✅    | NIP-77 reconciliation via [`nula_sync`].                                          |
-//! | `memory-fallback`   |   ✅    | Default to [`nula_storage_memory::MemoryDatabase`] when no database is configured.|
+//! | `memory-fallback`   |   ✅    | Default to [`nula_storage::memory::MemoryDatabase`] when no database is configured.|
 //! | `default-transport` |   ✅    | Pull a tokio-tungstenite WebSocket transport from `nula-relay-pool`.              |
 //! | `nip46`             |   ❌    | NIP-46 remote signer integration via [`nula_signer_connect`].                     |
 //! | `tracing`           |   ❌    | Emit `tracing` spans on every public `Client` method (ADR-0005 field names).      |

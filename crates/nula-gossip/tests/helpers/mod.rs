@@ -17,7 +17,7 @@ use nula_core::nips::nip65::{RelayList, RelayMarker};
 use nula_core::{Event, EventBuilder, Keys, Kind, RelayUrl, Tag, Timestamp};
 use nula_gossip::{Gossip, GossipOptions};
 use nula_storage::NostrDatabase;
-use nula_storage_memory::MemoryDatabase;
+use nula_storage::memory::MemoryDatabase;
 
 /// Build a fresh in-memory backed gossip handle.
 pub fn make_gossip() -> (Gossip, Arc<dyn NostrDatabase>) {

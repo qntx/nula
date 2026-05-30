@@ -43,7 +43,7 @@ impl MockRelayBuilder {
     /// Override the storage backend.
     ///
     /// Defaults to a fresh
-    /// [`nula_storage_memory::MemoryDatabase`](nula_storage_memory)
+    /// [`nula_storage::memory::MemoryDatabase`]
     /// when the `memory` feature is on.
     pub fn storage(mut self, storage: Arc<dyn NostrDatabase>) -> Self {
         self.storage = Some(storage);
@@ -91,7 +91,7 @@ impl MockRelayBuilder {
 
 #[cfg(feature = "memory")]
 fn default_storage() -> Arc<dyn NostrDatabase> {
-    Arc::new(nula_storage_memory::MemoryDatabase::new())
+    Arc::new(nula_storage::memory::MemoryDatabase::new())
 }
 
 #[cfg(not(feature = "memory"))]

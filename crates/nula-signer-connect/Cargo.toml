@@ -54,7 +54,7 @@ nula-core           = { workspace = true, features = ["nip06", "nip44", "nip04"]
 nula-net            = { workspace = true, features = ["mock"] }
 nula-relay-builder  = { workspace = true, features = ["memory"] }
 nula-relay-pool     = { workspace = true, features = ["default-transport"] }
-nula-storage-memory = { workspace = true }
+nula-storage        = { workspace = true, features = ["memory"] }
 tokio = { workspace = true, features = [
     "macros",
     "rt-multi-thread",

@@ -25,16 +25,12 @@ nula-core = { version = "0.1.0", path = "crates/nula-core", default-features = f
 nula-net = { version = "0.1.0", path = "crates/nula-net", default-features = false }
 nula-relay = { version = "0.1.0", path = "crates/nula-relay", default-features = false }
 nula-storage = { version = "0.1.0", path = "crates/nula-storage", default-features = false }
-nula-storage-memory = { version = "0.1.0", path = "crates/nula-storage-memory", default-features = false }
-nula-storage-lmdb = { version = "0.1.0", path = "crates/nula-storage-lmdb", default-features = false }
-nula-storage-sqlite = { version = "0.1.0", path = "crates/nula-storage-sqlite", default-features = false }
 nula-relay-pool = { version = "0.1.0", path = "crates/nula-relay-pool", default-features = false }
 nula-relay-builder = { version = "0.1.0", path = "crates/nula-relay-builder", default-features = false }
 nula-gossip = { version = "0.1.0", path = "crates/nula-gossip", default-features = false }
 nula-signer-connect = { version = "0.1.0", path = "crates/nula-signer-connect", default-features = false }
 nula-keyring = { version = "0.1.0", path = "crates/nula-keyring", default-features = false }
 nula-sync = { version = "0.1.0", path = "crates/nula-sync", default-features = false }
-nula-storage-test-suite = { version = "0.1.0", path = "crates/nula-storage-test-suite", default-features = false }
 nula-sdk = { version = "0.1.0", path = "crates/nula-sdk", default-features = false }
 nula-cli = { version = "0.1.0", path = "crates/nula-cli", default-features = false }
 

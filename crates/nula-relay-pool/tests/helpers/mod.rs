@@ -21,7 +21,7 @@ use nula_core::{Event, EventBuilder, Keys, Tag, Timestamp};
 use nula_relay_builder::{MockRelay, MockRelayBuilder};
 use nula_relay_pool::RelayPool;
 use nula_storage::NostrDatabase;
-use nula_storage_memory::MemoryDatabase;
+use nula_storage::memory::MemoryDatabase;
 
 /// Spin up a fresh `RelayPool` backed by an in-memory database.
 #[must_use]

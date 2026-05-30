@@ -383,11 +383,7 @@ impl Client {
         let need_ids: Vec<EventId> = summary.remote.iter().copied().collect();
         let download_filter = Filter::new().ids(need_ids.iter().copied());
         let events = self
-            .fetch_events_from(
-                vec![relay_url.clone()],
-                download_filter,
-                opts.op_timeout,
-            )
+            .fetch_events_from(vec![relay_url.clone()], download_filter, opts.op_timeout)
             .await?;
         for event in &events {
             // Run the admission gate before touching the database.

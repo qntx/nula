@@ -39,8 +39,7 @@ tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 nula-core           = { workspace = true, features = ["nip06"] }
-nula-storage        = { workspace = true }
-nula-storage-memory = { workspace = true }
+nula-storage        = { workspace = true, features = ["memory"] }
 tokio = { workspace = true, features = ["macros", "rt"] }
 
 [lints]

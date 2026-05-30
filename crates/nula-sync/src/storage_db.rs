@@ -42,7 +42,7 @@ mod tests {
     use nula_core::Keys;
     use nula_core::Kind;
     use nula_core::event::EventBuilder;
-    use nula_storage_memory::MemoryDatabase;
+    use nula_storage::memory::MemoryDatabase;
 
     use super::*;
     use crate::session::{Reconciliation, Responder};

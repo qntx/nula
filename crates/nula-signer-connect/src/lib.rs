@@ -53,8 +53,6 @@ use nula_relay_builder as _;
 // `unused_crate_dependencies` lint without forcing every `lib.rs`
 // reader to wonder why we depend on it.
 use nula_storage as _;
-#[cfg(test)]
-use nula_storage_memory as _;
 #[cfg(feature = "tracing")]
 use tracing as _;
 

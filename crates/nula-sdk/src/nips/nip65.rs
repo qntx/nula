@@ -46,10 +46,7 @@ impl Client {
     ///
     /// [`Gossip`]: nula_gossip::Gossip
     /// [`Gossip::process`]: nula_gossip::Gossip::process
-    pub async fn set_relay_list(
-        &self,
-        list: &RelayList,
-    ) -> Result<Output<EventId>, Error> {
+    pub async fn set_relay_list(&self, list: &RelayList) -> Result<Output<EventId>, Error> {
         let builder = list.to_event_builder();
         let signed = self.sign_event_builder(builder).await?;
         #[cfg(feature = "gossip")]

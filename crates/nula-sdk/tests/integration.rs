@@ -32,7 +32,6 @@ use nula_sdk::{Client, MonitorNotification};
 #[cfg(feature = "nip46")]
 use nula_signer_connect as _;
 use nula_storage as _;
-use nula_storage_memory as _;
 use nula_sync as _;
 use thiserror as _;
 use tokio_stream as _;
@@ -178,7 +177,7 @@ async fn send_event_to_unparseable_url_fails_with_relay_url_error() {
 async fn sync_to_relay_classifies_have_and_need() {
     use std::sync::Arc;
 
-    use nula_storage_memory::MemoryDatabase;
+    use nula_storage::memory::MemoryDatabase;
 
     let keys = deterministic_keys();
 
@@ -304,7 +303,7 @@ async fn sync_to_unknown_relay_fails_with_typed_error() {
 async fn sync_direction_both_uploads_and_downloads_events() {
     use std::sync::Arc;
 
-    use nula_storage_memory::MemoryDatabase;
+    use nula_storage::memory::MemoryDatabase;
 
     let keys = deterministic_keys();
 
@@ -340,7 +339,9 @@ async fn sync_direction_both_uploads_and_downloads_events() {
     client.add_relay(relay.url()).await.expect("add relay");
     client.connect().await;
 
-    let filter = Filter::new().kind(Kind::TEXT_NOTE).author(*keys.public_key());
+    let filter = Filter::new()
+        .kind(Kind::TEXT_NOTE)
+        .author(*keys.public_key());
     let opts = nula_sdk::SyncOptions::new()
         .direction(nula_sdk::SyncDirection::Both)
         .timeout(Some(Duration::from_secs(10)));
@@ -349,26 +350,39 @@ async fn sync_direction_both_uploads_and_downloads_events() {
         .await
         .expect("bidirectional sync converges");
 
-    assert!(summary.sent.contains(&local_only.id), "local_only must be uploaded");
+    assert!(
+        summary.sent.contains(&local_only.id),
+        "local_only must be uploaded"
+    );
     assert!(
         summary.received.contains(&relay_only.id),
         "relay_only must be downloaded",
     );
-    assert!(summary.send_failures.is_empty(), "got failures: {:?}", summary.send_failures);
+    assert!(
+        summary.send_failures.is_empty(),
+        "got failures: {:?}",
+        summary.send_failures
+    );
 
     // The client database now holds both events.
     let after = client_db
         .event_by_id(&relay_only.id)
         .await
         .expect("db query ok");
-    assert!(after.is_some(), "download phase persisted relay_only into the client db");
+    assert!(
+        after.is_some(),
+        "download phase persisted relay_only into the client db"
+    );
 
     // The relay database now holds both events too.
     let on_relay = relay_storage
         .event_by_id(&local_only.id)
         .await
         .expect("relay db query ok");
-    assert!(on_relay.is_some(), "upload phase persisted local_only into the relay");
+    assert!(
+        on_relay.is_some(),
+        "upload phase persisted local_only into the relay"
+    );
 
     client.shutdown().await;
     relay.shutdown();
@@ -379,7 +393,7 @@ async fn sync_direction_both_uploads_and_downloads_events() {
 async fn sync_progress_watch_channel_reports_totals() {
     use std::sync::Arc;
 
-    use nula_storage_memory::MemoryDatabase;
+    use nula_storage::memory::MemoryDatabase;
     use tokio::sync::watch;
 
     let keys = deterministic_keys();
@@ -406,7 +420,9 @@ async fn sync_progress_watch_channel_reports_totals() {
     client.connect().await;
 
     let (tx, rx) = watch::channel(nula_sdk::SyncProgress::default());
-    let filter = Filter::new().kind(Kind::TEXT_NOTE).author(*keys.public_key());
+    let filter = Filter::new()
+        .kind(Kind::TEXT_NOTE)
+        .author(*keys.public_key());
     let opts = nula_sdk::SyncOptions::new()
         .direction(nula_sdk::SyncDirection::Down)
         .timeout(Some(Duration::from_secs(5)))
@@ -436,7 +452,7 @@ async fn sync_progress_watch_channel_reports_totals() {
 async fn sync_direction_up_skips_download_phase() {
     use std::sync::Arc;
 
-    use nula_storage_memory::MemoryDatabase;
+    use nula_storage::memory::MemoryDatabase;
 
     let keys = deterministic_keys();
     let relay_only = text_note("R-only", "relay-not-downloaded")
@@ -463,7 +479,9 @@ async fn sync_direction_up_skips_download_phase() {
     client.add_relay(relay.url()).await.expect("add relay");
     client.connect().await;
 
-    let filter = Filter::new().kind(Kind::TEXT_NOTE).author(*keys.public_key());
+    let filter = Filter::new()
+        .kind(Kind::TEXT_NOTE)
+        .author(*keys.public_key());
     let opts = nula_sdk::SyncOptions::new()
         .direction(nula_sdk::SyncDirection::Up)
         .timeout(Some(Duration::from_secs(5)));
@@ -474,13 +492,19 @@ async fn sync_direction_up_skips_download_phase() {
 
     // Up direction must not classify any need ids and must not
     // download anything.
-    assert!(summary.remote.is_empty(), "Up must not classify remote-only");
+    assert!(
+        summary.remote.is_empty(),
+        "Up must not classify remote-only"
+    );
     assert!(summary.received.is_empty(), "Up must not download events");
     let after = client_db
         .event_by_id(&relay_only.id)
         .await
         .expect("db query ok");
-    assert!(after.is_none(), "Up direction must not persist relay-only events locally");
+    assert!(
+        after.is_none(),
+        "Up direction must not persist relay-only events locally"
+    );
 
     client.shutdown().await;
     relay.shutdown();
@@ -581,9 +605,7 @@ async fn wait_for_connection_times_out_when_no_relays_registered() {
         .expect("default features build");
 
     // No relays ever registered -- the call must time out.
-    let connected = client
-        .wait_for_connection(Duration::from_millis(100))
-        .await;
+    let connected = client.wait_for_connection(Duration::from_millis(100)).await;
     assert!(
         !connected,
         "wait_for_connection must return false with zero relays",
@@ -690,7 +712,7 @@ async fn nip17_round_trip_alice_to_bob_via_mock_relay() {
     use std::sync::Arc;
 
     use nula_core::nips::nip17::Recipient;
-    use nula_storage_memory::MemoryDatabase;
+    use nula_storage::memory::MemoryDatabase;
 
     // Shared backing relay so both clients see the same event stream.
     let relay_storage: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
@@ -707,10 +729,7 @@ async fn nip17_round_trip_alice_to_bob_via_mock_relay() {
         .signer(alice_keys.clone())
         .build()
         .expect("alice builds");
-    alice
-        .add_relay(relay.url())
-        .await
-        .expect("alice add relay");
+    alice.add_relay(relay.url()).await.expect("alice add relay");
     alice.connect().await;
 
     let bob = Client::builder()
@@ -879,7 +898,7 @@ async fn nip65_refresh_relay_metadata_drives_gossip_routing() {
     use std::sync::Arc;
 
     use nula_core::nips::nip65::{RelayList, RelayMarker};
-    use nula_storage_memory::MemoryDatabase;
+    use nula_storage::memory::MemoryDatabase;
 
     // Shared backing relay so the publishing client and the
     // refreshing client both see the same kind-10002 event stream.
@@ -978,7 +997,10 @@ async fn nip17_set_and_get_dm_relays_round_trip() {
         .await
         .expect("get_dm_relays succeeds")
         .expect("kind 10050 was published");
-    assert_eq!(fetched, advertised, "DM-relays round-trip must preserve order");
+    assert_eq!(
+        fetched, advertised,
+        "DM-relays round-trip must preserve order"
+    );
 
     client.shutdown().await;
     relay.shutdown();
@@ -986,9 +1008,7 @@ async fn nip17_set_and_get_dm_relays_round_trip() {
 
 /// Drain a monitor receiver until a `StatusChanged { status: Connected }` arrives.
 /// Returns `false` if the channel closes first.
-async fn wait_for_connected(
-    mut rx: tokio::sync::broadcast::Receiver<MonitorNotification>,
-) -> bool {
+async fn wait_for_connected(mut rx: tokio::sync::broadcast::Receiver<MonitorNotification>) -> bool {
     loop {
         match rx.recv().await {
             Ok(MonitorNotification::StatusChanged { status, .. }) if status.is_connected() => {
@@ -1140,7 +1160,7 @@ async fn admit_policy_rejects_connection_after_add() {
 async fn admit_policy_rejects_events_during_sync_download() {
     use std::sync::Arc;
 
-    use nula_storage_memory::MemoryDatabase;
+    use nula_storage::memory::MemoryDatabase;
 
     let keys = deterministic_keys();
     let blocked_kind = Kind::TEXT_NOTE;

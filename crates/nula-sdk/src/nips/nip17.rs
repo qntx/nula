@@ -162,10 +162,7 @@ impl Client {
     /// - [`Error::SignerNotConfigured`] when the client has no
     ///   signer attached.
     /// - [`Error::Pool`] from the underlying broadcast.
-    pub async fn set_dm_relays(
-        &self,
-        relays: &[RelayUrl],
-    ) -> Result<Output<EventId>, Error> {
+    pub async fn set_dm_relays(&self, relays: &[RelayUrl]) -> Result<Output<EventId>, Error> {
         let builder = core_nip17::build_dm_relays_event(relays);
         self.send_event_builder(builder).await
     }

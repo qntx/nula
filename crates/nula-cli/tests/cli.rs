@@ -291,9 +291,7 @@ fn relays_set_then_get_round_trip() {
 
     // Fetch it back.
     let get = nula()
-        .args([
-            "relays", "get", "--relay", &relay_url, "--pubkey", &npub,
-        ])
+        .args(["relays", "get", "--relay", &relay_url, "--pubkey", &npub])
         .assert()
         .success();
     let get_value: serde_json::Value =
@@ -316,7 +314,14 @@ fn relays_set_then_get_round_trip() {
 fn dm_send_requires_to_flag() {
     nula()
         .args([
-            "dm", "send", "--relay", "wss://x.example/", "--secret", "garbage", "--content", "hi",
+            "dm",
+            "send",
+            "--relay",
+            "wss://x.example/",
+            "--secret",
+            "garbage",
+            "--content",
+            "hi",
         ])
         .assert()
         .failure();

@@ -782,11 +782,7 @@ impl Client {
     /// # Errors
     ///
     /// See [`Self::connect_relay`].
-    pub async fn try_connect_relay(
-        &self,
-        url: &RelayUrl,
-        timeout: Duration,
-    ) -> Result<(), Error> {
+    pub async fn try_connect_relay(&self, url: &RelayUrl, timeout: Duration) -> Result<(), Error> {
         let relay = self
             .inner
             .pool
@@ -854,7 +850,10 @@ impl Client {
         let Some(policy) = &self.inner.admit_policy else {
             return Ok(());
         };
-        match policy.admit_event(relay_url, subscription_id, event).await? {
+        match policy
+            .admit_event(relay_url, subscription_id, event)
+            .await?
+        {
             AdmitStatus::Success => Ok(()),
             AdmitStatus::Rejected { reason } => Err(Error::PolicyRejected {
                 stage: "event",

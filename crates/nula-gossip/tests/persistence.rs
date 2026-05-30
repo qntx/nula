@@ -24,7 +24,7 @@ use nula_core::nips::nip65::RelayMarker;
 use nula_core::{Keys, RelayUrl, Timestamp};
 use nula_gossip::Gossip;
 use nula_storage::NostrDatabase;
-use nula_storage_sqlite::SqliteDatabase;
+use nula_storage::sqlite::SqliteDatabase;
 
 mod helpers;
 use helpers::{build_relay_list, relay_list_from_iter};

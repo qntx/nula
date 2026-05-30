@@ -32,7 +32,7 @@ use nula_relay::SubscribeOptions;
 use nula_relay_builder::{MockRelay, MockRelayBuilder};
 use nula_relay_pool::{RelayCapabilities, RelayPool};
 use nula_storage::NostrDatabase;
-use nula_storage_memory::MemoryDatabase;
+use nula_storage::memory::MemoryDatabase;
 use tokio::task::JoinHandle;
 
 /// One-stop fixture set returned by [`spawn_environment`].

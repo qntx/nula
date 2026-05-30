@@ -17,13 +17,14 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-# Default-on: pull `nula-storage-memory` so callers without a custom
-# storage backend can still `MockRelay::run()` with one line.
+# Default-on: enable `nula-storage`'s in-memory backend so callers
+# without a custom storage backend can still `MockRelay::run()` with
+# one line.
 default = ["memory"]
 
-# Re-export `nula-storage-memory` so callers can construct a default
-# `MemoryDatabase` without depending on the crate themselves.
-memory = ["dep:nula-storage-memory"]
+# Enable `nula-storage`'s in-memory backend so callers can construct a
+# default `MemoryDatabase` without depending on the backend themselves.
+memory = ["nula-storage/memory"]
 
 # Tracing spans on connection lifecycle and policy verdicts.
 tracing = ["dep:tracing"]
@@ -44,9 +45,6 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["sync", "rt", "net", "macros", "time", "io-util"] }
 tokio-tungstenite = { workspace = true, features = ["handshake"] }
 
-# Optional: default storage backend.
-nula-storage-memory = { workspace = true, optional = true }
-
 # Optional observability.
 tracing = { workspace = true, optional = true }
 
@@ -54,7 +52,7 @@ tracing = { workspace = true, optional = true }
 nula-core = { workspace = true, features = ["nip06"] }
 nula-net  = { workspace = true, features = ["default-transport"] }
 nula-relay = { workspace = true, features = ["default-transport"] }
-nula-storage-memory = { workspace = true }
+nula-storage = { workspace = true, features = ["memory"] }
 tokio = { workspace = true, features = [
     "macros",
     "rt-multi-thread",

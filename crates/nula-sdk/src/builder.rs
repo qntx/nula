@@ -77,8 +77,8 @@ impl ClientBuilder {
     ///
     /// Required: every Layer-5 read path (cache hits, NIP-77
     /// reconciliation, NIP-65 routing) needs a place to look events
-    /// up. Use [`nula_storage_memory::MemoryDatabase`] for ephemeral
-    /// processes and `nula_storage_lmdb::LmdbDatabase` for
+    /// up. Use [`nula_storage::memory::MemoryDatabase`] for ephemeral
+    /// processes and `nula_storage::lmdb::LmdbDatabase` for
     /// long-running ones.
     #[must_use]
     pub fn database<D>(mut self, database: D) -> Self
@@ -185,7 +185,7 @@ impl ClientBuilder {
     ///
     /// When the `memory-fallback` feature is enabled (default) and
     /// the caller omitted [`Self::database`], the builder substitutes
-    /// a fresh [`nula_storage_memory::MemoryDatabase`] so first-touch
+    /// a fresh [`nula_storage::memory::MemoryDatabase`] so first-touch
     /// users get a working client out of the box. With the feature
     /// disabled, omitting the database surfaces as
     /// [`nula_relay_pool::Error::MissingDatabase`].
@@ -201,7 +201,7 @@ impl ClientBuilder {
         let database: Option<Arc<dyn NostrDatabase>> = self.database.clone().or_else(|| {
             #[cfg(feature = "memory-fallback")]
             {
-                Some(Arc::new(nula_storage_memory::MemoryDatabase::new()))
+                Some(Arc::new(nula_storage::memory::MemoryDatabase::new()))
             }
             #[cfg(not(feature = "memory-fallback"))]
             {

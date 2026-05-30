@@ -472,8 +472,13 @@ async fn handle_neg_open(
     // Per-filter admit gate -- mirror REQ semantics so policy still
     // applies to NIP-77 reads.
     if let AdmitVerdict::Reject(reason) = ctx.read_policy.admit_filter(&filter).await {
-        return send_neg_err(sink, subscription_id, MachineReadablePrefix::Restricted, &reason)
-            .await;
+        return send_neg_err(
+            sink,
+            subscription_id,
+            MachineReadablePrefix::Restricted,
+            &reason,
+        )
+        .await;
     }
 
     let storage = match nula_sync::from_database(ctx.storage.as_ref(), filter).await {
