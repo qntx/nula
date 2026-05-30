@@ -8,9 +8,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
+use crate::transport::{WebSocketSink, WebSocketStream};
 use nula_core::Filter;
 use nula_core::{EventId, SubscriptionId};
-use nula_net::{WebSocketSink, WebSocketStream};
 use tokio::sync::oneshot;
 
 use super::command::SubscriptionSink;
@@ -116,7 +116,7 @@ impl ActorState {
 #[derive(Debug)]
 pub(super) struct StaticCtx {
     pub(super) url: nula_core::RelayUrl,
-    pub(super) transport: Arc<dyn nula_net::WebSocketTransport>,
+    pub(super) transport: Arc<dyn crate::transport::WebSocketTransport>,
     pub(super) options: RelayOptions,
     pub(super) status: Arc<AtomicRelayStatus>,
     pub(super) stats: Arc<RelayStats>,

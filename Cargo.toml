@@ -22,11 +22,8 @@ categories = ["cryptography", "network-programming"]
 [workspace.dependencies]
 # Internal crates
 nula-core = { version = "0.1.0", path = "crates/nula-core", default-features = false }
-nula-net = { version = "0.1.0", path = "crates/nula-net", default-features = false }
 nula-relay = { version = "0.1.0", path = "crates/nula-relay", default-features = false }
 nula-storage = { version = "0.1.0", path = "crates/nula-storage", default-features = false }
-nula-relay-pool = { version = "0.1.0", path = "crates/nula-relay-pool", default-features = false }
-nula-relay-builder = { version = "0.1.0", path = "crates/nula-relay-builder", default-features = false }
 nula-gossip = { version = "0.1.0", path = "crates/nula-gossip", default-features = false }
 nula-signer-connect = { version = "0.1.0", path = "crates/nula-signer-connect", default-features = false }
 nula-keyring = { version = "0.1.0", path = "crates/nula-keyring", default-features = false }

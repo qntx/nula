@@ -13,7 +13,7 @@
 //! returns `None` and no per-relay status state is retained.
 //!
 //! [`Client::monitor`]: crate::Client::monitor
-//! [`PoolNotification`]: nula_relay_pool::PoolNotification
+//! [`PoolNotification`]: nula_relay::pool::PoolNotification
 //! [`RelayStatus`]: nula_relay::RelayStatus
 
 use nula_core::types::RelayUrl;

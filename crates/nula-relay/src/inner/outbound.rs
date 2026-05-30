@@ -1,10 +1,10 @@
 //! Helpers that convert [`nula_core::ClientMessage`] / event payloads
-//! into wire-shaped [`nula_net::Message`] frames and push them on a
-//! [`nula_net::WebSocketSink`].
+//! into wire-shaped [`nula_relay::transport::Message`] frames and push them on a
+//! [`nula_relay::transport::WebSocketSink`].
 
+use crate::transport::{Message, WebSocketSink};
 use futures::SinkExt;
 use nula_core::{ClientMessage, Event, Filter, SubscriptionId};
-use nula_net::{Message, WebSocketSink};
 
 use crate::error::Error;
 

@@ -22,7 +22,6 @@ use anyhow as _;
 use assert_cmd::Command;
 use clap as _;
 use nula_core as _;
-use nula_relay_builder as _;
 use nula_sdk as _;
 use predicates as _;
 use serde_json as _;
@@ -100,7 +99,7 @@ fn event_fetch_requires_relay_flag() {
 
 #[test]
 fn publish_then_fetch_round_trip() {
-    use nula_relay_builder::MockRelayBuilder;
+    use nula_relay::server::MockRelayBuilder;
 
     // Multi-thread runtime: MockRelay spawns a background accept
     // loop that must keep running while the subprocess CLI calls
@@ -192,7 +191,7 @@ fn generate_keypair() -> (String, String) {
 
 #[test]
 fn dm_send_then_recv_round_trip() {
-    use nula_relay_builder::MockRelayBuilder;
+    use nula_relay::server::MockRelayBuilder;
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -249,7 +248,7 @@ fn dm_send_then_recv_round_trip() {
 
 #[test]
 fn relays_set_then_get_round_trip() {
-    use nula_relay_builder::MockRelayBuilder;
+    use nula_relay::server::MockRelayBuilder;
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)

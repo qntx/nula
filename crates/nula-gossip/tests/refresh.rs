@@ -18,8 +18,8 @@ use std::time::Duration;
 use nula_core::Timestamp;
 use nula_core::nips::nip65::RelayMarker;
 use nula_gossip::ListKind;
-use nula_relay_builder::MockRelayBuilder;
-use nula_relay_pool::{RelayCapabilities, RelayPool};
+use nula_relay::pool::{RelayCapabilities, RelayPool};
+use nula_relay::server::MockRelayBuilder;
 use nula_storage::NostrDatabase;
 use nula_storage::memory::MemoryDatabase;
 

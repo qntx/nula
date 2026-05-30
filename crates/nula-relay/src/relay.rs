@@ -8,8 +8,8 @@
 
 use std::sync::{Arc, Mutex};
 
+use crate::transport::IntoWebSocketTransport;
 use nula_core::{ClientMessage, Event, Filter, RelayUrl, SubscriptionId};
-use nula_net::IntoWebSocketTransport;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::error::Error;
@@ -66,7 +66,7 @@ impl Relay {
     pub fn new(url: RelayUrl) -> Self {
         Self::from_context(ActorContext {
             url,
-            transport: Arc::new(nula_net::default::DefaultTransport::new()),
+            transport: Arc::new(crate::transport::default::DefaultTransport::new()),
             options: RelayOptions::default(),
         })
     }
@@ -74,7 +74,7 @@ impl Relay {
     /// Begin configuring a relay.
     ///
     /// When the `default-transport` feature is on the builder is
-    /// pre-populated with [`nula_net::default::DefaultTransport`];
+    /// pre-populated with [`nula_relay::transport::default::DefaultTransport`];
     /// otherwise the caller must call
     /// [`RelayBuilder::transport`] before [`RelayBuilder::build`].
     pub fn builder(url: RelayUrl) -> RelayBuilder {
@@ -331,14 +331,14 @@ impl Relay {
 
 /// Builder for [`Relay`].
 ///
-/// The transport defaults to [`nula_net::default::DefaultTransport`]
+/// The transport defaults to [`nula_relay::transport::default::DefaultTransport`]
 /// when the `default-transport` feature is on; otherwise
 /// [`Self::transport`] **must** be called before [`Self::build`].
 #[derive(Debug)]
 #[must_use]
 pub struct RelayBuilder {
     url: RelayUrl,
-    transport: Option<Arc<dyn nula_net::WebSocketTransport>>,
+    transport: Option<Arc<dyn crate::transport::WebSocketTransport>>,
     options: RelayOptions,
 }
 
@@ -381,12 +381,12 @@ impl RelayBuilder {
         )
     )]
     pub fn build(self) -> Result<Relay, Error> {
-        let transport: Arc<dyn nula_net::WebSocketTransport> = match self.transport {
+        let transport: Arc<dyn crate::transport::WebSocketTransport> = match self.transport {
             Some(t) => t,
             None => {
                 #[cfg(feature = "default-transport")]
                 {
-                    Arc::new(nula_net::default::DefaultTransport::new())
+                    Arc::new(crate::transport::default::DefaultTransport::new())
                 }
                 #[cfg(not(feature = "default-transport"))]
                 {

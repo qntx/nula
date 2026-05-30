@@ -25,9 +25,9 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
+use crate::transport::{WebSocketStream, WebSocketTransport};
 use futures::stream::StreamExt;
 use nula_core::{Filter, RelayUrl, SubscriptionId};
-use nula_net::{WebSocketStream, WebSocketTransport};
 use tokio::sync::mpsc;
 use tokio::time::sleep_until;
 
@@ -585,7 +585,7 @@ fn set_status(
 
 async fn recv_inbound(
     stream: Option<&mut WebSocketStream>,
-) -> Option<Result<nula_net::Message, Error>> {
+) -> Option<Result<crate::transport::Message, Error>> {
     if let Some(s) = stream {
         s.next().await.map(|res| res.map_err(Error::from))
     } else {

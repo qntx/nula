@@ -10,9 +10,9 @@
 
 use std::time::Duration;
 
+use crate::transport as net;
 use nula_core::message::{ClientMessageError, RelayMessageError};
 use nula_core::{EventId, SubscriptionId};
-use nula_net as net;
 use thiserror::Error;
 
 /// Errors raised by [`crate::Relay`].

@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use nula_net::ConnectionMode;
+use crate::transport::ConnectionMode;
 
 use crate::limits::RelayLimits;
 use crate::policy::ReconnectPolicy;
@@ -30,7 +30,7 @@ mod defaults {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RelayOptions {
     /// How the underlying transport should reach the relay (direct,
-    /// proxy, …). Mirrors [`nula_net::ConnectionMode`].
+    /// proxy, …). Mirrors [`nula_relay::transport::ConnectionMode`].
     pub connection_mode: ConnectionMode,
 
     /// What to do when the connection drops. Defaults to AWS-style

@@ -7,7 +7,7 @@ use nula_core::event::{Tag, UnsignedEvent};
 use nula_core::nips::nip46::{KIND as NOSTR_CONNECT_KIND, Method, Permission, Request, Uri};
 use nula_core::nips::{nip44, nip46};
 use nula_core::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
-use nula_relay_pool::RelayPool;
+use nula_relay::pool::RelayPool;
 use tokio::sync::OnceCell;
 use tokio::time::timeout;
 

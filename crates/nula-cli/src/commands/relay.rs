@@ -4,7 +4,7 @@
 use std::net::SocketAddr;
 
 use anyhow::{Context, Result};
-use nula_relay_builder::{MockRelayBuilder, MockRelayOptions};
+use nula_relay::server::{MockRelayBuilder, MockRelayOptions};
 use serde_json::json;
 
 use crate::output::write_json;

@@ -9,7 +9,7 @@ homepage.workspace = true
 authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Single-relay NIP-01 state machine: lifecycle, reconnect, subscriptions, publish ACK, optional NIP-42 AUTH."
+description = "Nostr relay layer: runtime-agnostic WebSocket transport, single-relay NIP-01 client, multi-relay pool, and an in-process relay server."
 readme = "README.md"
 
 [package.metadata.docs.rs]
@@ -17,27 +17,48 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-# Default ships the relay over `nula-net`'s default tokio-tungstenite
-# transport. Disable defaults if you supply your own
-# `WebSocketTransport` (e.g. wasm or mock) — the crate still works,
-# you just have to construct it via the builder.
-default = ["default-transport", "nip42"]
+# Default: the tokio-tungstenite transport, NIP-42 AUTH, and the
+# multi-relay pool. Disable defaults to supply a custom transport
+# (e.g. wasm) or to compile only the single-relay client.
+default = ["default-transport", "nip42", "pool"]
 
-# Re-export of `nula-net/default-transport`. Keeps consumers from
-# having to enable the same flag on two crates.
-default-transport = ["nula-net/default-transport"]
+# Ship the tokio-tungstenite-backed `transport::default` implementation
+# so `Relay::new` / `RelayPool::builder` work out of the box.
+default-transport = [
+    "dep:tokio-tungstenite",
+    "tokio-tungstenite/connect",
+    "tokio-tungstenite/rustls-tls-webpki-roots",
+]
 
-# NIP-42 AUTH challenge handler. The trait surface compiles without
-# this feature; turning it on enables the handler hook plus its
-# convenience signer integration.
+# The `transport::mock` transport for driving upper-layer state
+# machines without real sockets.
+mock = []
+
+# NIP-42 AUTH challenge handler + convenience signer integration.
 nip42 = []
 
+# The `pool` module: multi-relay orchestration with cross-relay dedup.
+pool = ["dep:nula-storage", "dep:lru", "dep:bitflags", "dep:tokio-stream"]
+
+# The `server` module: an in-process programmable relay server. Pulls
+# the storage trait + in-memory backend, NIP-77 serving, and the
+# tokio TcpListener + tungstenite handshake.
+server = [
+    "dep:nula-storage",
+    "nula-storage/memory",
+    "dep:nula-sync",
+    "nula-sync/storage",
+    "dep:tokio-tungstenite",
+    "tokio-tungstenite/handshake",
+    "tokio/net",
+    "tokio/io-util",
+]
+
 # Tracing spans on every state transition / inbound dispatch.
-tracing = ["dep:tracing", "nula-net/tracing"]
+tracing = ["dep:tracing"]
 
 [dependencies]
 nula-core = { workspace = true }
-nula-net  = { workspace = true }
 
 futures.workspace = true
 serde_json.workspace = true
@@ -46,16 +67,28 @@ thiserror.workspace = true
 # Tokio runtime — every realistic deployment is on Tokio (see ADR-0003).
 tokio = { workspace = true, features = ["sync", "rt", "macros", "time"] }
 
-# Random number generation for backoff jitter. The `std` feature
-# pulls `getrandom` against the OS entropy source.
+# Random number generation for backoff jitter.
 getrandom.workspace = true
+
+# Transport (default-transport / server). Sub-features are enabled by
+# the `default-transport` and `server` features above.
+tokio-tungstenite = { workspace = true, optional = true }
+
+# Pool (feature `pool`).
+bitflags     = { version = "2.6", optional = true }
+lru          = { version = "0.16", optional = true }
+nula-storage = { workspace = true, optional = true }
+tokio-stream = { workspace = true, optional = true }
+
+# Server (feature `server`).
+nula-sync = { workspace = true, optional = true }
 
 # Optional observability.
 tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 nula-core = { workspace = true, features = ["nip06"] }
-nula-net  = { workspace = true, features = ["mock"] }
+nula-storage = { workspace = true, features = ["memory"] }
 tokio = { workspace = true, features = [
     "macros",
     "rt-multi-thread",
@@ -67,19 +100,75 @@ serde_json.workspace = true
 [lints]
 workspace = true
 
+# Single-relay client tests (mock transport).
 [[test]]
 name = "lifecycle"
 path = "tests/lifecycle.rs"
+required-features = ["mock"]
 
 [[test]]
 name = "subscribe"
 path = "tests/subscribe.rs"
+required-features = ["mock"]
 
 [[test]]
 name = "publish"
 path = "tests/publish.rs"
+required-features = ["mock"]
 
 [[test]]
 name = "nip42"
 path = "tests/nip42.rs"
-required-features = ["nip42"]
+required-features = ["mock", "nip42"]
+
+[[test]]
+name = "send_msg"
+path = "tests/send_msg.rs"
+required-features = ["mock"]
+
+# Transport tests.
+[[test]]
+name = "transport_default"
+path = "tests/transport_default.rs"
+required-features = ["default-transport"]
+
+[[test]]
+name = "transport_mock"
+path = "tests/transport_mock.rs"
+required-features = ["mock"]
+
+# Pool tests (real client over the in-process server).
+[[test]]
+name = "pool_add_remove"
+path = "tests/pool_add_remove.rs"
+required-features = ["pool", "server", "default-transport"]
+
+[[test]]
+name = "pool_builder"
+path = "tests/pool_builder.rs"
+required-features = ["pool", "server", "default-transport"]
+
+[[test]]
+name = "pool_notifications"
+path = "tests/pool_notifications.rs"
+required-features = ["pool", "server", "default-transport"]
+
+[[test]]
+name = "pool_send_event"
+path = "tests/pool_send_event.rs"
+required-features = ["pool", "server", "default-transport"]
+
+[[test]]
+name = "pool_shutdown"
+path = "tests/pool_shutdown.rs"
+required-features = ["pool", "server", "default-transport"]
+
+[[test]]
+name = "pool_stream_events"
+path = "tests/pool_stream_events.rs"
+required-features = ["pool", "server", "default-transport"]
+
+[[test]]
+name = "pool_subscribe"
+path = "tests/pool_subscribe.rs"
+required-features = ["pool", "server", "default-transport"]

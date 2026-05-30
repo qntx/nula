@@ -14,7 +14,7 @@ use nula_core::nips::nip17::parse_dm_relays_event;
 use nula_core::nips::nip65::RelayList;
 use nula_core::types::Timestamp;
 use nula_core::{Filter, Kind, PublicKey, RelayUrl};
-use nula_relay_pool::RelayPool;
+use nula_relay::pool::RelayPool;
 
 use crate::error::Error;
 use crate::filter::{BrokenDownFilters, break_down};

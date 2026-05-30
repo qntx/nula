@@ -64,7 +64,7 @@ pub mod util;
 // consuming `futures` and `tokio_stream` directly.
 use futures as _;
 // Re-export the most-needed Layer-1/4 types so common workflows do
-// not need a parallel `nula-core` / `nula-relay-pool` import line.
+// not need a parallel `nula-core` / `nula-relay` import line.
 pub use nula_core::{
     Event, EventBuilder, EventId, Filter, Keys, Kind, NostrSigner, PublicKey, RelayUrl, SecretKey,
     SubscriptionId, Tag, Timestamp,
@@ -72,11 +72,7 @@ pub use nula_core::{
 #[cfg(feature = "gossip")]
 #[cfg_attr(docsrs, doc(cfg(feature = "gossip")))]
 pub use nula_gossip::Gossip;
-// Dev-only dependencies consumed by the integration tests under
-// `tests/` once they land.
-#[cfg(test)]
-use nula_relay_builder as _;
-pub use nula_relay_pool::{Output, PoolNotification, RelayCapabilities, RelayPoolOptions};
+pub use nula_relay::pool::{Output, PoolNotification, RelayCapabilities, RelayPoolOptions};
 #[cfg(feature = "nip46")]
 use nula_signer_connect as _;
 #[cfg(test)]

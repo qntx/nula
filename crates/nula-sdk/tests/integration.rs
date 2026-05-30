@@ -24,10 +24,8 @@ use std::time::Duration;
 use futures as _;
 use nula_core::{EventBuilder, Filter, Keys, Kind, Tag, Timestamp};
 use nula_gossip as _;
-use nula_net as _;
 use nula_relay::SubscribeOptions;
-use nula_relay_builder::MockRelayBuilder;
-use nula_relay_pool as _;
+use nula_relay::server::MockRelayBuilder;
 use nula_sdk::{Client, MonitorNotification};
 #[cfg(feature = "nip46")]
 use nula_signer_connect as _;
@@ -1036,7 +1034,7 @@ impl nula_sdk::AdmitPolicy for StubPolicy {
     fn admit_relay<'a>(
         &'a self,
         relay_url: &'a nula_core::RelayUrl,
-    ) -> nula_net::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
+    ) -> nula_core::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
         Box::pin(async move {
             let Some(needle) = self.reject_relay_substring.as_deref() else {
                 return Ok(nula_sdk::AdmitStatus::Success);
@@ -1054,7 +1052,7 @@ impl nula_sdk::AdmitPolicy for StubPolicy {
     fn admit_connection<'a>(
         &'a self,
         relay_url: &'a nula_core::RelayUrl,
-    ) -> nula_net::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
+    ) -> nula_core::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
         Box::pin(async move {
             let Some(needle) = self.reject_connection_substring.as_deref() else {
                 return Ok(nula_sdk::AdmitStatus::Success);
@@ -1072,7 +1070,7 @@ impl nula_sdk::AdmitPolicy for StubPolicy {
         _relay_url: &'a nula_core::RelayUrl,
         _subscription_id: &'a nula_core::message::SubscriptionId,
         event: &'a nula_core::Event,
-    ) -> nula_net::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
+    ) -> nula_core::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
         Box::pin(async move {
             let Some(min_kind) = self.reject_events_after_kind else {
                 return Ok(nula_sdk::AdmitStatus::Success);

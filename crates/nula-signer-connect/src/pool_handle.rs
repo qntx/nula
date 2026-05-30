@@ -8,10 +8,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use nula_core::BoxStream;
 use nula_core::{Event, Filter, RelayUrl};
-use nula_net::BoxStream;
 use nula_relay::SubscribeOptions;
-use nula_relay_pool::{Output, RelayCapabilities, RelayPool};
+use nula_relay::pool::{Output, RelayCapabilities, RelayPool};
 
 /// Mode discriminator for the pool the [`crate::NostrConnect`]
 /// client routes its RPC traffic over.
@@ -40,7 +40,7 @@ impl PoolMode {
     pub(crate) async fn add_and_connect(
         &self,
         urls: &[RelayUrl],
-    ) -> Result<(), nula_relay_pool::Error> {
+    ) -> Result<(), nula_relay::pool::Error> {
         let pool = self.pool();
         for url in urls {
             pool.add_relay(
@@ -71,7 +71,7 @@ impl PoolMode {
         timeout: Option<Duration>,
     ) -> Result<
         BoxStream<'static, (RelayUrl, Result<Event, nula_relay::Error>)>,
-        nula_relay_pool::Error,
+        nula_relay::pool::Error,
     > {
         self.pool()
             .stream_events_to(urls, filters, options, timeout)
@@ -83,7 +83,7 @@ impl PoolMode {
         &self,
         urls: Vec<RelayUrl>,
         event: Event,
-    ) -> Result<Output<nula_core::EventId>, nula_relay_pool::Error> {
+    ) -> Result<Output<nula_core::EventId>, nula_relay::pool::Error> {
         self.pool().send_event_to(urls, event).await
     }
 }

@@ -2,15 +2,21 @@
 //!
 //! [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md
 //!
-//! `nula-relay` is Layer 3 of the `nula` workspace: it wraps a
-//! [`nula_net::WebSocketTransport`] with the protocol state
-//! machine — connection lifecycle, automatic reconnect with full
-//! jitter exponential backoff, REQ/CLOSE subscription tracking,
+//! `nula-relay` is the relay layer of the `nula` workspace. It wraps a
+//! [`transport::WebSocketTransport`] with the single-relay protocol
+//! state machine — connection lifecycle, automatic reconnect with
+//! full jitter exponential backoff, REQ/CLOSE subscription tracking,
 //! EVENT/EOSE/CLOSED dispatch, publish ACK correlation, and an
 //! optional NIP-42 AUTH challenge handler.
 //!
-//! Multi-relay orchestration lives one layer up in `nula-relay-pool`;
-//! this crate operates against exactly one URL.
+//! The crate also hosts three sibling modules behind features:
+//!
+//! - [`transport`] — the runtime-agnostic WebSocket transport trait
+//!   plus the default tokio-tungstenite and mock implementations.
+//! - [`pool`] (feature `pool`, default) — multi-relay orchestration
+//!   with cross-relay dedup.
+//! - [`server`] (feature `server`) — an in-process programmable relay
+//!   server for integration tests and local development.
 //!
 //! # Architecture
 //!
@@ -48,13 +54,26 @@
 //!
 //! | Feature             | Default | Description                                                                |
 //! | ------------------- | :-----: | -------------------------------------------------------------------------- |
-//! | `default-transport` |   ✅    | Re-export `nula-net/default-transport` so [`Relay::new`] is available.     |
+//! | `default-transport` |   ✅    | Ship the tokio-tungstenite transport so [`Relay::new`] is available.       |
 //! | `nip42`             |   ✅    | NIP-42 AUTH challenge handler + [`Relay::authenticate`] hook.              |
+//! | `pool`              |   ✅    | The [`pool`] module: multi-relay orchestration.                            |
+//! | `mock`              |   ❌    | The [`transport::mock`] transport for upper-layer tests.                   |
+//! | `server`            |   ❌    | The [`server`] module: in-process relay server.                           |
 //! | `tracing`           |   ❌    | Emit `tracing` spans on every state transition / dispatch decision.        |
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/nula-relay")]
 #![forbid(unsafe_code)]
+
+pub mod transport;
+
+#[cfg(feature = "pool")]
+#[cfg_attr(docsrs, doc(cfg(feature = "pool")))]
+pub mod pool;
+
+#[cfg(feature = "server")]
+#[cfg_attr(docsrs, doc(cfg(feature = "server")))]
+pub mod server;
 
 pub mod error;
 pub mod limits;

@@ -24,7 +24,7 @@ use nula_core::PublicKey;
 use nula_core::event::{EventId, Kind};
 use nula_core::filter::Filter;
 pub use nula_core::nips::nip65::{RelayList, RelayListError};
-use nula_relay_pool::Output;
+use nula_relay::pool::Output;
 
 use crate::client::Client;
 use crate::error::Error;

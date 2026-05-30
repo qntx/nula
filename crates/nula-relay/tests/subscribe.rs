@@ -18,8 +18,8 @@ use std::time::Duration;
 use futures::StreamExt;
 use nula_core::message::ClientMessage;
 use nula_core::{EventBuilder, Filter, Keys, Kind, RelayUrl, SubscriptionId, Tag, Timestamp};
-use nula_net::Message;
-use nula_net::mock::{MockHandle, MockTransport};
+use nula_relay::transport::Message;
+use nula_relay::transport::mock::{MockHandle, MockTransport};
 use nula_relay::{Relay, SubscribeOptions, SubscriptionItem};
 use tokio::time::timeout;
 

@@ -1,10 +1,10 @@
-//! Inbound dispatch: parse a [`nula_net::Message`] into a
+//! Inbound dispatch: parse a [`nula_relay::transport::Message`] into a
 //! [`nula_core::RelayMessage`] and route it to the right handler.
 
 use std::sync::atomic::Ordering;
 
+use crate::transport::Message;
 use nula_core::message::RelayMessage;
-use nula_net::Message;
 use tokio::sync::mpsc;
 
 use super::state::{ActorState, StaticCtx};
@@ -61,9 +61,6 @@ pub(super) fn handle_frame(
             FrameOutcome::Continue
         }
         Message::Close(_) => FrameOutcome::Disconnected,
-        // `Message` is `#[non_exhaustive]`; future raw-frame
-        // variants are treated as inert data frames.
-        _ => FrameOutcome::Continue,
     }
 }
 

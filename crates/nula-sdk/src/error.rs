@@ -14,10 +14,10 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {
-    /// Wraps a [`nula_relay_pool::Error`] from the underlying
+    /// Wraps a [`nula_relay::pool::Error`] from the underlying
     /// multi-relay coordinator.
     #[error(transparent)]
-    Pool(#[from] nula_relay_pool::Error),
+    Pool(#[from] nula_relay::pool::Error),
 
     /// Wraps a [`nula_relay::Error`] surfaced through a per-relay
     /// operation.

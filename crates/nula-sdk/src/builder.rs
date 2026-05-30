@@ -13,7 +13,7 @@ use std::sync::Arc;
 use nula_core::signer::NostrSigner;
 #[cfg(feature = "gossip")]
 use nula_gossip::Gossip;
-use nula_relay_pool::{PoolNotification, RelayPool, RelayPoolOptions};
+use nula_relay::pool::{PoolNotification, RelayPool, RelayPoolOptions};
 use nula_storage::NostrDatabase;
 use tokio::sync::Mutex;
 
@@ -33,7 +33,7 @@ pub struct ClientBuilder {
     #[cfg(feature = "gossip")]
     pub(crate) gossip: Option<Gossip>,
     pub(crate) pool_options: RelayPoolOptions,
-    pub(crate) websocket_transport: Option<Arc<dyn nula_net::WebSocketTransport>>,
+    pub(crate) websocket_transport: Option<Arc<dyn nula_relay::transport::WebSocketTransport>>,
     pub(crate) automatic_authentication: bool,
     /// `Some(capacity)` when [`Self::monitor`] was called; `None`
     /// when callers do not want the status broadcaster.
@@ -118,12 +118,12 @@ impl ClientBuilder {
 
     /// Override the WebSocket transport.
     ///
-    /// Defaults to [`nula_net::default::DefaultTransport`] when the
+    /// Defaults to [`nula_relay::transport::default::DefaultTransport`] when the
     /// `default-transport` feature is on; mandatory otherwise.
     #[must_use]
     pub fn websocket_transport<T>(mut self, transport: T) -> Self
     where
-        T: nula_net::WebSocketTransport + 'static,
+        T: nula_relay::transport::WebSocketTransport + 'static,
     {
         self.websocket_transport = Some(Arc::new(transport));
         self
@@ -188,12 +188,12 @@ impl ClientBuilder {
     /// a fresh [`nula_storage::memory::MemoryDatabase`] so first-touch
     /// users get a working client out of the box. With the feature
     /// disabled, omitting the database surfaces as
-    /// [`nula_relay_pool::Error::MissingDatabase`].
+    /// [`nula_relay::pool::Error::MissingDatabase`].
     ///
     /// # Errors
     ///
     /// - [`Error::Pool`] if the underlying
-    ///   [`nula_relay_pool::RelayPoolBuilder`] refused the
+    ///   [`nula_relay::pool::RelayPoolBuilder`] refused the
     ///   configuration (missing transport on a build without
     ///   `default-transport`, missing database on a build without
     ///   `memory-fallback`, …).
@@ -260,7 +260,7 @@ impl ClientBuilder {
 
 // Re-export the pool builder so callers tuning advanced relay-pool
 // settings can do it without an extra import.
-pub use nula_relay_pool::RelayPoolBuilder as PoolBuilder;
+pub use nula_relay::pool::RelayPoolBuilder as PoolBuilder;
 
 /// Forward every [`PoolNotification::Status`] frame onto the
 /// monitor broadcaster. Stops when the pool channel closes.

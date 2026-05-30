@@ -29,8 +29,8 @@ use nula_core::nips::nip46::{
 use nula_core::nips::{nip44, nip46};
 use nula_core::{EventBuilder, Filter, Keys, Kind, PublicKey, RelayUrl};
 use nula_relay::SubscribeOptions;
-use nula_relay_builder::{MockRelay, MockRelayBuilder};
-use nula_relay_pool::{RelayCapabilities, RelayPool};
+use nula_relay::pool::{RelayCapabilities, RelayPool};
+use nula_relay::server::{MockRelay, MockRelayBuilder};
 use nula_storage::NostrDatabase;
 use nula_storage::memory::MemoryDatabase;
 use tokio::task::JoinHandle;

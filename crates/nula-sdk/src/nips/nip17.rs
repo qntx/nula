@@ -46,7 +46,7 @@ use nula_core::key::Keys;
 use nula_core::nips::nip17::{self as core_nip17, Recipient, ReplyTo};
 use nula_core::nips::nip59;
 use nula_core::types::RelayUrl;
-use nula_relay_pool::Output;
+use nula_relay::pool::Output;
 
 use crate::client::Client;
 use crate::error::Error;

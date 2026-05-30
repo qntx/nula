@@ -17,7 +17,7 @@ use std::error::Error as StdError;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-use nula_net::BoxFuture;
+use nula_core::BoxFuture;
 use url::Url;
 
 /// Plug-in for handling [`nula_core::nips::nip46::ResponseResult::AuthUrl`].

@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nula_core::RelayUrl;
-use nula_relay_pool::RelayPool;
+use nula_relay::pool::RelayPool;
 use tokio::task::{AbortHandle, JoinHandle};
 
 use crate::gossip::Gossip;
@@ -32,7 +32,7 @@ impl RefresherHandle {
     /// The task aborts cleanly on three triggers:
     ///
     /// - `RefresherHandle::drop` — explicit shutdown.
-    /// - The pool emits a [`nula_relay_pool::PoolNotification::Shutdown`]
+    /// - The pool emits a [`nula_relay::pool::PoolNotification::Shutdown`]
     ///   notification while the task is mid-cycle.
     /// - The configured tick interval is `None`, in which case the
     ///   builder never calls us in the first place.

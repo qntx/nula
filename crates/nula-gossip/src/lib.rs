@@ -12,7 +12,7 @@
 //!
 //! The crate also breaks every outgoing [`Filter`] into the per-relay
 //! sub-filters [`crate::Gossip::break_down_filter`] returns. The
-//! actual fan-out lives one layer up in [`nula_relay_pool::RelayPool`].
+//! actual fan-out lives one layer up in [`nula_relay::pool::RelayPool`].
 //!
 //! See [ADR-0009](../../docs/adr/0009-multi-relay-routing-remote-signer.md)
 //! for the full design record.
@@ -61,17 +61,9 @@
 #![doc(html_root_url = "https://docs.rs/nula-gossip")]
 #![forbid(unsafe_code)]
 
-// Dev-dependencies pulled in only by integration tests. The
-// workspace `unused_crate_dependencies` lint fires at the lib root
-// even for test-only deps, so hedge them here. They are exercised
-// by `tests/refresh.rs` via `nula_relay_builder::MockRelayBuilder`,
-// `tests/process.rs` via `nula_storage::memory::MemoryDatabase`, and
-// `tests/refresh.rs` via `nula_net::default::DefaultTransport`
-// (transitively, through `nula_relay_pool`).
-#[cfg(test)]
-use nula_net as _;
-#[cfg(test)]
-use nula_relay_builder as _;
+// `tempfile` is a dev-dependency consumed only by integration tests;
+// the workspace `unused_crate_dependencies` lint fires at the lib
+// root for test-only deps, so hedge it here.
 #[cfg(test)]
 use tempfile as _;
 #[cfg(feature = "tracing")]

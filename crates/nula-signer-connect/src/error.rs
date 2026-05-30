@@ -18,10 +18,10 @@ use thiserror::Error;
 pub enum Error {
     /// The pool refused the call (typically `Shutdown` or `RelayNotFound`).
     #[error(transparent)]
-    Pool(#[from] nula_relay_pool::Error),
+    Pool(#[from] nula_relay::pool::Error),
 
     /// A relay-level operation surfaced an error before the pool
-    /// could route it into [`nula_relay_pool::Output`].
+    /// could route it into [`nula_relay::pool::Output`].
     #[error(transparent)]
     Relay(#[from] nula_relay::Error),
 

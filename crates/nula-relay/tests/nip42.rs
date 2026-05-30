@@ -17,8 +17,8 @@ use std::time::Duration;
 
 use nula_core::message::ClientMessage;
 use nula_core::{EventBuilder, Keys, Kind, RelayUrl, Tag, Timestamp};
-use nula_net::Message;
-use nula_net::mock::MockTransport;
+use nula_relay::transport::Message;
+use nula_relay::transport::mock::MockTransport;
 use nula_relay::{Relay, RelayNotification};
 use tokio::time::timeout;
 

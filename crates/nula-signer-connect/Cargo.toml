@@ -22,16 +22,13 @@ rustdoc-args = ["--cfg", "docsrs"]
 # wire-payload encryption itself.
 default = ["nip04"]
 nip04 = ["nula-core/nip04"]
-# Re-export of `nula-relay-pool/default-transport` so the embedded
-# pool ships a working tokio-tungstenite client.
-default-transport = ["nula-relay-pool/default-transport"]
-tracing = ["dep:tracing", "nula-relay-pool/tracing"]
+# Ship a working tokio-tungstenite client for the embedded pool.
+default-transport = ["nula-relay/default-transport"]
+tracing = ["dep:tracing", "nula-relay/tracing"]
 
 [dependencies]
 nula-core       = { workspace = true, features = ["nip44", "nip46"] }
-nula-net        = { workspace = true }
-nula-relay      = { workspace = true }
-nula-relay-pool = { workspace = true }
+nula-relay      = { workspace = true, features = ["pool"] }
 nula-storage    = { workspace = true }
 
 futures.workspace = true
@@ -51,9 +48,7 @@ tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 nula-core           = { workspace = true, features = ["nip06", "nip44", "nip04"] }
-nula-net            = { workspace = true, features = ["mock"] }
-nula-relay-builder  = { workspace = true, features = ["memory"] }
-nula-relay-pool     = { workspace = true, features = ["default-transport"] }
+nula-relay          = { workspace = true, features = ["pool", "server", "mock", "default-transport"] }
 nula-storage        = { workspace = true, features = ["memory"] }
 tokio = { workspace = true, features = [
     "macros",

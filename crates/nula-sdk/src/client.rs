@@ -16,6 +16,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures::StreamExt;
+use nula_core::BoxStream;
 use nula_core::event::{Event, EventBuilder, EventId};
 use nula_core::filter::Filter;
 use nula_core::message::{ClientMessage, SubscriptionId};
@@ -23,9 +24,8 @@ use nula_core::signer::NostrSigner;
 use nula_core::types::RelayUrl;
 #[cfg(feature = "gossip")]
 use nula_gossip::Gossip;
-use nula_net::BoxStream;
+use nula_relay::pool::{Output, PoolNotification, RelayCapabilities, RelayPool};
 use nula_relay::{Relay, RelayStatus, SubscribeOptions};
-use nula_relay_pool::{Output, PoolNotification, RelayCapabilities, RelayPool};
 use nula_storage::{Events, NostrDatabase};
 use tokio::sync::Mutex;
 
@@ -179,7 +179,7 @@ impl Client {
     }
 
     /// Pool-level notification receiver. See
-    /// [`nula_relay_pool::PoolNotification`] for the event variants.
+    /// [`nula_relay::pool::PoolNotification`] for the event variants.
     #[must_use]
     pub fn notifications(&self) -> tokio::sync::broadcast::Receiver<PoolNotification> {
         self.inner.pool.notifications()
@@ -188,7 +188,7 @@ impl Client {
     /// Shut every relay down and wait for all driver tasks to drain.
     ///
     /// After this returns, every subsequent call that touches the
-    /// pool will error with [`nula_relay_pool::Error::Shutdown`].
+    /// pool will error with [`nula_relay::pool::Error::Shutdown`].
     pub async fn shutdown(&self) {
         self.inner.pool.shutdown().await;
     }
@@ -293,7 +293,7 @@ impl Client {
     ///   pubkey mismatch).
     /// - [`Error::Pool`] if the signer's `sign_event` future returned
     ///   an error (wrapped in
-    ///   [`nula_relay_pool::Error`] via the signer adapter).
+    ///   [`nula_relay::pool::Error`] via the signer adapter).
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
         let signer = self
             .inner
@@ -371,7 +371,7 @@ impl Client {
     ///
     /// Events arriving from multiple relays are deduplicated by
     /// [`EventId`] (LRU-bounded by
-    /// [`nula_relay_pool::RelayPoolOptions::dedup_cache_size`]) and
+    /// [`nula_relay::pool::RelayPoolOptions::dedup_cache_size`]) and
     /// the returned [`Events`] is in canonical newest-first order.
     ///
     /// # Errors
@@ -416,7 +416,7 @@ impl Client {
     ///
     /// # Errors
     ///
-    /// See [`nula_relay_pool::RelayPool::stream_events`].
+    /// See [`nula_relay::pool::RelayPool::stream_events`].
     pub async fn stream_events(
         &self,
         filter: Filter,

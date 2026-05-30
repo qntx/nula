@@ -19,7 +19,7 @@ pub enum Error {
     /// The pool refused the helper call (typically because it was
     /// shut down or the requested relay is missing).
     #[error(transparent)]
-    Pool(#[from] nula_relay_pool::Error),
+    Pool(#[from] nula_relay::pool::Error),
 
     /// A storage-layer query / write failed.
     #[error(transparent)]

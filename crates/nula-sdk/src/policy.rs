@@ -13,7 +13,7 @@
 //! ```no_run
 //! # use std::sync::Arc;
 //! # use nula_core::types::RelayUrl;
-//! use nula_net::BoxFuture;
+//! use nula_core::BoxFuture;
 //! use nula_sdk::policy::{AdmitPolicy, AdmitStatus, PolicyError};
 //!
 //! #[derive(Debug)]
@@ -40,10 +40,10 @@
 use std::error::Error as StdError;
 use std::fmt;
 
+use nula_core::BoxFuture;
 use nula_core::event::Event;
 use nula_core::message::SubscriptionId;
 use nula_core::types::RelayUrl;
-use nula_net::BoxFuture;
 
 /// Verdict returned by every [`AdmitPolicy`] hook.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

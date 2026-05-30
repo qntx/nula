@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nula_core::RelayUrl;
-use nula_net::mock::MockTransport;
+use nula_relay::transport::mock::MockTransport;
 use nula_relay::{Relay, RelayStatus};
 use tokio::time::timeout;
 

@@ -28,8 +28,8 @@ use std::time::Duration;
 
 use nula_core::message::{ClientMessage, SubscriptionId};
 use nula_core::{Filter, Kind, RelayUrl};
-use nula_net::Message;
-use nula_net::mock::{MockHandle, MockTransport};
+use nula_relay::transport::Message;
+use nula_relay::transport::mock::{MockHandle, MockTransport};
 use nula_relay::{Error, Relay};
 use tokio::time::timeout;
 

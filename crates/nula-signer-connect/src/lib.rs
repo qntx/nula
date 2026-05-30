@@ -1,7 +1,7 @@
 //! NIP-46 (Nostr Connect) remote signer client.
 //!
 //! `nula-signer-connect` is Layer 4 of the `nula` workspace. It
-//! bridges a [`nula_relay_pool::RelayPool`] to a remote NIP-46
+//! bridges a [`nula_relay::pool::RelayPool`] to a remote NIP-46
 //! signer (a "bunker") and exposes the resulting handle as a
 //! [`nula_core::NostrSigner`].
 //!
@@ -15,7 +15,7 @@
 //!
 //! use nula_core::nips::nip46::Uri;
 //! use nula_signer_connect::NostrConnect;
-//! use nula_relay_pool::RelayPool;
+//! use nula_relay::pool::RelayPool;
 //! use nula_storage::NostrDatabase;
 //!
 //! # async fn doc(db: Arc<dyn NostrDatabase>) -> Result<(), Box<dyn std::error::Error>> {
@@ -43,9 +43,6 @@
 #![doc(html_root_url = "https://docs.rs/nula-signer-connect")]
 #![forbid(unsafe_code)]
 
-// Dev-dependencies pulled in only by integration tests.
-#[cfg(test)]
-use nula_relay_builder as _;
 // `nula-storage` is referenced by transitive `RelayPool::database()`
 // signatures and is part of the public surface every consumer
 // already pulls in; keep the dep so the API stays stable when we

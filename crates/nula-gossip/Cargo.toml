@@ -24,8 +24,7 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 nula-core       = { workspace = true, features = ["nip17"] }
-nula-relay      = { workspace = true }
-nula-relay-pool = { workspace = true }
+nula-relay      = { workspace = true, features = ["pool"] }
 nula-storage    = { workspace = true }
 
 futures.workspace = true
@@ -40,9 +39,7 @@ tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 nula-core           = { workspace = true, features = ["nip06", "nip17"] }
-nula-net            = { workspace = true, features = ["mock"] }
-nula-relay-builder  = { workspace = true, features = ["memory"] }
-nula-relay-pool     = { workspace = true, features = ["default-transport"] }
+nula-relay          = { workspace = true, features = ["pool", "server", "mock", "default-transport"] }
 nula-storage        = { workspace = true, features = ["memory", "sqlite"] }
 tempfile.workspace  = true
 tokio = { workspace = true, features = [
