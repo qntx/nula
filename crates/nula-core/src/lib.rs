@@ -55,6 +55,7 @@
     )
 )]
 
+pub mod boxed;
 pub mod event;
 pub mod filter;
 pub mod key;
@@ -91,6 +92,7 @@ use zeroize as _;
 // `clippy::error_impl_error` warning while keeping the error names
 // disambiguated when callers `use nula_core::*Error`.
 // See `prelude` for the curated import-everything view.
+pub use self::boxed::{BoxFuture, BoxStream};
 pub use self::event::{
     Coordinate, Event, EventBuilder, EventId, Kind, SingleLetterTag, Tag, TagKind, Tags,
     UnsignedEvent, compute_event_id,

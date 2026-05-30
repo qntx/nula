@@ -9,17 +9,17 @@
 //!
 //! # Object safety
 //!
-//! Every method returns [`nula_net::BoxFuture`] rather than `impl
+//! Every method returns [`nula_core::BoxFuture`] rather than `impl
 //! Future`, so the trait is dyn-safe. Callers commonly own backends
 //! through `Arc<dyn NostrDatabase>`. This matches the seam shape used
-//! by [`nula_net::WebSocketTransport`] one layer down.
+//! by the relay-layer `WebSocketTransport` one layer down.
 
 use std::fmt::Debug;
 
+use nula_core::boxed::BoxFuture;
 use nula_core::event::{Event, EventId};
 use nula_core::filter::Filter;
 use nula_core::types::Timestamp;
-use nula_net::BoxFuture;
 
 use crate::error::Error;
 use crate::events::Events;
@@ -36,7 +36,7 @@ use crate::status::{DatabaseEventStatus, SaveEventStatus};
 /// # Trait shape rationale
 ///
 /// All methods take `&self` and return `BoxFuture<'_, Result<…, Error>>`.
-/// The pattern is identical to [`nula_net::WebSocketTransport`] one
+/// The pattern is identical to the relay-layer `WebSocketTransport` one
 /// layer down: it keeps the trait object-safe (so backends can be
 /// stored as `Arc<dyn NostrDatabase>`) and wasm-friendly (the
 /// `BoxFuture` alias drops the `Send` bound on `wasm32` targets).

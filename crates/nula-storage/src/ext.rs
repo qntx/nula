@@ -22,11 +22,11 @@
 //! }
 //! ```
 
+use nula_core::boxed::BoxFuture;
 use nula_core::event::{Event, Kind};
 use nula_core::filter::Filter;
 use nula_core::key::PublicKey;
 use nula_core::metadata::Metadata;
-use nula_net::BoxFuture;
 
 use crate::NostrDatabase;
 use crate::error::Error;

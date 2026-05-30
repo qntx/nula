@@ -16,32 +16,4 @@
 //! a stack future / stream when possible; reach for these aliases
 //! only when the trait must be object-safe.
 
-use std::future::Future;
-use std::pin::Pin;
-
-use futures::Stream;
-
-/// Boxed, type-erased async return value used across object-safe
-/// trait surfaces.
-#[cfg(not(target_arch = "wasm32"))]
-pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
-
-/// Boxed, type-erased async return value used across object-safe
-/// trait surfaces. On `wasm32` the `Send` bound is dropped because
-/// browser transports cannot satisfy it.
-#[cfg(target_arch = "wasm32")]
-pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
-
-/// Boxed, type-erased asynchronous stream used across object-safe
-/// trait surfaces (notably the multi-relay [`stream_events`] APIs in
-/// `nula-relay-pool`).
-///
-/// [`stream_events`]: https://docs.rs/nula-relay-pool
-#[cfg(not(target_arch = "wasm32"))]
-pub type BoxStream<'a, T> = Pin<Box<dyn Stream<Item = T> + Send + 'a>>;
-
-/// Boxed, type-erased asynchronous stream used across object-safe
-/// trait surfaces. On `wasm32` the `Send` bound is dropped because
-/// browser transports cannot satisfy it.
-#[cfg(target_arch = "wasm32")]
-pub type BoxStream<'a, T> = Pin<Box<dyn Stream<Item = T> + 'a>>;
+pub use nula_core::boxed::{BoxFuture, BoxStream};

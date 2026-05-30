@@ -18,7 +18,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 nula-core = { workspace = true }
-nula-net  = { workspace = true }
 
 bitflags  = "2.6"
 thiserror.workspace = true

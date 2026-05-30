@@ -60,6 +60,10 @@ tracing = ["dep:tracing"]
 base64.workspace = true
 bech32.workspace = true
 faster-hex.workspace = true
+# `futures` supplies the `Stream` trait the `boxed::BoxStream` alias is
+# built on. It is a trait-only dependency (no executor), so it does not
+# violate core's "no async runtime" contract.
+futures.workspace = true
 getrandom.workspace = true
 indexmap.workspace = true
 secp256k1 = { workspace = true, features = ["global-context", "rand"] }
