@@ -586,7 +586,7 @@ impl RelayPool {
 ///
 /// Construct via [`RelayPool::builder`]. The mandatory inputs are an
 /// [`Arc<dyn NostrDatabase>`]; the transport defaults to
-/// [`nula_relay::transport::default::DefaultTransport`] when the
+/// [`crate::transport::default::DefaultTransport`] when the
 /// `default-transport` feature is on.
 #[derive(Debug)]
 #[must_use]
@@ -615,7 +615,7 @@ impl RelayPoolBuilder {
     }
 
     /// Override the WebSocket transport. Defaults to
-    /// [`nula_relay::transport::default::DefaultTransport`] when the
+    /// [`crate::transport::default::DefaultTransport`] when the
     /// `default-transport` feature is on.
     pub fn transport<T: crate::transport::IntoWebSocketTransport>(mut self, transport: T) -> Self {
         self.transport = Some(transport.into_transport());

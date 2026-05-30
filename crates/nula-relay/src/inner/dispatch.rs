@@ -1,4 +1,4 @@
-//! Inbound dispatch: parse a [`nula_relay::transport::Message`] into a
+//! Inbound dispatch: parse a [`crate::transport::Message`] into a
 //! [`nula_core::RelayMessage`] and route it to the right handler.
 
 use std::sync::atomic::Ordering;

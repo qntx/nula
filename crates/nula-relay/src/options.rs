@@ -29,7 +29,7 @@ mod defaults {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RelayOptions {
     /// How the underlying transport should reach the relay (direct,
-    /// proxy, …). Mirrors [`nula_relay::transport::ConnectionMode`].
+    /// proxy, …). Mirrors [`crate::transport::ConnectionMode`].
     pub connection_mode: ConnectionMode,
 
     /// What to do when the connection drops. Defaults to AWS-style

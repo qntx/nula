@@ -1,7 +1,7 @@
 //! Individual conformance cases.
 //!
 //! Each module exports a set of `pub async fn case_*<F: DatabaseFactory>`
-//! functions. They are aggregated by [`crate::run_suite`] but can also
+//! functions. They are aggregated by [`crate::test_suite::run_suite`] but can also
 //! be called individually if a backend only wants partial coverage.
 
 pub mod concurrency;

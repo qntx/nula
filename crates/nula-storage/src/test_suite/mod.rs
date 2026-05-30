@@ -12,7 +12,7 @@
 //! NIP-40 expiration, replaceable / addressable replacement, and
 //! concurrency safety; capability-gated cases skip themselves when
 //! the backend does not advertise the matching
-//! [`nula_storage::Features`] flag.
+//! [`crate::Features`] flag.
 //!
 //! # Quickstart
 //!

@@ -49,10 +49,10 @@ pub enum Error {
     #[error("background SQLite worker panicked: {0}")]
     Join(#[from] tokio::task::JoinError),
 
-    /// Inner [`nula_storage_memory`] backend rejected an operation
-    /// (effectively unreachable for memory-backed code paths, but
-    /// surfaced here so the public method signatures match the
-    /// upstream [`nula_storage::NostrDatabase`] contract).
+    /// Inner [`crate::memory::MemoryDatabase`] backend rejected an
+    /// operation (effectively unreachable for memory-backed code
+    /// paths, but surfaced here so the public method signatures match
+    /// the [`crate::NostrDatabase`] contract).
     #[error(transparent)]
     Memory(#[from] crate::Error),
 }

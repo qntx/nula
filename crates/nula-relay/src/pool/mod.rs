@@ -12,7 +12,7 @@
 //! `RwLock<HashMap<RelayUrl, Relay>>` plus a broadcast notification
 //! channel. There is **no second actor task** — coordination happens
 //! on the caller's runtime, while every per-relay state machine still
-//! runs in [`nula_relay::Relay`]'s own actor (see
+//! runs in [`crate::Relay`]'s own actor (see
 //! [ADR-0006](../../docs/adr/0006-single-relay-actor-model.md)).
 //!
 //! The handle is `Send + Sync + Clone`; cloning costs one `Arc`

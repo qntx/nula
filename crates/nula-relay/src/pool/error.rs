@@ -47,7 +47,7 @@ pub enum Error {
     /// could route it into [`crate::pool::Output::failed`]. In practice
     /// this only fires when the pool itself cannot perform the
     /// dispatch (e.g. `Relay::subscribe` returns
-    /// [`nula_relay::Error::Shutdown`] for the picked relay).
+    /// [`crate::Error::Shutdown`] for the picked relay).
     #[error(transparent)]
     Relay(#[from] crate::Error),
 

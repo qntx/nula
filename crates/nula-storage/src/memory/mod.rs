@@ -31,7 +31,7 @@
 //!
 //! - **NIP-09**: kind-5 deletion events tombstone their targets.
 //! - **NIP-40**: events past their expiration tag are rejected with
-//!   [`nula_storage::RejectedReason::Expired`].
+//!   [`crate::RejectedReason::Expired`].
 //! - **NIP-62**: kind-62 vanish requests purge prior writes from the
 //!   same author and reject future writes.
 //! - **Kind ranges**: ephemeral kinds (20000..30000) are dropped;

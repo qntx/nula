@@ -8,7 +8,7 @@
 //! pool's hot path.
 //!
 //! Subscription events do **not** flow through this channel. They
-//! arrive on the [`nula_relay::SubscriptionHandle`] returned by the
+//! arrive on the [`crate::SubscriptionHandle`] returned by the
 //! per-relay subscribe path, and the pool surfaces them
 //! cross-relay-deduplicated via
 //! [`crate::pool::RelayPool::stream_events`].

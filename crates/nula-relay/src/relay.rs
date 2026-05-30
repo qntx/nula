@@ -74,7 +74,7 @@ impl Relay {
     /// Begin configuring a relay.
     ///
     /// When the `default-transport` feature is on the builder is
-    /// pre-populated with [`nula_relay::transport::default::DefaultTransport`];
+    /// pre-populated with [`crate::transport::default::DefaultTransport`];
     /// otherwise the caller must call
     /// [`RelayBuilder::transport`] before [`RelayBuilder::build`].
     pub fn builder(url: RelayUrl) -> RelayBuilder {
@@ -331,7 +331,7 @@ impl Relay {
 
 /// Builder for [`Relay`].
 ///
-/// The transport defaults to [`nula_relay::transport::default::DefaultTransport`]
+/// The transport defaults to [`crate::transport::default::DefaultTransport`]
 /// when the `default-transport` feature is on; otherwise
 /// [`Self::transport`] **must** be called before [`Self::build`].
 #[derive(Debug)]

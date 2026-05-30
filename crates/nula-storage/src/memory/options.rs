@@ -25,7 +25,7 @@ pub struct MemoryDatabaseOptions {
     ///
     /// When `true`, kind-5 events delete the targeted IDs / addressable
     /// coordinates and tombstone them so subsequent inserts of the same
-    /// ID are rejected with [`nula_storage::RejectedReason::Deleted`].
+    /// ID are rejected with [`crate::RejectedReason::Deleted`].
     /// When `false`, kind-5 events are stored as regular events.
     pub process_nip09: bool,
 
@@ -33,7 +33,7 @@ pub struct MemoryDatabaseOptions {
     ///
     /// When `true`, a kind-62 event from `author` causes every later
     /// insert from `author` to be rejected with
-    /// [`nula_storage::RejectedReason::Vanished`]. When `false`,
+    /// [`crate::RejectedReason::Vanished`]. When `false`,
     /// kind-62 events are stored as regular events.
     pub process_nip62: bool,
 }

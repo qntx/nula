@@ -2,7 +2,7 @@
 //!
 //! The pool is a coordinator over two long-lived collaborators: the
 //! event store ([`nula_storage::NostrDatabase`]) and the WebSocket
-//! transport ([`nula_relay::transport::WebSocketTransport`]). Both are wrapped in
+//! transport ([`crate::transport::WebSocketTransport`]). Both are wrapped in
 //! `Arc<dyn …>` so they are cheap to share and trivially mockable in
 //! tests. Adding a new collaborator (signer, admit policy, …) means
 //! adding a field here, which is intentionally a more visible step
@@ -19,7 +19,7 @@ use crate::transport::WebSocketTransport;
 ///
 /// `SharedState` itself is `Clone` and `Send + Sync`; cloning costs
 /// two `Arc` bumps. The pool keeps one copy in [`crate::pool::RelayPool`]
-/// and hands a clone to each [`nula_relay::Relay`] it constructs.
+/// and hands a clone to each [`crate::Relay`] it constructs.
 #[derive(Debug, Clone)]
 pub(crate) struct SharedState {
     pub(crate) database: Arc<dyn NostrDatabase>,
