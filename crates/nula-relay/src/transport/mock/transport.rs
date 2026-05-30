@@ -9,13 +9,13 @@ use std::task::{Context, Poll};
 use futures::sink::Sink;
 use futures::stream::Stream;
 use nula_core::RelayUrl;
+use nula_core::boxed::BoxFuture;
 use tokio::sync::mpsc;
 
 use crate::transport::error::Error;
 use crate::transport::message::Message;
 use crate::transport::mode::ConnectionMode;
 use crate::transport::ws::{WebSocketSink, WebSocketStream, WebSocketTransport};
-use nula_core::boxed::BoxFuture;
 
 /// Test handle paired with one `MockTransport::connect()` invocation.
 ///

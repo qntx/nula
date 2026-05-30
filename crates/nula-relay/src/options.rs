@@ -3,10 +3,9 @@
 
 use std::time::Duration;
 
-use crate::transport::ConnectionMode;
-
 use crate::limits::RelayLimits;
 use crate::policy::ReconnectPolicy;
+use crate::transport::ConnectionMode;
 
 /// Defaults that match what hosted relays expect in practice. Move
 /// the constants into a single place so the `Default` impl and the

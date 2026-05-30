@@ -14,11 +14,11 @@ use std::sync::Arc;
 use futures::sink::Sink;
 use futures::stream::Stream;
 use nula_core::RelayUrl;
+use nula_core::boxed::BoxFuture;
 
 use crate::transport::error::Error;
 use crate::transport::message::Message;
 use crate::transport::mode::ConnectionMode;
-use nula_core::boxed::BoxFuture;
 
 /// Outbound half of a WebSocket connection.
 ///

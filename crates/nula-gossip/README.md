@@ -6,7 +6,7 @@ Layer 4 crate that turns a stream of Nostr events into a routing
 table: which relays does each user **read** from, **write** to, or
 prefer for **direct messages**? `nula-gossip` answers those
 questions and breaks every outgoing `Filter` into the per-relay
-sub-filters the [`nula-relay-pool`] crate fans out.
+sub-filters the [`nula-relay`] crate fans out.
 
 ## What it covers
 
@@ -31,7 +31,7 @@ sub-filters the [`nula-relay-pool`] crate fans out.
 
 - A relay-pool replacement. `nula-gossip` returns relay sets; the
   pool drives the wire.
-- A signer. See [`nula-signer-connect`] for NIP-46 remote signing.
+- A signer. See [`nula-signer`] for NIP-46 remote signing.
 - NIP-46 server / bunker side. Out of scope until a future phase.
 
 See [ADR-0009](../../docs/adr/0009-multi-relay-routing-remote-signer.md)
@@ -40,5 +40,5 @@ for the full design record.
 [`nula_core::nips::nip17`]: https://docs.rs/nula-core/
 [`nula_core::nips::nip65`]: https://docs.rs/nula-core/
 [`nula_core::Filter`]: https://docs.rs/nula-core/
-[`nula-relay-pool`]: https://docs.rs/nula-relay-pool/
-[`nula-signer-connect`]: https://docs.rs/nula-signer-connect/
+[`nula-relay`]: https://docs.rs/nula-relay/
+[`nula-signer`]: https://docs.rs/nula-signer/

@@ -4,11 +4,11 @@
 //! Mirrors the per-backend `save_event.rs` files that used to live
 //! in `nula-storage-memory` and `nula-storage-lmdb`.
 
-use crate::{DatabaseEventStatus, RejectedReason, SaveEventStatus};
 use nula_core::event::Kind;
 
 use crate::test_suite::DatabaseFactory;
 use crate::test_suite::helpers::{event_with_tags, expiring_text_note, keys, text_note};
+use crate::{DatabaseEventStatus, RejectedReason, SaveEventStatus};
 
 /// First insert of a brand-new event must succeed.
 pub async fn first_save_succeeds<F: DatabaseFactory>(factory: &F) {

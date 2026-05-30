@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Workspace crate consolidation (17 → 9 crates).** The
+  rust-nostr-style fan-out of single-purpose crates is collapsed into
+  cohesive, feature-gated crates following Rust 2024 conventions:
+  - **Storage (5 → 1):** `nula-storage-memory`, `nula-storage-lmdb`,
+    `nula-storage-sqlite`, and `nula-storage-test-suite` are folded
+    into `nula-storage` as the feature-gated modules
+    `nula_storage::{memory, lmdb, sqlite, test_suite}` (default
+    `memory`; the persistent backends pull their C deps only when
+    enabled).
+  - **Relay (4 → 1):** `nula-net`, `nula-relay-pool`, and
+    `nula-relay-builder` are folded into `nula-relay` as
+    `nula_relay::{transport, pool, server}` (transport always on;
+    `pool` default; `server` opt-in).
+  - **Signer:** `nula-signer-connect` is renamed to `nula-signer`.
+  - **Core:** the `BoxFuture` / `BoxStream` async aliases move to
+    `nula_core::boxed` (re-exported at the crate root) as the single
+    canonical home for the workspace's async seams.
+
+  **BREAKING CHANGE:** the removed crates no longer exist. Migrate
+  imports to the new module paths
+  (`nula_storage::memory::MemoryDatabase`,
+  `nula_relay::pool::RelayPool`, `nula_relay::server::MockRelayBuilder`,
+  `nula_relay::transport::WebSocketTransport`, `nula_signer::*`,
+  `nula_core::BoxFuture`) and depend on the parent crate with the
+  matching feature.
+
 ### Added
 
 - **Phase 8 — `nula-cli` private messages + relay lists.** The

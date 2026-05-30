@@ -13,8 +13,9 @@
 //! cross-relay-deduplicated via
 //! [`crate::pool::RelayPool::stream_events`].
 
-use crate::RelayStatus;
 use nula_core::RelayUrl;
+
+use crate::RelayStatus;
 
 /// Cross-cutting notification emitted by a [`crate::pool::RelayPool`].
 ///

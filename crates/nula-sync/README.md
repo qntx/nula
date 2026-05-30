@@ -60,6 +60,6 @@ for why this is a standalone crate.
 
 - [ADR-0010](../../docs/adr/0010-nip77-negentropy-as-standalone-crate.md)
   records the decision to keep Negentropy out of `nula-core` and
-  `nula-relay-pool`.
+  `nula-relay`.
 - [ADR-0004](../../docs/adr/0004-error-handling-thiserror.md) shapes
   the [`Error`] surface.

@@ -3,7 +3,6 @@
 
 use std::sync::atomic::Ordering;
 
-use crate::transport::Message;
 use nula_core::message::RelayMessage;
 use tokio::sync::mpsc;
 
@@ -11,6 +10,7 @@ use super::state::{ActorState, StaticCtx};
 use crate::error::Error;
 use crate::notification::RelayNotification;
 use crate::subscription::SubscriptionItem;
+use crate::transport::Message;
 
 /// Outcome of processing one inbound frame. Drives the actor's
 /// reconnect logic from [`super::run`].

@@ -4,10 +4,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use crate::{
-    Backend, DatabaseEventStatus, Error as StorageError, Events, Features, NostrDatabase,
-    SaveEventStatus,
-};
 use flume::Sender;
 use nula_core::boxed::BoxFuture;
 use nula_core::event::{Event, EventId};
@@ -19,6 +15,10 @@ use crate::lmdb::error::Error;
 use crate::lmdb::ingester::{self, IngestCmd};
 use crate::lmdb::options::LmdbDatabaseOptions;
 use crate::lmdb::store::Store;
+use crate::{
+    Backend, DatabaseEventStatus, Error as StorageError, Events, Features, NostrDatabase,
+    SaveEventStatus,
+};
 
 /// Persistent LMDB-backed [`NostrDatabase`].
 ///

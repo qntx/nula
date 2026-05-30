@@ -2,8 +2,8 @@
 
 Layer-5 Nostr SDK facade for the [`nula`](https://github.com/qntx/nula)
 workspace. Composes the lower layers — `nula-core` (events / filters),
-`nula-relay-pool` (multi-relay coordinator), `nula-gossip` (NIP-65
-outbox routing), `nula-sync` (NIP-77 Negentropy), `nula-signer-connect`
+`nula-relay` (multi-relay coordinator), `nula-gossip` (NIP-65
+outbox routing), `nula-sync` (NIP-77 Negentropy), `nula-signer`
 (NIP-46 remote signer) — into a single [`Client`] + [`ClientBuilder`]
 mirroring the surface of `nostr-sdk::Client` from the
 [`rust-nostr`](https://github.com/rust-nostr/nostr) reference.
@@ -18,7 +18,7 @@ on for typical Nostr client work.
 | `gossip`           |   ✅    | NIP-65 outbox routing helpers (re-export [`nula_gossip::Gossip`]).         |
 | `sync`             |   ✅    | NIP-77 reconciliation via [`nula_sync`].                                   |
 | `nip46`            |   ❌    | NIP-46 remote signer integration via [`nula_signer`].              |
-| `default-transport`|   ✅    | Pull a tokio-tungstenite WebSocket transport from `nula-relay-pool`.       |
+| `default-transport`|   ✅    | Pull a tokio-tungstenite WebSocket transport from `nula-relay`.       |
 | `tracing`          |   ❌    | Emit `tracing` spans on every public `Client` method (ADR-0005 fields).    |
 
 ## Quickstart

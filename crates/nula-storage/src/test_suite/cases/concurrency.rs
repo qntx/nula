@@ -7,9 +7,9 @@
 
 use std::sync::Arc;
 
-use crate::SaveEventStatus;
 use nula_core::filter::Filter;
 
+use crate::SaveEventStatus;
 use crate::test_suite::DatabaseFactory;
 use crate::test_suite::helpers::{keys, text_note};
 

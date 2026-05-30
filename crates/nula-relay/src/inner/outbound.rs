@@ -2,11 +2,11 @@
 //! into wire-shaped [`nula_relay::transport::Message`] frames and push them on a
 //! [`nula_relay::transport::WebSocketSink`].
 
-use crate::transport::{Message, WebSocketSink};
 use futures::SinkExt;
 use nula_core::{ClientMessage, Event, Filter, SubscriptionId};
 
 use crate::error::Error;
+use crate::transport::{Message, WebSocketSink};
 
 /// Serialise a [`ClientMessage`] into a single text frame.
 pub(super) fn encode(message: &ClientMessage) -> Result<Message, Error> {

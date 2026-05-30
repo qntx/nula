@@ -10,8 +10,9 @@
 
 use std::sync::Arc;
 
-use crate::transport::WebSocketTransport;
 use nula_storage::NostrDatabase;
+
+use crate::transport::WebSocketTransport;
 
 /// Long-lived collaborators shared by every clone of a
 /// [`crate::pool::RelayPool`] handle.

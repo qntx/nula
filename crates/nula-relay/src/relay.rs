@@ -8,7 +8,6 @@
 
 use std::sync::{Arc, Mutex};
 
-use crate::transport::IntoWebSocketTransport;
 use nula_core::{ClientMessage, Event, Filter, RelayUrl, SubscriptionId};
 use tokio::sync::{mpsc, oneshot};
 
@@ -19,6 +18,7 @@ use crate::options::{PublishOptions, RelayOptions, SubscribeOptions};
 use crate::stats::RelayStats;
 use crate::status::{AtomicRelayStatus, RelayStatus};
 use crate::subscription::SubscriptionHandle;
+use crate::transport::IntoWebSocketTransport;
 
 /// Single-relay NIP-01 client.
 ///

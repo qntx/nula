@@ -1,7 +1,6 @@
 //! NIP-09 deletion: tombstone semantics for both event-id and
 //! addressable-coordinate targets.
 
-use crate::{DatabaseEventStatus, RejectedReason, SaveEventStatus};
 use nula_core::event::{Coordinate, EventBuilder, Kind, Tag};
 use nula_core::filter::Filter;
 use nula_core::nips::nip09::DeletionRequest;
@@ -9,6 +8,7 @@ use nula_core::types::Timestamp;
 
 use crate::test_suite::DatabaseFactory;
 use crate::test_suite::helpers::{event_with_tags, keys, text_note};
+use crate::{DatabaseEventStatus, RejectedReason, SaveEventStatus};
 
 /// A NIP-09 deletion request from the author removes the target
 /// event, tombstones its id, and keeps the deletion event itself

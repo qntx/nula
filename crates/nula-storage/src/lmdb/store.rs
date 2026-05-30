@@ -23,7 +23,6 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use crate::{DatabaseEventStatus, RejectedReason, SaveEventStatus};
 use heed::types::{Bytes, U64, Unit};
 use heed::{Database, Env, EnvOpenOptions};
 use nula_core::event::{Event, EventId, Kind};
@@ -36,6 +35,7 @@ use crate::lmdb::codec;
 use crate::lmdb::error::Error;
 use crate::lmdb::keys;
 use crate::lmdb::options::LmdbDatabaseOptions;
+use crate::{DatabaseEventStatus, RejectedReason, SaveEventStatus};
 
 /// Number of named secondary databases used by this backend.
 ///

@@ -1,11 +1,11 @@
 //! Replaceable + addressable kind routing.
 
-use crate::{RejectedReason, SaveEventStatus};
 use nula_core::event::{Kind, Tag};
 use nula_core::filter::Filter;
 
 use crate::test_suite::DatabaseFactory;
 use crate::test_suite::helpers::{event_with_tags, keys, metadata_event};
+use crate::{RejectedReason, SaveEventStatus};
 
 /// Newer replaceable event of the same kind/author wins.
 pub async fn newer_metadata_replaces_older<F: DatabaseFactory>(factory: &F) {

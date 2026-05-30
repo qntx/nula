@@ -13,7 +13,6 @@ use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::{DatabaseEventStatus, RejectedReason, SaveEventStatus};
 use nula_core::event::{Event, EventId, Kind};
 use nula_core::filter::{Filter, MatchEventOptions};
 use nula_core::key::PublicKey;
@@ -22,6 +21,7 @@ use nula_core::types::Timestamp;
 
 use crate::memory::options::MemoryDatabaseOptions;
 use crate::memory::query::QueryPattern;
+use crate::{DatabaseEventStatus, RejectedReason, SaveEventStatus};
 
 /// Composite key used by every sorted index.
 ///

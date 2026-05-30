@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::transport::{WebSocketSink, WebSocketStream};
 use nula_core::Filter;
 use nula_core::{EventId, SubscriptionId};
 use tokio::sync::oneshot;
@@ -18,6 +17,7 @@ use crate::error::Error;
 use crate::options::{RelayOptions, SubscribeOptions};
 use crate::stats::RelayStats;
 use crate::status::AtomicRelayStatus;
+use crate::transport::{WebSocketSink, WebSocketStream};
 
 /// What a subscription needs while the actor is keeping it alive.
 #[derive(Debug)]

@@ -1,10 +1,10 @@
-# nula-signer-connect
+# nula-signer
 
 > NIP-46 (Nostr Connect) remote signer client.
 
-Layer 4 crate that lets a Nostr application sign events through a
-remote bunker (NIP-46) without ever touching the user's secret key.
-Built on top of [`nula-relay-pool`] for transport and exposes the
+Lets a Nostr application sign events through a remote bunker (NIP-46)
+without ever touching the user's secret key. Built on top of
+[`nula_relay::pool::RelayPool`] for transport and exposes the
 familiar [`nula_core::NostrSigner`] trait so any code already wired
 against an in-process [`nula_core::Keys`] keeps working.
 
@@ -28,6 +28,6 @@ against an in-process [`nula_core::Keys`] keeps working.
 See [ADR-0009](../../docs/adr/0009-multi-relay-routing-remote-signer.md)
 for the full design record.
 
-[`nula-relay-pool`]: https://docs.rs/nula-relay-pool/
+[`nula_relay::pool::RelayPool`]: https://docs.rs/nula-relay/
 [`nula_core::Keys`]: https://docs.rs/nula-core/
 [`nula_core::NostrSigner`]: https://docs.rs/nula-core/

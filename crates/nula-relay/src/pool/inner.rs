@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::{Relay, RelayNotification};
 use nula_core::RelayUrl;
 use tokio::sync::{RwLock, broadcast};
 use tokio::task::{AbortHandle, JoinHandle};
@@ -19,6 +18,7 @@ use crate::pool::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use crate::pool::notification::PoolNotification;
 use crate::pool::options::RelayPoolOptions;
 use crate::pool::state::SharedState;
+use crate::{Relay, RelayNotification};
 
 /// Per-relay record kept inside the pool.
 ///

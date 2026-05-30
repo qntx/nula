@@ -65,14 +65,13 @@
 // instrumentation in the persistent backends; no span call site
 // exists yet. Bind it `as _` so the workspace
 // `unused_crate_dependencies` lint stays quiet when the feature is on.
-#[cfg(feature = "tracing")]
-use tracing as _;
-
 // `tempfile` is a dev-dependency consumed only by the `lmdb` /
 // `sqlite` persistence integration tests; hedge it so the lib's
 // test build stays quiet under `unused_crate_dependencies`.
 #[cfg(test)]
 use tempfile as _;
+#[cfg(feature = "tracing")]
+use tracing as _;
 
 pub mod database;
 pub mod error;

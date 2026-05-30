@@ -7,8 +7,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use crate::memory::MemoryDatabase;
-use crate::{Backend, DatabaseEventStatus, Events, Features, NostrDatabase, SaveEventStatus};
 use nula_core::boxed::BoxFuture;
 use nula_core::event::{Event, EventId};
 use nula_core::filter::Filter;
@@ -16,8 +14,10 @@ use nula_core::types::Timestamp;
 use rusqlite::{Connection, params};
 use tokio::task;
 
+use crate::memory::MemoryDatabase;
 use crate::sqlite::codec;
 use crate::sqlite::error::Error;
+use crate::{Backend, DatabaseEventStatus, Events, Features, NostrDatabase, SaveEventStatus};
 
 /// `SQLite`-backed [`NostrDatabase`].
 ///

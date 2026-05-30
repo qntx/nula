@@ -1,14 +1,22 @@
 # nula-relay
 
-Single-relay [NIP-01] state machine: connection lifecycle,
-reconnect backoff, REQ/CLOSE subscription tracking, EVENT/EOSE/CLOSED
-dispatch, publish ACK correlation, and an optional NIP-42 AUTH
-challenge handler.
+The Nostr relay layer of the [`nula`] workspace: a runtime-agnostic
+WebSocket transport, a single-relay [NIP-01] client, a multi-relay
+pool, and an in-process relay server — all in one crate, gated by
+features.
 
-`nula-relay` sits at Layer 3 of the [`nula`] workspace. It wraps a
-`nula_net::WebSocketTransport` with the protocol state machine —
-multi-relay orchestration lives one layer higher in
-`nula-relay-pool`.
+| Module                  | Feature             | Purpose                                              |
+| ----------------------- | ------------------- | ---------------------------------------------------- |
+| `nula_relay::transport` | _always_            | `WebSocketTransport` trait + default / mock impls    |
+| `nula_relay` (root)     | _always_            | Single-relay NIP-01 client state machine             |
+| `nula_relay::pool`      | `pool` (default)    | Multi-relay orchestration with cross-relay dedup     |
+| `nula_relay::server`    | `server`            | In-process programmable relay server (tests / dev)   |
+
+The single-relay client wraps a
+`nula_relay::transport::WebSocketTransport` with the protocol state
+machine — connection lifecycle, reconnect backoff, REQ/CLOSE
+subscription tracking, EVENT/EOSE/CLOSED dispatch, publish ACK
+correlation, and an optional NIP-42 AUTH challenge handler.
 
 ## Quickstart
 
@@ -38,8 +46,11 @@ while let Some(item) = handle.next().await {
 
 | Feature             | Default | Description                                                                     |
 | ------------------- | :-----: | ------------------------------------------------------------------------------- |
-| `default-transport` |   ✅    | Pull in `nula-net/default-transport` so `Relay::new(url)` works out of the box. |
+| `default-transport` |   ✅    | Ship the tokio-tungstenite transport so `Relay::new(url)` works out of the box. |
 | `nip42`             |   ✅    | Expose the `AuthHandler` trait + `Relay::on_auth(...)` hook.                    |
+| `pool`              |   ✅    | The `nula_relay::pool` module: multi-relay orchestration.                       |
+| `mock`              |   ❌    | The `nula_relay::transport::mock` transport for upper-layer tests.              |
+| `server`            |   ❌    | The `nula_relay::server` module: in-process relay server.                       |
 | `tracing`           |   ❌    | Emit `tracing` spans on every state transition / dispatch decision.             |
 
 Disable defaults to plug in a custom transport:

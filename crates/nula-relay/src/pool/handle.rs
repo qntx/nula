@@ -8,10 +8,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::transport::WebSocketTransport;
-use crate::{
-    PublishOptions, Relay, RelayBuilder, RelayOptions, SubscribeOptions, SubscriptionHandle,
-};
 use futures::stream::{FuturesUnordered, StreamExt};
 use nula_core::message::ClientMessage;
 use nula_core::{Event, EventId, Filter, RelayUrl, SubscriptionId};
@@ -25,6 +21,10 @@ use crate::pool::notification::PoolNotification;
 use crate::pool::options::RelayPoolOptions;
 use crate::pool::output::Output;
 use crate::pool::state::SharedState;
+use crate::transport::WebSocketTransport;
+use crate::{
+    PublishOptions, Relay, RelayBuilder, RelayOptions, SubscribeOptions, SubscriptionHandle,
+};
 
 /// Multi-relay coordinator.
 ///

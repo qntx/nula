@@ -25,7 +25,6 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
-use crate::transport::{WebSocketStream, WebSocketTransport};
 use futures::stream::StreamExt;
 use nula_core::{Filter, RelayUrl, SubscriptionId};
 use tokio::sync::mpsc;
@@ -40,6 +39,7 @@ use crate::notification::RelayNotification;
 use crate::options::{PublishOptions, RelayOptions, SubscribeOptions};
 use crate::stats::RelayStats;
 use crate::status::{AtomicRelayStatus, RelayStatus};
+use crate::transport::{WebSocketStream, WebSocketTransport};
 
 /// Channels the public [`crate::Relay`] handle keeps after spawn.
 ///

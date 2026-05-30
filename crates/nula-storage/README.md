@@ -1,18 +1,25 @@
 # nula-storage
 
-Layer-3 event-store trait surface for the `nula` workspace.
+Nostr event-store trait surface plus first-party backends for the
+`nula` workspace.
 
 `nula-storage` defines [`NostrDatabase`] — a runtime-agnostic, dyn-safe
 trait that any Nostr event store must implement — plus the protocol
 semantics shared by every backend (NIP-09 deletion, NIP-40 expiration,
 replaceable / addressable / ephemeral kind routing, NIP-62 vanish).
 
-Two first-party backends live in sibling crates:
+Backends ship as feature-gated modules, so a default build is
+pure-Rust with zero C dependencies:
 
-| Crate                 | Storage                | Use case                       |
-| --------------------- | ---------------------- | ------------------------------ |
-| `nula-storage-memory` | `BTreeSet` + indexes   | Tests, ephemeral pools         |
-| `nula-storage-lmdb`   | LMDB (`heed`)          | Persistent client / relay      |
+| Feature      | Module                  | Storage                | Use case                  |
+| ------------ | ----------------------- | ---------------------- | ------------------------- |
+| `memory`     | `nula_storage::memory`  | `BTreeMap` + indexes   | Tests, ephemeral pools    |
+| `lmdb`       | `nula_storage::lmdb`    | LMDB (`heed`)          | Persistent client / relay |
+| `sqlite`     | `nula_storage::sqlite`  | `SQLite` log + replica | Durable, portable store   |
+| `test-suite` | `nula_storage::test_suite` | conformance harness | Backend authors           |
+
+`memory` is on by default; the persistent backends and the
+conformance suite are opt-in.
 
 ## Status
 

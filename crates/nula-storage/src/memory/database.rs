@@ -8,9 +8,6 @@
 
 use std::sync::{Arc, RwLock};
 
-use crate::{
-    Backend, DatabaseEventStatus, Error, Events, Features, NostrDatabase, SaveEventStatus,
-};
 use nula_core::boxed::BoxFuture;
 use nula_core::event::{Event, EventId};
 use nula_core::filter::Filter;
@@ -18,6 +15,9 @@ use nula_core::types::Timestamp;
 
 use crate::memory::options::MemoryDatabaseOptions;
 use crate::memory::store::MemoryStore;
+use crate::{
+    Backend, DatabaseEventStatus, Error, Events, Features, NostrDatabase, SaveEventStatus,
+};
 
 /// In-memory [`NostrDatabase`] backed by `BTreeMap` + `HashMap`
 /// indexes.

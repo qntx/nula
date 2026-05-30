@@ -10,13 +10,13 @@
 
 use std::thread::{self, JoinHandle};
 
-use crate::SaveEventStatus;
 use flume::{Receiver, Sender};
 use nula_core::event::Event;
 use nula_core::filter::Filter;
 use nula_core::types::Timestamp;
 use tokio::sync::oneshot;
 
+use crate::SaveEventStatus;
 use crate::lmdb::error::Error;
 use crate::lmdb::store::Store;
 

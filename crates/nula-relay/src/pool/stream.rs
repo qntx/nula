@@ -10,7 +10,6 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::{SubscriptionHandle, SubscriptionItem};
 use futures::StreamExt;
 use futures::stream::SelectAll;
 use lru::LruCache;
@@ -20,6 +19,8 @@ use nula_storage::NostrDatabase;
 use tokio::sync::mpsc;
 use tokio::time::Instant;
 use tokio_stream::wrappers::ReceiverStream;
+
+use crate::{SubscriptionHandle, SubscriptionItem};
 
 /// Outbound channel capacity for [`crate::pool::RelayPool::stream_events`].
 ///

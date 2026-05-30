@@ -3,6 +3,7 @@
 
 use futures::stream::StreamExt;
 use nula_core::RelayUrl;
+use nula_core::boxed::BoxFuture;
 use tokio_tungstenite::connect_async_with_config;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
@@ -11,7 +12,6 @@ use crate::transport::default::sink::TransportSink;
 use crate::transport::error::Error;
 use crate::transport::mode::ConnectionMode;
 use crate::transport::ws::{WebSocketSink, WebSocketStream, WebSocketTransport};
-use nula_core::boxed::BoxFuture;
 
 /// Builder for [`DefaultTransport`].
 ///
