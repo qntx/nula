@@ -82,6 +82,14 @@ pub enum Error {
         url: nula_core::types::RelayUrl,
     },
 
+    /// A per-relay connect attempt exceeded the supplied timeout
+    /// before the WebSocket handshake completed.
+    #[error("connect to relay timed out: {url}")]
+    ConnectTimeout {
+        /// The url whose connect attempt timed out.
+        url: nula_core::types::RelayUrl,
+    },
+
     /// The remote peer returned a `NEG-ERR` frame mid-session.
     /// Inspect [`nula_core::message::MachineReadablePrefix`] on
     /// `reason` to recover the structured class.

@@ -657,6 +657,35 @@ async fn connect_relay_and_disconnect_relay_target_a_single_endpoint() {
 }
 
 #[tokio::test]
+async fn try_connect_relay_times_out_with_connect_timeout_error() {
+    // RFC 5737 TEST-NET-1: guaranteed non-routable, so the TCP
+    // connect hangs and the per-attempt timeout fires (rather than
+    // a fast connection-refused, which would map to Error::Relay).
+    let url = nula_core::RelayUrl::parse("ws://192.0.2.1:9/").expect("url");
+
+    let client = Client::builder()
+        .signer(deterministic_keys())
+        .build()
+        .expect("default features build");
+    client.add_relay(url.clone()).await.expect("add relay");
+
+    let err = client
+        .try_connect_relay(&url, Duration::from_millis(150))
+        .await
+        .expect_err("unreachable relay must time out");
+    assert!(
+        matches!(&err, nula_sdk::Error::ConnectTimeout { url: u } if *u == url),
+        "expected ConnectTimeout, got {err:?}",
+    );
+
+    // Intentionally drop instead of `shutdown().await`: shutdown
+    // drains driver tasks, and the unreachable relay's in-flight TCP
+    // connect would block the drain for the OS connect timeout
+    // (~30s). The runtime drop at test end aborts the task.
+    drop(client);
+}
+
+#[tokio::test]
 async fn nip17_round_trip_alice_to_bob_via_mock_relay() {
     use std::sync::Arc;
 

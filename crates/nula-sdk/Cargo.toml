@@ -39,7 +39,11 @@ memory-fallback   = ["dep:nula-storage-memory"]
 tracing = ["dep:tracing"]
 
 [dependencies]
-nula-core            = { workspace = true }
+# `nip17` transitively enables `nip44` + `nip59`; the
+# `nips::nip17` / `nips::nip65` facades reference these wire-level
+# helpers unconditionally, so the dependency must be explicit
+# rather than relying on workspace-wide feature unification.
+nula-core            = { workspace = true, features = ["nip17"] }
 nula-net             = { workspace = true }
 nula-relay           = { workspace = true }
 nula-relay-pool      = { workspace = true }

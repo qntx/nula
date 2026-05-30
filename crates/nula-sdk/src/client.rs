@@ -796,7 +796,7 @@ impl Client {
         self.check_admit_connection(url).await?;
         tokio::time::timeout(timeout, relay.connect())
             .await
-            .map_err(|_| Error::SyncStreamClosed)
+            .map_err(|_| Error::ConnectTimeout { url: url.clone() })
             .and_then(|res| res.map_err(Error::Relay))?;
         Ok(())
     }
