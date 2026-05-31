@@ -19,8 +19,6 @@
 //! Removing a constant from this module is a breaking change. Adding
 //! new constants is additive. Renaming requires a deprecation cycle.
 
-// ── Identity primitives (NIP-01 / BIP-340) ───────────────────────
-
 /// Length, in bytes, of the SHA-256 event id mandated by NIP-01.
 pub use crate::event::id::EVENT_ID_SIZE as EVENT_ID_BYTES;
 /// Length, in bytes, of a serialised BIP-340 Schnorr signature.
@@ -29,16 +27,12 @@ pub use crate::key::keys::SIGNATURE_SIZE as SIGNATURE_BYTES;
 pub use crate::key::public_key::PUBLIC_KEY_SIZE as PUBLIC_KEY_BYTES;
 /// Length, in bytes, of a BIP-340 secret key.
 pub use crate::key::secret_key::SECRET_KEY_SIZE as SECRET_KEY_BYTES;
-// ── Wire-protocol caps (NIP-01) ──────────────────────────────────
 /// Maximum length of a [`crate::message::SubscriptionId`], measured
 /// in Unicode scalar values.
 pub use crate::message::subscription_id::MAX_LENGTH as SUBSCRIPTION_ID_MAX_CHARS;
-// ── NIP-19 bech32 entities ────────────────────────────────────────
 /// Maximum length, in characters, of a NIP-19 bech32 string the
 /// decoder will accept before rejecting the input outright.
 pub use crate::nips::nip19::MAX_NIP19_LENGTH as NIP19_MAX_LENGTH;
-
-// ── NIP-44 v2 encrypted payloads ─────────────────────────────────
 
 /// Smallest plaintext length the NIP-44 v2 encryptor accepts.
 ///
@@ -55,8 +49,6 @@ pub const NIP44_MAX_PLAINTEXT_BYTES: usize = 65_535;
 ///
 /// Spec: <https://github.com/nostr-protocol/nips/blob/master/44.md#decoding>.
 pub const NIP44_MAX_PAYLOAD_BYTES: usize = 65_603;
-
-// ── NIP-49 password-encrypted secret keys ─────────────────────────
 
 /// Largest `log_n` (scrypt cost factor) the encoder will accept.
 ///

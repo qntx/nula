@@ -70,9 +70,6 @@ pub enum Nip96Error {
     Tag(#[from] TagError),
 }
 
-// =============================================================================
-// File-server preference list (kind 10096)
-// =============================================================================
 
 /// Typed bundle for the `kind: 10096` user file-server preference
 /// list.
@@ -133,9 +130,6 @@ impl FileServerList {
     }
 }
 
-// =============================================================================
-// /.well-known/nostr/nip96.json server config
-// =============================================================================
 
 /// Typed parse of `/.well-known/nostr/nip96.json`.
 ///
@@ -207,9 +201,6 @@ const fn default_true() -> bool {
     true
 }
 
-// =============================================================================
-// Upload response JSON
-// =============================================================================
 
 /// Typed status column of a [`Nip96UploadResponse`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -277,9 +268,6 @@ pub struct EmbeddedNip94Event {
     pub content: String,
 }
 
-// =============================================================================
-// Upload form-field helpers
-// =============================================================================
 
 /// Typed view of the optional NIP-96 multipart upload form fields.
 ///
@@ -343,9 +331,6 @@ impl Nip96UploadFields {
     }
 }
 
-// =============================================================================
-// EventBuilder integration
-// =============================================================================
 
 impl EventBuilder {
     /// Author a NIP-96 `kind: 10096` user file-server list event

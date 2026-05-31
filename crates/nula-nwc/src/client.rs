@@ -81,9 +81,6 @@ impl NostrWalletConnect {
         self.inner.notifications.subscribe()
     }
 
-    // ----------------------------------------------------------------
-    // Typed methods
-    // ----------------------------------------------------------------
 
     /// `pay_invoice` — settle a BOLT-11 invoice.
     ///
@@ -204,9 +201,6 @@ impl NostrWalletConnect {
         self.inner.dispatcher.abort();
     }
 
-    // ----------------------------------------------------------------
-    // Internal: request/response plumbing
-    // ----------------------------------------------------------------
 
     /// Serialize `params`, dispatch the request, and deserialize a
     /// success result into `R`, mapping an `error` envelope to

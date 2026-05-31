@@ -432,9 +432,6 @@ pub enum LiveError {
     InvalidCoordinate(#[from] CoordinateError),
 }
 
-// -----------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------
 
 fn parse_u64(tag: &str, value: &str) -> Result<u64, LiveError> {
     value.parse::<u64>().map_err(|_| LiveError::InvalidNumber {
@@ -490,9 +487,6 @@ fn d_value(tags: &Tags) -> Option<&str> {
     tags.find_first(&head).and_then(|tag| tag.get(1))
 }
 
-// -----------------------------------------------------------------
-// Parsing: LiveStream (30311)
-// -----------------------------------------------------------------
 
 impl LiveStream {
     /// Construct a stream with the identifier seeded.
@@ -617,9 +611,6 @@ fn absorb_relay_list(tag: &Tag, relays: &mut Vec<RelayUrl>) -> Result<(), LiveEr
     Ok(())
 }
 
-// -----------------------------------------------------------------
-// Parsing: MeetingSpace (30312)
-// -----------------------------------------------------------------
 
 impl MeetingSpace {
     /// Construct a space with the identifier seeded.
@@ -688,9 +679,6 @@ fn absorb_meeting_space_named_tag(tag: &Tag, out: &mut MeetingSpace) -> Result<(
     Ok(())
 }
 
-// -----------------------------------------------------------------
-// Parsing: MeetingRoom (30313)
-// -----------------------------------------------------------------
 
 impl MeetingRoom {
     /// Construct a room with the identifier seeded.
@@ -773,9 +761,6 @@ fn absorb_meeting_room_named_tag(tag: &Tag, out: &mut MeetingRoom) -> Result<(),
     Ok(())
 }
 
-// -----------------------------------------------------------------
-// Parsing: LiveChatMessage (1311)
-// -----------------------------------------------------------------
 
 impl LiveChatMessage {
     /// Construct a chat message targeted at `host`.
@@ -855,9 +840,6 @@ fn parse_quote_tag(tag: &Tag) -> Result<(EventId, Option<RelayUrl>, Option<Publi
     Ok((id, relay_hint, pk))
 }
 
-// -----------------------------------------------------------------
-// Parsing: RoomPresence (10312)
-// -----------------------------------------------------------------
 
 impl RoomPresence {
     /// Construct a presence row targeted at `room`.
@@ -915,9 +897,6 @@ impl RoomPresence {
     }
 }
 
-// -----------------------------------------------------------------
-// EventBuilder helpers
-// -----------------------------------------------------------------
 
 impl EventBuilder {
     /// Author a NIP-53 `kind: 30311` live streaming event.

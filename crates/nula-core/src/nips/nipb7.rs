@@ -56,9 +56,6 @@ pub enum NipB7Error {
     Tag(#[from] TagError),
 }
 
-// =============================================================================
-// Blossom user-server list (kind 10063)
-// =============================================================================
 
 /// Typed bundle for the `kind: 10063` Blossom user-server list.
 ///
@@ -120,9 +117,6 @@ impl BlossomServerList {
     }
 }
 
-// =============================================================================
-// Blossom blob reference (`<64-hex>[.<ext>]`)
-// =============================================================================
 
 /// Parsed Blossom blob locator: a 32-byte SHA-256 digest plus an
 /// optional file-extension hint preserved verbatim from the source
@@ -194,9 +188,6 @@ impl BlossomBlobRef {
     }
 }
 
-// =============================================================================
-// EventBuilder integration
-// =============================================================================
 
 impl EventBuilder {
     /// Author a NIP-B7 / BUD-03 `kind: 10063` user-server list event

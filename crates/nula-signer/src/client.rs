@@ -253,9 +253,6 @@ impl NostrConnect {
             .ok();
     }
 
-    // ----------------------------------------------------------------
-    // Internal: dispatch helpers
-    // ----------------------------------------------------------------
 
     async fn send_get_public_key(&self) -> Result<PublicKey, Error> {
         match self.dispatch(Request::GetPublicKey).await? {

@@ -65,9 +65,6 @@ use crate::event::{
 use crate::key::{PublicKey, PublicKeyError};
 use crate::types::{RelayUrl, RelayUrlError};
 
-// =============================================================================
-// Kind constants
-// =============================================================================
 
 /// `kind: 30617` — repository announcement.
 pub const KIND_REPO: Kind = Kind::GIT_REPOSITORY;
@@ -118,9 +115,6 @@ mod tag_names {
     pub(super) const REFS_PREFIX: &str = "refs/";
 }
 
-// =============================================================================
-// Errors
-// =============================================================================
 
 /// Errors raised by the NIP-34 typed bundles.
 #[derive(Debug, Error)]
@@ -167,9 +161,6 @@ pub enum Nip34Error {
     Tag(#[from] TagError),
 }
 
-// =============================================================================
-// Shared helpers
-// =============================================================================
 
 fn second(values: &[String]) -> Option<&str> {
     values.get(1).map(String::as_str)
@@ -212,9 +203,6 @@ fn a_tag(coordinate: &Coordinate) -> Tag {
     )
 }
 
-// =============================================================================
-// Repository announcement (kind 30617)
-// =============================================================================
 
 /// Typed bundle for the `kind: 30617` repository announcement.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -390,9 +378,6 @@ impl Repository {
     }
 }
 
-// =============================================================================
-// Repository state (kind 30618)
-// =============================================================================
 
 /// One `refs/<heads|tags>/<name>` row on a [`RepositoryState`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -496,9 +481,6 @@ impl RepositoryState {
     }
 }
 
-// =============================================================================
-// Patch (kind 1617)
-// =============================================================================
 
 /// Typed bundle for the `kind: 1617` patch event.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -692,9 +674,6 @@ impl Patch {
     }
 }
 
-// =============================================================================
-// Pull request (kind 1618)
-// =============================================================================
 
 /// Typed bundle for the `kind: 1618` pull request event.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -880,9 +859,6 @@ impl PullRequest {
     }
 }
 
-// =============================================================================
-// Pull request update (kind 1619)
-// =============================================================================
 
 /// Typed bundle for the `kind: 1619` pull request update.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1054,9 +1030,6 @@ impl PullRequestUpdate {
     }
 }
 
-// =============================================================================
-// Issue (kind 1621)
-// =============================================================================
 
 /// Typed bundle for the `kind: 1621` issue event.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1161,9 +1134,6 @@ impl Issue {
     }
 }
 
-// =============================================================================
-// Status (kinds 1630-1633)
-// =============================================================================
 
 /// Typed status discriminator covering kinds `1630..=1633`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1353,9 +1323,6 @@ impl StatusEvent {
     }
 }
 
-// =============================================================================
-// Grasp server list (kind 10317)
-// =============================================================================
 
 /// Typed bundle for the `kind: 10317` user grasp-server list.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -1415,9 +1382,6 @@ impl GraspServerList {
     }
 }
 
-// =============================================================================
-// EventBuilder integration
-// =============================================================================
 
 impl EventBuilder {
     /// Author a NIP-34 repository announcement (`kind: 30617`).

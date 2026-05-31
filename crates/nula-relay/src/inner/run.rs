@@ -244,8 +244,6 @@ async fn handle_command(
     }
 }
 
-// ─── Connection lifecycle ─────────────────────────────────────────
-
 async fn handle_connect(
     ctx: &StaticCtx,
     state: &mut ActorState,
@@ -366,8 +364,6 @@ async fn reissue_subscriptions(state: &mut ActorState) {
     }
 }
 
-// ─── Subscriptions ────────────────────────────────────────────────
-
 #[allow(
     clippy::too_many_arguments,
     reason = "command fan-out keeps the actor body flat and readable"
@@ -472,8 +468,6 @@ async fn handle_drop_subscription(state: &mut ActorState, id: SubscriptionId) {
     }
 }
 
-// ─── Publish ──────────────────────────────────────────────────────
-
 async fn handle_publish(
     ctx: &StaticCtx,
     state: &mut ActorState,
@@ -540,8 +534,6 @@ async fn handle_send_msg(
     drop(reply.send(result));
 }
 
-// ─── Pending publishes ────────────────────────────────────────────
-
 fn expire_pending_publishes(state: &mut ActorState) {
     let now = Instant::now();
     let timed_out: Vec<nula_core::EventId> = state
@@ -559,8 +551,6 @@ fn expire_pending_publishes(state: &mut ActorState) {
         }
     }
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────
 
 impl ActorState {
     fn is_connected(&self) -> bool {

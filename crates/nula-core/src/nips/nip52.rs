@@ -501,9 +501,6 @@ pub enum CalendarError {
     InvalidRelayUrl(#[from] RelayUrlError),
 }
 
-// -----------------------------------------------------------------
-// Parsing / building: date-based events
-// -----------------------------------------------------------------
 
 impl DateCalendarEvent {
     /// Construct a date-based calendar event with the spec-required
@@ -554,9 +551,6 @@ impl DateCalendarEvent {
     }
 }
 
-// -----------------------------------------------------------------
-// Parsing / building: time-based events
-// -----------------------------------------------------------------
 
 impl TimeCalendarEvent {
     /// Construct a time-based calendar event with the spec-required
@@ -627,9 +621,6 @@ impl TimeCalendarEvent {
     }
 }
 
-// -----------------------------------------------------------------
-// Parsing / building: calendars
-// -----------------------------------------------------------------
 
 impl Calendar {
     /// Construct a calendar with the spec-required columns.
@@ -700,9 +691,6 @@ impl Calendar {
     }
 }
 
-// -----------------------------------------------------------------
-// Parsing / building: RSVP
-// -----------------------------------------------------------------
 
 impl Rsvp {
     /// Construct an RSVP with the spec-required columns.
@@ -836,9 +824,6 @@ impl Rsvp {
     }
 }
 
-// -----------------------------------------------------------------
-// Shared parsing helpers
-// -----------------------------------------------------------------
 
 #[derive(Default)]
 struct CommonParseState {
@@ -1018,9 +1003,6 @@ fn d_value(tags: &Tags) -> Option<&str> {
     tags.find_first(&head).and_then(|tag| tag.get(1))
 }
 
-// -----------------------------------------------------------------
-// EventBuilder
-// -----------------------------------------------------------------
 
 fn apply_common(common: &CalendarEventCommon, mut builder: EventBuilder) -> EventBuilder {
     if let Some(summary) = &common.summary {
