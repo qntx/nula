@@ -19,7 +19,8 @@ use crate::error::Error;
 use crate::inner::Inner;
 use crate::methods::{
     GetBalanceResponse, GetInfoResponse, ListTransactionsRequest, ListTransactionsResponse,
-    LookupInvoiceRequest, MakeInvoiceRequest, PayInvoiceRequest, PayInvoiceResponse, Transaction,
+    LookupInvoiceRequest, MakeInvoiceRequest, PayInvoiceRequest, PayInvoiceResponse,
+    PayKeysendRequest, Transaction,
 };
 use crate::options::NwcOptions;
 use crate::pending::PendingMap;
@@ -95,6 +96,18 @@ impl NostrWalletConnect {
         request: PayInvoiceRequest,
     ) -> Result<PayInvoiceResponse, Error> {
         self.call("pay_invoice", request).await
+    }
+
+    /// `pay_keysend` — pay a node directly by public key (no invoice).
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::pay_invoice`].
+    pub async fn pay_keysend(
+        &self,
+        request: PayKeysendRequest,
+    ) -> Result<PayInvoiceResponse, Error> {
+        self.call("pay_keysend", request).await
     }
 
     /// `get_balance` — read the wallet balance (msat).

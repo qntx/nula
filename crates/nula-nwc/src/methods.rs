@@ -57,6 +57,68 @@ pub struct PayInvoiceResponse {
     pub fees_paid: Option<u64>,
 }
 
+/// `pay_keysend` params.
+///
+/// Keysend pays a node directly by public key (no invoice). The result
+/// reuses [`PayInvoiceResponse`] (`preimage` + optional `fees_paid`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PayKeysendRequest {
+    /// Optional client-chosen id the wallet echoes back.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub id: Option<String>,
+    /// Amount in msat.
+    pub amount: u64,
+    /// Receiver's node public key (hex).
+    pub pubkey: String,
+    /// Optional payment preimage (hex).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub preimage: Option<String>,
+    /// Optional TLV records attached to the keysend payment.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tlv_records: Vec<KeysendTlvRecord>,
+}
+
+impl PayKeysendRequest {
+    /// Keysend `amount` msat to node `pubkey` (hex).
+    #[must_use]
+    pub fn new(pubkey: impl Into<String>, amount: u64) -> Self {
+        Self {
+            id: None,
+            amount,
+            pubkey: pubkey.into(),
+            preimage: None,
+            tlv_records: Vec::new(),
+        }
+    }
+
+    /// Set an explicit payment preimage (hex).
+    #[must_use]
+    pub fn preimage(mut self, preimage: impl Into<String>) -> Self {
+        self.preimage = Some(preimage.into());
+        self
+    }
+
+    /// Attach a TLV record (`type`, hex `value`) to the payment.
+    #[must_use]
+    pub fn tlv_record(mut self, tlv_type: u64, value: impl Into<String>) -> Self {
+        self.tlv_records.push(KeysendTlvRecord {
+            tlv_type,
+            value: value.into(),
+        });
+        self
+    }
+}
+
+/// A TLV record attached to a [`PayKeysendRequest`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KeysendTlvRecord {
+    /// TLV type.
+    #[serde(rename = "type")]
+    pub tlv_type: u64,
+    /// TLV value (hex).
+    pub value: String,
+}
+
 /// `get_balance` result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GetBalanceResponse {
@@ -231,6 +293,23 @@ mod tests {
             serde_json::to_string(&req)
                 .unwrap()
                 .contains(r#""amount":21000"#)
+        );
+    }
+
+    #[test]
+    fn pay_keysend_request_omits_empty_optionals() {
+        let req = PayKeysendRequest::new("02aabb", 1000);
+        let json = serde_json::to_string(&req).unwrap();
+        assert_eq!(json, r#"{"amount":1000,"pubkey":"02aabb"}"#);
+    }
+
+    #[test]
+    fn pay_keysend_request_serializes_tlv_records() {
+        let req = PayKeysendRequest::new("02aabb", 21_000).tlv_record(696_969, "deadbeef");
+        let json = serde_json::to_string(&req).unwrap();
+        assert_eq!(
+            json,
+            r#"{"amount":21000,"pubkey":"02aabb","tlv_records":[{"type":696969,"value":"deadbeef"}]}"#
         );
     }
 

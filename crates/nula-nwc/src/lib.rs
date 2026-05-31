@@ -89,8 +89,8 @@ pub use nula_core::nips::nip47::{
 pub use self::client::{NostrWalletConnect, NostrWalletConnectBuilder};
 pub use self::error::Error;
 pub use self::methods::{
-    GetBalanceResponse, GetInfoResponse, ListTransactionsRequest, ListTransactionsResponse,
-    LookupInvoiceRequest, MakeInvoiceRequest, PayInvoiceRequest, PayInvoiceResponse, Transaction,
-    TransactionType,
+    GetBalanceResponse, GetInfoResponse, KeysendTlvRecord, ListTransactionsRequest,
+    ListTransactionsResponse, LookupInvoiceRequest, MakeInvoiceRequest, PayInvoiceRequest,
+    PayInvoiceResponse, PayKeysendRequest, Transaction, TransactionType,
 };
 pub use self::options::NwcOptions;

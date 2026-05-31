@@ -85,6 +85,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (which deliberately stays insertion-ordered on the wire and therefore
   implements neither `Hash` nor `Ord`), for deduplicating subscriptions
   or keying a cache.
+- **Lazy single-letter `Tags` index** (`nula_core`): `Tags` builds and
+  caches a `TagsIndexes` (`BTreeMap<SingleLetterTag, BTreeSet<String>>`)
+  on first `Tags::indexes()` call, mirroring rust-nostr.
+  `Filter::match_event` now matches `#<letter>` constraints through the
+  index, so checking one event against many filters costs a single index
+  build instead of a full tag scan per filter. The cache is invalidated
+  by every mutator and excluded from equality, hashing, `Debug` and
+  serialization (the wire form stays byte-identical, preserving event
+  IDs); it is boxed behind a `OnceLock` to keep `Event`'s footprint
+  minimal while staying `Send + Sync`. Adds a `Tag::single_letter_tag()`
+  accessor.
 
 - **Phase 8 — `nula-cli` private messages + relay lists.** The
   `nula` binary gains two subcommand groups wrapping the Phase
