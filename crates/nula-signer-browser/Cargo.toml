@@ -1,0 +1,96 @@
+[package]
+name = "nula-signer-browser"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/qntx/nula"
+homepage = "https://github.com/qntx/nula"
+authors = ["QNTX <https://qntx.fun>"]
+keywords = ["nostr", "nip07", "wasm", "signer", "browser"]
+categories = ["cryptography", "wasm", "web-programming"]
+description = "NIP-07 `window.nostr` browser-extension signer implementing `nula_core::NostrSigner` (wasm32 only)."
+readme = "README.md"
+
+[package.metadata.docs.rs]
+default-target = "wasm32-unknown-unknown"
+rustdoc-args = ["--cfg", "docsrs"]
+
+# Detached from the parent workspace: the wasm32 build needs a
+# `getrandom_backend="wasm_js"` cfg (see `.cargo/config.toml`) and a
+# wasm-capable C compiler (CC/AR) for `secp256k1-sys`, neither of which
+# the stable native workspace tolerates. Mirrors the `nula-fuzz` split.
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+nula-core = { path = "../nula-core", default-features = false, features = ["nip04", "nip44"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+serde_json = "1"
+thiserror = "2.0.18"
+
+# Browser entropy backend. Two getrandom majors are in the tree — 0.4
+# directly via `nula-core`, 0.3 transitively via `secp256k1`'s `rand`
+# feature — so both need the `wasm_js` backend feature enabled. The
+# matching `--cfg getrandom_backend="wasm_js"` lives in `.cargo/config.toml`.
+# Declared target-gated so they never reach a non-wasm build.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3", features = ["wasm_js"] }
+getrandom_v04 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[lints.rust]
+unsafe_code = "deny"
+elided_lifetimes_in_paths = "warn"
+single_use_lifetimes = "warn"
+unused_lifetimes = "warn"
+missing_copy_implementations = "warn"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+variant_size_differences = "warn"
+unused_qualifications = "warn"
+unused_imports = "warn"
+unused_macro_rules = "warn"
+unused_must_use = "deny"
+unreachable_pub = "warn"
+unused_crate_dependencies = "warn"
+non_ascii_idents = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
+rust_2024_compatibility = { level = "warn", priority = -1 }
+
+[lints.rustdoc]
+all = { level = "warn", priority = -1 }
+broken_intra_doc_links = "warn"
+bare_urls = "warn"
+unescaped_backticks = "warn"
+
+[lints.clippy]
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+restriction = { level = "allow", priority = -1 }
+
+dbg_macro = "warn"
+print_stderr = "warn"
+print_stdout = "warn"
+todo = "warn"
+unimplemented = "warn"
+panic = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+indexing_slicing = "warn"
+undocumented_unsafe_blocks = "warn"
+error_impl_error = "warn"

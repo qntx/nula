@@ -1,10 +1,13 @@
 [workspace]
 members = ["crates/*"]
-# `nula-fuzz` is detached from the parent workspace because
-# `cargo-fuzz` injects nightly-only `RUSTFLAGS` (sanitizer +
-# coverage instrumentation) the rest of the workspace does not
-# tolerate on stable.
-exclude = ["crates/nula-fuzz"]
+# `nula-fuzz` is detached because `cargo-fuzz` injects nightly-only
+# `RUSTFLAGS` (sanitizer + coverage) the rest of the workspace does not
+# tolerate on stable. `nula-signer-browser` is detached because its
+# wasm32 build needs a `getrandom_backend="wasm_js"` cfg + a wasm-capable
+# C toolchain (CC/AR for secp256k1-sys); keeping it out of the parent
+# workspace stops the `wasm_js` backend feature from unifying into — and
+# breaking — every native build.
+exclude = ["crates/nula-fuzz", "crates/nula-signer-browser"]
 default-members = ["crates/nula-core"]
 resolver = "3"
 

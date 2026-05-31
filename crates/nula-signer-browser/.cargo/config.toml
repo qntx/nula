@@ -1,0 +1,12 @@
+# wasm32-unknown-unknown has no default entropy source; `getrandom`
+# (0.3 transitively via secp256k1's `rand`, 0.4 directly via nula-core)
+# requires the browser `wasm_js` backend, selected by BOTH the
+# `wasm_js` cargo feature (see Cargo.toml) and this cfg flag.
+#
+# The wasm-capable C compiler for `secp256k1-sys` is machine-specific
+# and therefore NOT set here; export it at build time, e.g.:
+#   CC_wasm32_unknown_unknown=$(brew --prefix llvm)/bin/clang \
+#   AR_wasm32_unknown_unknown=$(brew --prefix llvm)/bin/llvm-ar \
+#   cargo build --target wasm32-unknown-unknown
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']

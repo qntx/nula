@@ -140,19 +140,24 @@ jobs:
         if: matrix.features == 'all'
         run: cargo test --workspace --all-features --locked
 
-  # wasm32 smoke. nula-core must build for wasm; the upper layers
-  # currently do not. Until they do, only the protocol-core crate is
-  # exercised here, and the http-bound features are disabled because
-  # reqwest does not build on wasm32-unknown-unknown.
+  # wasm32. nula-core (protocol core, http-bound features off because
+  # reqwest does not build on wasm32) plus nula-signer-browser, the
+  # detached wasm32-only NIP-07 signer. The browser crate compiles
+  # secp256k1's C to wasm, so it needs a wasm-capable clang + llvm-ar;
+  # CFLAGS relaxes a `memmove` implicit declaration recent clang errors
+  # on (the symbol comes from LLVM builtins at link time), and the
+  # getrandom `wasm_js` backend cfg is passed via RUSTFLAGS — which here
+  # also replaces the global `-D warnings`, restored via clippy's `--`.
   wasm:
-    name: wasm32 (nula-core)
+    name: wasm32
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: wasm-stable
@@ -164,6 +169,21 @@ jobs:
             --features nip04,nip06,nip17,nip44,nip46,nip49,nip59 \
             --target wasm32-unknown-unknown \
             --locked
+      - name: Install wasm-capable C toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang llvm
+      - name: cargo clippy (wasm32, nula-signer-browser)
+        working-directory: crates/nula-signer-browser
+        env:
+          CC_wasm32_unknown_unknown: clang
+          AR_wasm32_unknown_unknown: llvm-ar
+          CFLAGS_wasm32_unknown_unknown: "-Wno-implicit-function-declaration"
+          RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
+        run: |
+          cargo clippy \
+            --target wasm32-unknown-unknown \
+            --all-targets \
+            --locked \
+            -- -D warnings
 
   # Supply-chain auditing. cargo-deny enforces deny.toml (licenses,
   # advisories, banned sources); cargo-vet checks audit rows in

@@ -37,6 +37,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`nula-signer-browser` — NIP-07 `window.nostr` browser signer (new
+  crate).** Implements `nula_core::NostrSigner` against a browser
+  extension (Alby, nos2x, …) for `getPublicKey`, `signEvent`, and the
+  NIP-04 / NIP-44 cipher namespaces — closing the WASM/browser-signer
+  reverse gap. Three deliberate improvements over upstream
+  `nostr-browser-signer`: (1) **no `unsafe`** — `window.nostr` is reached
+  through the safe `js_sys::Reflect` / `Function` / `JSON` surface instead
+  of a `#[wasm_bindgen] extern` block, so the crate keeps
+  `#![forbid(unsafe_code)]`; (2) **stateless ⇒ `Send + Sync` with no
+  `unsafe impl`** (the zero-sized signer re-reads `window.nostr` per call);
+  (3) **hardened `sign_event`** re-verifies the returned event
+  (`Event::verify`, id + signature) and rejects a `pubkey` mismatch. The
+  crate is detached from the workspace (wasm32-only; needs a
+  `getrandom_backend="wasm_js"` cfg + a wasm-capable C toolchain for
+  `secp256k1-sys`), compile- and clippy-verified on
+  `wasm32-unknown-unknown`.
 - **`nula-nwc` — NIP-47 Nostr Wallet Connect client (new crate).** Drives
   a remote Lightning wallet service over encrypted DMs on top of
   `nula_relay::pool::RelayPool`. A single dispatcher actor subscribes to
@@ -101,9 +117,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SignerFuture` and `boxed_signer_future` drop the `Send` bound on
   `wasm32` (mirroring `nula_core::boxed::BoxFuture`), since NIP-07
   browser signers return `!Send` `JsFuture`s. Non-wasm targets are
-  unchanged (`Send` retained). This unblocks an out-of-tree NIP-07
-  `window.nostr` signer crate without touching the trait's `Send + Sync`
-  bound (a stateless browser signer stays `Send + Sync`).
+  unchanged (`Send` retained). This powers `nula-signer-browser` without
+  touching the trait's `Send + Sync` bound (the stateless browser signer
+  stays `Send + Sync`).
 
 - **Phase 8 — `nula-cli` private messages + relay lists.** The
   `nula` binary gains two subcommand groups wrapping the Phase
