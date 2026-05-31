@@ -108,7 +108,7 @@ bytes = { version = "1.11.1", default-features = false, features = ["std"] }
 # ADR-0007 records the unsafe-code exemption for nula-storage-lmdb).
 # `postcard` is the canonical serde wire format for our on-disk events.
 # `flume` is the bounded MPSC channel feeding the single-writer ingester.
-heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
+heed = { version = "0.21", default-features = false, features = ["read-txn-no-tls"] }
 postcard = { version = "1.1", default-features = false, features = ["use-std"] }
 flume = { version = "0.11", default-features = false, features = ["async"] }
 tempfile = "3.16"
