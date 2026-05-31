@@ -151,17 +151,25 @@ pub(crate) fn spawn_forwarder(
     handle.abort_handle()
 }
 
+#[cfg_attr(
+    not(feature = "nip42"),
+    allow(
+        clippy::unnecessary_wraps,
+        reason = "the sole `None` arm (AuthChallenge) is gated behind the `nip42` feature; the Option return is shared across feature configs and required when nip42 is enabled"
+    )
+)]
 fn translate(url: RelayUrl, item: RelayNotification) -> Option<PoolNotification> {
     match item {
         RelayNotification::Status(status) => Some(PoolNotification::Status { url, status }),
         RelayNotification::Notice(message) => Some(PoolNotification::Notice { url, message }),
         RelayNotification::Shutdown => Some(PoolNotification::RelayRemoved { url }),
-        // AUTH challenges (when the `nip42` feature is on) and any
-        // future variants added behind `#[non_exhaustive]` are
-        // intentionally not surfaced at the pool level. NIP-42
-        // handling is per-relay and lives in the SDK layer; relays
-        // needing manual AUTH should be subscribed to directly via
-        // `nula_relay::Relay::notifications`.
-        _ => None,
+        // AUTH challenges are intentionally not surfaced at the pool
+        // level: NIP-42 handling is per-relay and lives in the SDK
+        // layer; relays needing manual AUTH should subscribe directly
+        // via `nula_relay::Relay::notifications`. Matched explicitly
+        // (not via `_`) so the arm set stays exhaustive in both feature
+        // configurations without an unreachable wildcard.
+        #[cfg(feature = "nip42")]
+        RelayNotification::AuthChallenge { .. } => None,
     }
 }

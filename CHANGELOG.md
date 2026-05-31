@@ -42,12 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `nula_relay::pool::RelayPool`. A single dispatcher actor subscribes to
   `kind:23195` responses / `kind:23197`/`23196` notifications, decrypts
   each body, and correlates responses to requests through the response's
-  `e` tag. Ships typed helpers (`pay_invoice`, `get_balance`, `get_info`,
-  `make_invoice`, `lookup_invoice`, `list_transactions`), a generic
-  `send_request`, a notification broadcast stream, `get_info_event`
-  capability discovery, and an embedded/external pool mode. Closes the
-  upstream `nwc` reverse gap. End-to-end tested against an in-process
-  mock wallet over `MockRelay`.
+  `e` tag. Ships typed helpers (`pay_invoice`, `pay_keysend`,
+  `get_balance`, `get_info`, `make_invoice`, `lookup_invoice`,
+  `list_transactions`), a generic `send_request`, a notification
+  broadcast stream, `get_info_event` capability discovery, and an
+  embedded/external pool mode. Now covers the full upstream `nwc` typed
+  method surface. End-to-end tested against an in-process mock wallet
+  over `MockRelay`.
 - **`nula-blossom` — Blossom blob-transport client (new crate).**
   Implements the BUD-01/02 HTTP surface (`upload`, `download`, `has`,
   `delete`, `list`) with NIP-24242 (`kind:24242`) authorization events
@@ -96,6 +97,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   IDs); it is boxed behind a `OnceLock` to keep `Event`'s footprint
   minimal while staying `Send + Sync`. Adds a `Tag::single_letter_tag()`
   accessor.
+- **`NostrSigner` is now `wasm32`-ready** (`nula_core::signer`):
+  `SignerFuture` and `boxed_signer_future` drop the `Send` bound on
+  `wasm32` (mirroring `nula_core::boxed::BoxFuture`), since NIP-07
+  browser signers return `!Send` `JsFuture`s. Non-wasm targets are
+  unchanged (`Send` retained). This unblocks an out-of-tree NIP-07
+  `window.nostr` signer crate without touching the trait's `Send + Sync`
+  bound (a stateless browser signer stays `Send + Sync`).
 
 - **Phase 8 — `nula-cli` private messages + relay lists.** The
   `nula` binary gains two subcommand groups wrapping the Phase
@@ -124,6 +132,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`nula-relay` pool `translate()` tripped `unreachable_pattern` /
+  `unnecessary_wraps` under partial feature sets** (e.g. when built as a
+  dependency with `nip42` off). The `RelayNotification` match now handles
+  `AuthChallenge` explicitly under `#[cfg(feature = "nip42")]` (instead of
+  a wildcard) and scopes an `unnecessary_wraps` allow to the
+  `nip42`-disabled config, so per-crate `clippy -D warnings` passes in
+  every feature combination.
 - **`nula-sdk` failed to compile without the `sync` feature.**
   `Client::try_connect_relay` mapped connect timeouts to the
   `sync`-gated `Error::SyncStreamClosed` variant, so any build

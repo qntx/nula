@@ -42,8 +42,20 @@ use crate::key::{Keys, PublicKey};
 
 /// A type-erased `Future` returned by [`NostrSigner`] methods.
 ///
+/// On every non-wasm target the future is `Send` so consumers can move
+/// signer calls across `tokio::spawn` boundaries. On `wasm32` the `Send`
+/// bound is dropped: NIP-07 browser signers return `!Send` `JsFuture`s
+/// (the same target split [`crate::boxed::BoxFuture`] makes).
+///
 /// Synchronous signers can wrap their work with [`std::future::ready`].
+#[cfg(not(target_arch = "wasm32"))]
 pub type SignerFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// A type-erased `Future` returned by [`NostrSigner`] methods. On
+/// `wasm32` the `Send` bound is dropped because NIP-07 browser signers
+/// return `!Send` `JsFuture`s.
+#[cfg(target_arch = "wasm32")]
+pub type SignerFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 /// Box and pin an `async` block as a [`SignerFuture`].
 ///
@@ -58,9 +70,23 @@ pub type SignerFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// instead of repeating `Box::pin(async move { ... })` at every call
 /// site. The function exists in `nula_core` so downstream crates do not
 /// have to depend on `futures-util` or rewrite the boilerplate.
+///
+/// The `Send` bound on `future` follows the same target split as
+/// [`SignerFuture`]: required off-wasm, dropped on `wasm32`.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn boxed_signer_future<'a, F, T>(future: F) -> SignerFuture<'a, T>
 where
     F: Future<Output = T> + Send + 'a,
+{
+    Box::pin(future)
+}
+
+/// Box and pin an `async` block as a [`SignerFuture`] (wasm32: no `Send`
+/// bound, since browser signer futures are `!Send`).
+#[cfg(target_arch = "wasm32")]
+pub fn boxed_signer_future<'a, F, T>(future: F) -> SignerFuture<'a, T>
+where
+    F: Future<Output = T> + 'a,
 {
     Box::pin(future)
 }
