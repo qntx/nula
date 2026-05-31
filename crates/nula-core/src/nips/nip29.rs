@@ -409,7 +409,6 @@ pub enum GroupError {
     InvalidEventId(#[from] EventIdError),
 }
 
-
 fn h_tag_value(event: &Event) -> Option<&str> {
     event
         .tags
@@ -476,7 +475,6 @@ fn metadata_apply_flags(builder: &mut EventBuilder, patch: &GroupMetadataPatch) 
     }
 }
 
-
 impl JoinRequest {
     /// Parse a `kind: 9021` join request.
     ///
@@ -541,7 +539,6 @@ impl LeaveRequest {
         })
     }
 }
-
 
 impl ModerationAction {
     /// Parse a `kind: 9000-9020` moderation event.
@@ -675,7 +672,6 @@ fn parse_metadata_patch(event: &Event) -> Result<GroupMetadataPatch, GroupError>
     }
     Ok(out)
 }
-
 
 impl GroupMetadata {
     /// Build the addressable coordinate for this metadata.
@@ -828,7 +824,6 @@ impl GroupRoles {
         })
     }
 }
-
 
 impl EventBuilder {
     /// Author a NIP-29 `kind: 9021` join request.

@@ -252,11 +252,10 @@ mod bip32 {
         chain_type: u32,
         index: u32,
     ) -> Result<[u8; 32], Nip06Error> {
-        // Step 1: master key from the seed.
         let (mut k, mut c) = master_key(seed);
 
-        // Step 2: walk the 5-level Nostr path. The first three levels
-        // are hardened per BIP-44; the last two are not.
+        // Walk the 5-level Nostr path. The first three levels are
+        // hardened per BIP-44; the last two are not.
         for &(idx, hardened) in &[
             (PURPOSE, true),
             (COIN_TYPE, true),

@@ -70,7 +70,6 @@ pub enum Nip96Error {
     Tag(#[from] TagError),
 }
 
-
 /// Typed bundle for the `kind: 10096` user file-server preference
 /// list.
 ///
@@ -129,7 +128,6 @@ impl FileServerList {
         Ok(Self { servers })
     }
 }
-
 
 /// Typed parse of `/.well-known/nostr/nip96.json`.
 ///
@@ -201,7 +199,6 @@ const fn default_true() -> bool {
     true
 }
 
-
 /// Typed status column of a [`Nip96UploadResponse`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -268,7 +265,6 @@ pub struct EmbeddedNip94Event {
     pub content: String,
 }
 
-
 /// Typed view of the optional NIP-96 multipart upload form fields.
 ///
 /// The `file` field is the actual upload payload and lives at the
@@ -330,7 +326,6 @@ impl Nip96UploadFields {
         out
     }
 }
-
 
 impl EventBuilder {
     /// Author a NIP-96 `kind: 10096` user file-server list event

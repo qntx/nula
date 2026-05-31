@@ -56,7 +56,6 @@ pub enum NipB7Error {
     Tag(#[from] TagError),
 }
 
-
 /// Typed bundle for the `kind: 10063` Blossom user-server list.
 ///
 /// The list is intentionally ordered: clients SHOULD try the
@@ -116,7 +115,6 @@ impl BlossomServerList {
         Ok(Self { servers })
     }
 }
-
 
 /// Parsed Blossom blob locator: a 32-byte SHA-256 digest plus an
 /// optional file-extension hint preserved verbatim from the source
@@ -187,7 +185,6 @@ impl BlossomBlobRef {
         Ok(Url::parse(&raw)?)
     }
 }
-
 
 impl EventBuilder {
     /// Author a NIP-B7 / BUD-03 `kind: 10063` user-server list event

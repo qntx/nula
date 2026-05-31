@@ -287,8 +287,6 @@ impl MemoryStore {
         self.query_keys(filter).count()
     }
 
-    // -- internal helpers ----------------------------------------------------
-
     fn insert_event(&mut self, event: Arc<Event>) {
         let key = EventKey::from_event(&event);
         let kind = event.kind;

@@ -81,7 +81,6 @@ impl NostrWalletConnect {
         self.inner.notifications.subscribe()
     }
 
-
     /// `pay_invoice` — settle a BOLT-11 invoice.
     ///
     /// # Errors
@@ -200,7 +199,6 @@ impl NostrWalletConnect {
     pub fn shutdown(&self) {
         self.inner.dispatcher.abort();
     }
-
 
     /// Serialize `params`, dispatch the request, and deserialize a
     /// success result into `R`, mapping an `error` envelope to

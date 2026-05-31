@@ -253,7 +253,6 @@ impl NostrConnect {
             .ok();
     }
 
-
     async fn send_get_public_key(&self) -> Result<PublicKey, Error> {
         match self.dispatch(Request::GetPublicKey).await? {
             nip46::ResponseResult::GetPublicKey(pk) => Ok(pk),

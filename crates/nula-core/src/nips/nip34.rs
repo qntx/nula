@@ -65,7 +65,6 @@ use crate::event::{
 use crate::key::{PublicKey, PublicKeyError};
 use crate::types::{RelayUrl, RelayUrlError};
 
-
 /// `kind: 30617` — repository announcement.
 pub const KIND_REPO: Kind = Kind::GIT_REPOSITORY;
 /// `kind: 30618` — repository state announcement.
@@ -115,7 +114,6 @@ mod tag_names {
     pub(super) const REFS_PREFIX: &str = "refs/";
 }
 
-
 /// Errors raised by the NIP-34 typed bundles.
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -161,7 +159,6 @@ pub enum Nip34Error {
     Tag(#[from] TagError),
 }
 
-
 fn second(values: &[String]) -> Option<&str> {
     values.get(1).map(String::as_str)
 }
@@ -202,7 +199,6 @@ fn a_tag(coordinate: &Coordinate) -> Tag {
         [coordinate.to_wire()],
     )
 }
-
 
 /// Typed bundle for the `kind: 30617` repository announcement.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -378,7 +374,6 @@ impl Repository {
     }
 }
 
-
 /// One `refs/<heads|tags>/<name>` row on a [`RepositoryState`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitRef {
@@ -480,7 +475,6 @@ impl RepositoryState {
         Ok(state)
     }
 }
-
 
 /// Typed bundle for the `kind: 1617` patch event.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -674,7 +668,6 @@ impl Patch {
     }
 }
 
-
 /// Typed bundle for the `kind: 1618` pull request event.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PullRequest {
@@ -859,7 +852,6 @@ impl PullRequest {
     }
 }
 
-
 /// Typed bundle for the `kind: 1619` pull request update.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PullRequestUpdate {
@@ -1030,7 +1022,6 @@ impl PullRequestUpdate {
     }
 }
 
-
 /// Typed bundle for the `kind: 1621` issue event.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Issue {
@@ -1133,7 +1124,6 @@ impl Issue {
         })
     }
 }
-
 
 /// Typed status discriminator covering kinds `1630..=1633`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1323,7 +1313,6 @@ impl StatusEvent {
     }
 }
 
-
 /// Typed bundle for the `kind: 10317` user grasp-server list.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct GraspServerList {
@@ -1381,7 +1370,6 @@ impl GraspServerList {
         Ok(Self { servers })
     }
 }
-
 
 impl EventBuilder {
     /// Author a NIP-34 repository announcement (`kind: 30617`).

@@ -32,7 +32,7 @@ use nula_core::types::RelayUrl;
 use nula_core::{JsonUtil, Keys};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // ── 1. Signer side: produce the `bunker://` URI ──────────────
+    // 1. Signer side: produce the `bunker://` URI
     let signer_keys = Keys::generate()?;
     let relay = RelayUrl::parse("wss://relay.example/")?;
     let bunker = format!(
@@ -42,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("bunker URI         : {bunker}");
 
-    // ── 2. Client side: parse the URI and build a `connect` ──────
+    // 2. Client side: parse the URI and build a `connect`
     let parsed = Uri::parse(&bunker)?;
     let Uri::Bunker {
         remote_signer_public_key,
@@ -58,8 +58,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let connect = Request::Connect {
         remote_signer_public_key: *remote_signer_public_key,
         secret: secret.clone(),
-        // P0.T1 added the perms field; an empty Vec means "no
-        // permissions requested" while None means "field omitted".
+        // An empty `Vec` means "no permissions requested" while
+        // `None` means "field omitted".
         perms: None,
     };
     let request = Message::request("req-1", &connect);
@@ -68,13 +68,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("request envelope JSON ({} bytes):", request_json.len());
     println!("{request_json}");
 
-    // ── 3. Signer side: roundtrip params via the typed wire codec ─
+    // 3. Signer side: roundtrip params via the typed wire codec
     let params = connect.params();
     let recovered = Request::from_wire(Method::Connect, &params)?;
     assert_eq!(recovered, connect, "wire codec must be lossless");
     println!("---\nwire round-trip    : OK");
 
-    // ── 4. Signer answers with the canonical `ack` ───────────────
+    // 4. Signer answers with the canonical `ack`
     let response = Response::with_result(ResponseResult::Ack);
     let response_envelope = Message::response("req-1", response);
     let response_json = response_envelope.try_to_json()?;

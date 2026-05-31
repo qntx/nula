@@ -432,7 +432,6 @@ pub enum LiveError {
     InvalidCoordinate(#[from] CoordinateError),
 }
 
-
 fn parse_u64(tag: &str, value: &str) -> Result<u64, LiveError> {
     value.parse::<u64>().map_err(|_| LiveError::InvalidNumber {
         tag: tag.to_owned(),
@@ -486,7 +485,6 @@ fn d_value(tags: &Tags) -> Option<&str> {
     let head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::D));
     tags.find_first(&head).and_then(|tag| tag.get(1))
 }
-
 
 impl LiveStream {
     /// Construct a stream with the identifier seeded.
@@ -611,7 +609,6 @@ fn absorb_relay_list(tag: &Tag, relays: &mut Vec<RelayUrl>) -> Result<(), LiveEr
     Ok(())
 }
 
-
 impl MeetingSpace {
     /// Construct a space with the identifier seeded.
     #[must_use]
@@ -678,7 +675,6 @@ fn absorb_meeting_space_named_tag(tag: &Tag, out: &mut MeetingSpace) -> Result<(
     }
     Ok(())
 }
-
 
 impl MeetingRoom {
     /// Construct a room with the identifier seeded.
@@ -761,7 +757,6 @@ fn absorb_meeting_room_named_tag(tag: &Tag, out: &mut MeetingRoom) -> Result<(),
     Ok(())
 }
 
-
 impl LiveChatMessage {
     /// Construct a chat message targeted at `host`.
     #[must_use]
@@ -840,7 +835,6 @@ fn parse_quote_tag(tag: &Tag) -> Result<(EventId, Option<RelayUrl>, Option<Publi
     Ok((id, relay_hint, pk))
 }
 
-
 impl RoomPresence {
     /// Construct a presence row targeted at `room`.
     #[must_use]
@@ -896,7 +890,6 @@ impl RoomPresence {
         })
     }
 }
-
 
 impl EventBuilder {
     /// Author a NIP-53 `kind: 30311` live streaming event.

@@ -131,7 +131,6 @@ pub enum Nip60Error {
     Builder(#[from] EventBuilderError),
 }
 
-
 /// Typed bundle for the replaceable `kind: 17375` wallet event.
 ///
 /// `mints` MUST be non-empty per spec; [`Self::encrypt`] enforces
@@ -243,7 +242,6 @@ impl WalletInfo {
     }
 }
 
-
 /// A single Cashu proof in the standard BDHKE wire format.
 ///
 /// The `c` field is serialised as the spec-mandated uppercase `C`
@@ -351,7 +349,6 @@ impl TokenContent {
         Self::decrypt(&event.content, owner)
     }
 }
-
 
 /// Direction column of [`HistoryEntry`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -590,7 +587,6 @@ impl HistoryEntry {
     }
 }
 
-
 /// Optional quote-state event (`kind: 7374`).
 ///
 /// Carries an in-flight Lightning mint quote-id encrypted to the
@@ -692,7 +688,6 @@ impl QuoteState {
         })
     }
 }
-
 
 impl EventBuilder {
     /// Author a NIP-60 wallet event (`kind: 17375`) from a typed

@@ -1209,8 +1209,6 @@ mod tests {
         );
     }
 
-    // ==== P1.T1 ergonomics: plurals, removers, extractors, strict mode ====
-
     fn id_a() -> EventId {
         EventId::from_byte_array([0xaa; 32])
     }

@@ -188,7 +188,6 @@ pub enum Nip90Error {
     Builder(#[from] EventBuilderError),
 }
 
-
 /// Input column of an `i` tag.
 ///
 /// Each row's spec layout is `[head, value, kind, relay?, marker?]`
@@ -374,7 +373,6 @@ impl Amount {
         Ok(Self { msats, bolt11 })
     }
 }
-
 
 /// Typed bundle for a `kind: 5000..=5999` job request.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -611,7 +609,6 @@ impl JobRequest {
     }
 }
 
-
 /// Typed bundle for a `kind: 6000..=6999` job result.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JobResult {
@@ -809,7 +806,6 @@ impl JobResult {
         Ok(result)
     }
 }
-
 
 /// Status column of a [`JobFeedback`] event.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1009,7 +1005,6 @@ impl JobFeedback {
         Ok(feedback)
     }
 }
-
 
 impl EventBuilder {
     /// Author a NIP-90 job-request event from a typed [`JobRequest`].

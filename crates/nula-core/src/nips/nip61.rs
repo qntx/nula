@@ -113,7 +113,6 @@ pub enum Nip61Error {
     Builder(#[from] EventBuilderError),
 }
 
-
 /// One mint entry on a [`NutzapInfo`] advert.
 ///
 /// The `mint` tag's wire form is `["mint", <url>, <unit-1>?, <unit-2>?, ...]`.
@@ -250,7 +249,6 @@ impl NutzapInfo {
         })
     }
 }
-
 
 /// Typed bundle for the `kind: 9321` nutzap event.
 ///
@@ -430,7 +428,6 @@ impl Nutzap {
         })
     }
 }
-
 
 impl EventBuilder {
     /// Author a NIP-61 informational event (`kind: 10019`) from a

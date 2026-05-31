@@ -145,8 +145,6 @@ impl Store {
         &self.options
     }
 
-    // -- read paths ----------------------------------------------------------
-
     pub(crate) fn check_id(&self, id: &EventId) -> Result<DatabaseEventStatus, Error> {
         let txn = self.env.read_txn()?;
         let key = id.to_byte_array();
@@ -300,8 +298,6 @@ impl Store {
         Ok(ids)
     }
 
-    // -- write paths ---------------------------------------------------------
-
     pub(crate) fn save_event(
         &self,
         event: &Event,
@@ -417,8 +413,6 @@ impl Store {
         txn.commit()?;
         Ok(())
     }
-
-    // -- internal helpers ----------------------------------------------------
 
     fn insert_event_inner(&self, txn: &mut heed::RwTxn<'_>, event: &Event) -> Result<(), Error> {
         let id_bytes = event.id.to_byte_array();
