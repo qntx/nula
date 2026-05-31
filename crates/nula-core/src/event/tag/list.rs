@@ -6,11 +6,13 @@
 //! [`Tags::find_first`] give NIP-aware code a one-line lookup without
 //! re-implementing the iteration.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::slice;
+use std::sync::OnceLock;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::kind::TagKind;
 use super::single_letter::{Alphabet, SingleLetterTag};
@@ -20,24 +22,114 @@ use crate::event::id::EventId;
 use crate::key::PublicKey;
 use crate::types::Timestamp;
 
+/// A lazily-built index from each single-letter tag head to the set of
+/// its values.
+///
+/// Mirrors the shape a relay uses to evaluate NIP-01 `#<letter>` filters:
+/// the key is the single-letter head (`e`, `p`, `a`, …, including the
+/// uppercase variants), the value is the set of that head's tag values.
+/// Built once by [`Tags::indexes`] and cached until the collection is
+/// mutated.
+pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
+
 /// An ordered, mutable collection of [`Tag`]s.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
+///
+/// The wire order is preserved exactly — event IDs (NIP-01) depend on it.
+/// A lazily-built single-letter [index](Tags::indexes) accelerates filter
+/// matching; the index is a pure cache derived from the tag list and is
+/// therefore excluded from equality, hashing, `Debug` and serialization.
 pub struct Tags {
     items: Vec<Tag>,
+    /// Cached single-letter index, built on first [`Tags::indexes`] call
+    /// and erased by every mutator. `OnceLock` keeps `Tags` `Send + Sync`
+    /// (events are shared across threads in the relay, pool and storage
+    /// layers). The index is boxed so an un-indexed tag list — the common
+    /// case — adds only one pointer plus the lock to every [`Event`].
+    indexes: OnceLock<Box<TagsIndexes>>,
+}
+
+// `Tags` (and therefore `Event`) must stay `Send + Sync`. A `RefCell` or
+// `core::cell::OnceCell` cache would silently break this; lock it in.
+const _: () = {
+    const fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<Tags>();
+};
+
+impl Clone for Tags {
+    fn clone(&self) -> Self {
+        // The index is a derived cache, not identity: rebuild it lazily so
+        // `clone` stays O(n) in the tag count regardless of cache state.
+        Self::from_vec(self.items.clone())
+    }
+}
+
+impl Default for Tags {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PartialEq for Tags {
+    fn eq(&self, other: &Self) -> bool {
+        self.items == other.items
+    }
+}
+
+impl Eq for Tags {}
+
+impl Hash for Tags {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.items.hash(state);
+    }
+}
+
+impl fmt::Debug for Tags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // The derived index cache is deliberately omitted: it is not part
+        // of the tag list's logical value.
+        f.debug_struct("Tags")
+            .field("items", &self.items)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Serialize for Tags {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Transparent over the tag list: byte-identical to a bare
+        // `Vec<Tag>`, which event-ID computation depends on.
+        self.items.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Tags {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(Self::from_vec(Vec::<Tag>::deserialize(deserializer)?))
+    }
 }
 
 impl Tags {
     /// Construct an empty collection.
     #[must_use]
     pub const fn new() -> Self {
-        Self { items: Vec::new() }
+        Self {
+            items: Vec::new(),
+            indexes: OnceLock::new(),
+        }
     }
 
     /// Construct from a `Vec<Tag>`.
     #[must_use]
     pub const fn from_vec(items: Vec<Tag>) -> Self {
-        Self { items }
+        Self {
+            items,
+            indexes: OnceLock::new(),
+        }
     }
 
     /// Return the number of tags.
@@ -52,8 +144,9 @@ impl Tags {
         self.items.is_empty()
     }
 
-    /// Append a tag.
+    /// Append a tag. Erases the cached [`TagsIndexes`].
     pub fn push(&mut self, tag: Tag) {
+        self.erase_indexes();
         self.items.push(tag);
     }
 
@@ -62,6 +155,7 @@ impl Tags {
     where
         I: IntoIterator<Item = Tag>,
     {
+        self.erase_indexes();
         self.items.extend(tags);
     }
 
@@ -75,6 +169,7 @@ impl Tags {
     /// `iter().filter().cloned().collect() → push → from_vec` template
     /// each one used to inline.
     pub fn replace_or_push(&mut self, kind: &TagKind, tag: Tag) {
+        self.erase_indexes();
         if let Some(slot) = self.items.iter_mut().find(|t| &t.kind() == kind) {
             *slot = tag;
         } else {
@@ -89,6 +184,7 @@ impl Tags {
         if self.items.iter().any(|t| t.kind() == tag.kind()) {
             return;
         }
+        self.erase_indexes();
         self.items.push(tag);
     }
 
@@ -190,6 +286,8 @@ impl Tags {
             return;
         }
 
+        self.erase_indexes();
+
         let mut map: HashMap<(&str, Option<&str>), DedupVal> =
             HashMap::with_capacity(self.items.len());
         for (idx, tag) in self.items.iter().enumerate() {
@@ -219,6 +317,37 @@ impl Tags {
         self.items = new_list.into_iter().flatten().collect();
     }
 
+    /// Borrow the lazily-built single-letter tag index, building and
+    /// caching it on first access.
+    ///
+    /// The index maps each single-letter tag head (`e`, `p`, `a`, …, and
+    /// their uppercase variants) to the set of its values — exactly the
+    /// shape a relay needs to evaluate NIP-01 `#<letter>` filters. It is
+    /// built once and reused until the collection is mutated, so matching
+    /// one event against many filters costs a single index build instead
+    /// of a full tag scan per filter.
+    #[must_use]
+    pub fn indexes(&self) -> &TagsIndexes {
+        self.indexes.get_or_init(|| Box::new(self.build_indexes()))
+    }
+
+    /// Build the single-letter index from the current tag list.
+    fn build_indexes(&self) -> TagsIndexes {
+        let mut indexes = TagsIndexes::new();
+        for tag in &self.items {
+            if let (Some(letter), Some(content)) = (tag.single_letter_tag(), tag.content()) {
+                indexes.entry(letter).or_default().insert(content.to_owned());
+            }
+        }
+        indexes
+    }
+
+    /// Drop any cached [`TagsIndexes`] so a stale view is never observed
+    /// after a mutation. Cheap no-op when nothing is cached yet.
+    fn erase_indexes(&mut self) {
+        self.indexes.take();
+    }
+
     /// Decompose into the underlying `Vec<Tag>`.
     #[must_use]
     pub fn into_vec(self) -> Vec<Tag> {
@@ -246,15 +375,13 @@ impl IntoIterator for Tags {
 
 impl FromIterator<Tag> for Tags {
     fn from_iter<I: IntoIterator<Item = Tag>>(iter: I) -> Self {
-        Self {
-            items: iter.into_iter().collect(),
-        }
+        Self::from_vec(iter.into_iter().collect())
     }
 }
 
 impl From<Vec<Tag>> for Tags {
     fn from(items: Vec<Tag>) -> Self {
-        Self { items }
+        Self::from_vec(items)
     }
 }
 
@@ -475,5 +602,75 @@ mod tests {
         assert_eq!(tags.len(), 2);
         assert_eq!(tags.as_slice()[0], tag(&["p", "alice"]));
         assert_eq!(tags.as_slice()[1], tag(&["p", "bob"]));
+    }
+
+    #[test]
+    fn indexes_group_values_by_single_letter_head() {
+        let tags = Tags::from_vec(vec![
+            tag(&["e", "id-1"]),
+            tag(&["e", "id-2"]),
+            tag(&["p", PK_HEX]),
+            tag(&["alt", "ignored"]), // multi-char head -> excluded
+            tag(&["x"]),              // single letter, but no value -> excluded
+        ]);
+        let idx = tags.indexes();
+        let e = idx.get(&SingleLetterTag::lowercase(Alphabet::E)).unwrap();
+        assert_eq!(e.len(), 2);
+        assert!(e.contains("id-1") && e.contains("id-2"));
+        assert!(idx.contains_key(&SingleLetterTag::lowercase(Alphabet::P)));
+        assert_eq!(idx.len(), 2, "'alt' and value-less 'x' must not be indexed");
+    }
+
+    #[test]
+    fn indexes_distinguish_letter_case() {
+        let tags = Tags::from_vec(vec![tag(&["e", "lower"]), tag(&["E", "upper"])]);
+        let idx = tags.indexes();
+        assert!(
+            idx.get(&SingleLetterTag::lowercase(Alphabet::E))
+                .unwrap()
+                .contains("lower")
+        );
+        assert!(
+            idx.get(&SingleLetterTag::uppercase(Alphabet::E))
+                .unwrap()
+                .contains("upper")
+        );
+    }
+
+    #[test]
+    fn mutation_invalidates_cached_index() {
+        let mut tags = Tags::from_vec(vec![tag(&["e", "id-1"])]);
+        assert_eq!(tags.indexes().len(), 1); // force the cache to build
+        tags.push(tag(&["p", PK_HEX])); // every mutator must erase it
+        let idx = tags.indexes();
+        assert_eq!(idx.len(), 2);
+        assert!(idx.contains_key(&SingleLetterTag::lowercase(Alphabet::P)));
+    }
+
+    #[test]
+    fn equality_and_hash_ignore_the_cache() {
+        use std::collections::hash_map::DefaultHasher;
+
+        let warm = Tags::from_vec(vec![tag(&["e", "id-1"])]);
+        let cold = Tags::from_vec(vec![tag(&["e", "id-1"])]);
+        assert!(!warm.indexes().is_empty()); // build the cache on exactly one
+
+        assert_eq!(warm, cold, "the index cache must not affect equality");
+
+        let digest = |t: &Tags| {
+            let mut hasher = DefaultHasher::new();
+            t.hash(&mut hasher);
+            hasher.finish()
+        };
+        assert_eq!(digest(&warm), digest(&cold), "the cache must not affect Hash");
+    }
+
+    #[test]
+    fn clone_rebuilds_index_from_current_list() {
+        let mut tags = Tags::from_vec(vec![tag(&["e", "id-1"])]);
+        assert_eq!(tags.indexes().len(), 1); // warm the cache
+        tags.push(tag(&["p", PK_HEX])); // invalidate it
+        let cloned = tags.clone();
+        assert_eq!(cloned.indexes().len(), 2, "clone must reflect the live list");
     }
 }

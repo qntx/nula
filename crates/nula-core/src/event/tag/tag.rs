@@ -304,6 +304,18 @@ impl Tag {
         self.values.get(1).map(String::as_str)
     }
 
+    /// Return the single-letter head of this tag, if its head is exactly
+    /// one ASCII letter (`e`, `p`, `a`, …, plus their uppercase forms).
+    ///
+    /// This is the key used to build the [`Tags`](super::list::Tags)
+    /// single-letter index that powers NIP-01 `#<letter>` filter matching.
+    /// Returns `None` for multi-character custom heads such as `alt` or
+    /// `expiration`. The parse is allocation-free.
+    #[must_use]
+    pub fn single_letter_tag(&self) -> Option<SingleLetterTag> {
+        self.name().parse().ok()
+    }
+
     /// Borrow every value (head + arguments).
     #[must_use]
     pub fn values(&self) -> &[String] {

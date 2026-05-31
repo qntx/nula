@@ -142,6 +142,15 @@ pub enum RelayMessageError {
 /// Messages sent from a relay to a client.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "EVENT inherently carries a full Event while the control variants \
+              (OK/EOSE/CLOSED/NOTICE/AUTH) are small; boxing it would add \
+              allocation churn on the relay-send and pool-receive hot paths, \
+              where EVENT is by far the most common message and is moved \
+              straight into/out of the enum. rust-nostr makes the same \
+              trade-off via a Cow<Event> EVENT variant."
+)]
 pub enum RelayMessage {
     /// A subscription event match.
     ///

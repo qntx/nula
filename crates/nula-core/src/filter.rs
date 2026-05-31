@@ -29,7 +29,7 @@ use serde::de::{self, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::event::{Alphabet, Coordinate, Event, EventId, Kind, SingleLetterTag, Tag, TagKind};
+use crate::event::{Alphabet, Coordinate, Event, EventId, Kind, SingleLetterTag};
 use crate::key::PublicKey;
 use crate::types::Timestamp;
 
@@ -750,10 +750,8 @@ impl Filter {
         {
             return false;
         }
-        for (letter, expected) in &self.generic_tags {
-            if !any_tag_value_matches(&event.tags, *letter, expected) {
-                return false;
-            }
+        if !generic_tags_match(&self.generic_tags, event) {
+            return false;
         }
         // Runtime guards live OUTSIDE the per-NIP-01 fields. They
         // only fire when the caller seeds `opts.now`.
@@ -784,16 +782,27 @@ impl Filter {
     }
 }
 
-fn any_tag_value_matches(
-    tags: &crate::event::Tags,
-    letter: SingleLetterTag,
-    expected: &[String],
-) -> bool {
-    let kind = TagKind::single_letter(letter);
-    tags.iter()
-        .filter(|tag| tag.kind() == kind)
-        .filter_map(Tag::content)
-        .any(|value| expected.iter().any(|e| e == value))
+/// Match an event's tags against a filter's `#<letter>` constraints using
+/// the event's cached single-letter index.
+///
+/// Returns `true` when, for every single-letter constraint, the event
+/// carries at least one of the requested values (NIP-01 AND-of-ORs
+/// semantics). The index is built once per event and reused, so matching
+/// one event against many filters costs a single build rather than a full
+/// tag scan per filter.
+fn generic_tags_match(generic_tags: &IndexMap<SingleLetterTag, Vec<String>>, event: &Event) -> bool {
+    if generic_tags.is_empty() {
+        return true;
+    }
+    if event.tags.is_empty() {
+        return false;
+    }
+    let indexes = event.tags.indexes();
+    generic_tags.iter().all(|(letter, expected)| {
+        indexes
+            .get(letter)
+            .is_some_and(|present| expected.iter().any(|value| present.contains(value)))
+    })
 }
 
 /// Compose `#<letter>` from a [`SingleLetterTag`].
