@@ -89,6 +89,16 @@ pub enum Error {
     )]
     MissingPool,
 
+    /// [`crate::bunker::NostrConnectRemoteSignerBuilder::serve`] was
+    /// called without configured [`crate::bunker::NostrConnectKeys`].
+    #[error("NostrConnectRemoteSignerBuilder requires keys (call `.keys(...)`)")]
+    MissingKeys,
+
+    /// [`crate::bunker::NostrConnectRemoteSignerBuilder::serve`] was
+    /// called without any relay to listen on.
+    #[error("NostrConnectRemoteSignerBuilder requires at least one relay")]
+    MissingRelays,
+
     /// Decryption succeeded but the resulting JSON did not parse as
     /// a NIP-46 envelope.
     #[error("malformed NIP-46 envelope from signer: {0}")]

@@ -37,6 +37,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`nula-nwc` — NIP-47 Nostr Wallet Connect client (new crate).** Drives
+  a remote Lightning wallet service over encrypted DMs on top of
+  `nula_relay::pool::RelayPool`. A single dispatcher actor subscribes to
+  `kind:23195` responses / `kind:23197`/`23196` notifications, decrypts
+  each body, and correlates responses to requests through the response's
+  `e` tag. Ships typed helpers (`pay_invoice`, `get_balance`, `get_info`,
+  `make_invoice`, `lookup_invoice`, `list_transactions`), a generic
+  `send_request`, a notification broadcast stream, `get_info_event`
+  capability discovery, and an embedded/external pool mode. Closes the
+  upstream `nwc` reverse gap. End-to-end tested against an in-process
+  mock wallet over `MockRelay`.
+- **`nula-blossom` — Blossom blob-transport client (new crate).**
+  Implements the BUD-01/02 HTTP surface (`upload`, `download`, `has`,
+  `delete`, `list`) with NIP-24242 (`kind:24242`) authorization events
+  signed by any `nula_core::NostrSigner` (local `Keys` or a remote
+  bunker). `download` verifies blob integrity against the requested
+  sha256. `upload_to_all` / `download_any` bridge the NIP-B7 discovery
+  side (`BlossomServerList`) with the transport side — closing the
+  "two halves" gap where `nula-core` had NIP-B7 and upstream had the
+  HTTP transport. HTTP paths are tested against a `wiremock` mock server.
+- **NIP-46 bunker side in `nula-signer`** (`nula_signer::bunker`). The
+  new `NostrConnectRemoteSigner` listens on a relay set, decrypts
+  `kind:24133` requests, dispatches them against `NostrConnectKeys`
+  (separate transport vs signing keys), and publishes encrypted
+  responses; `bunker_uri()` advertises the session and a `BunkerPolicy`
+  hook gates every non-`connect` request. Closes the bunker reverse gap
+  (`nula-signer` was previously client-only). Verified by a real
+  `NostrConnect` ↔ `NostrConnectRemoteSigner` round trip over `MockRelay`.
+- **NIP-15 Marketplace types** (`nula_core::nips::nip15`): typed
+  `StallData` / `ProductData` / `AuctionData` (auction support is absent
+  upstream) with `to_event_builder` + `from_event`, plus the order /
+  payment-request / payment-verification DM payloads. The product event
+  is addressed by the **product** id per the spec (fixing the upstream
+  `stall_id` deviation), and order items use the spec field `product_id`.
+- **NIP-35 Torrents types** (`nula_core::nips::nip35`): a validated
+  `TorrentInfoHash`, `TorrentFile`, and `Torrent` with both
+  `to_event_builder` and a `from_event` parser (upstream ships only the
+  builder), an `EventBuilder::torrent_comment` helper, and lossless
+  preservation of non-`tcat:` external references.
+- **Typed `Tags` extractors + `dedup`** (`nula_core`): `public_keys`,
+  `event_ids`, `coordinates`, `hashtags`, `expiration`, and `challenge`
+  accessors, plus a `Tags::dedup` mirroring the upstream longest-wins
+  policy.
+- **`Filter::fingerprint` → `FilterKey`** (`nula_core`): an
+  order-independent, hashable/orderable identity key for a `Filter`
+  (which deliberately stays insertion-ordered on the wire and therefore
+  implements neither `Hash` nor `Ord`), for deduplicating subscriptions
+  or keying a cache.
+
 - **Phase 8 — `nula-cli` private messages + relay lists.** The
   `nula` binary gains two subcommand groups wrapping the Phase
   7.4 / 7.5 SDK facades:

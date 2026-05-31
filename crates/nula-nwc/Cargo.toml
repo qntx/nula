@@ -1,0 +1,50 @@
+[package]
+name = "nula-nwc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "NIP-47 Nostr Wallet Connect (NWC) client built on `nula-relay`. Drives a remote Lightning wallet service over encrypted DMs."
+readme = "README.md"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+# `nip04` enables the legacy NIP-04 transport fallback (wallets whose
+# `kind:13194` info event omits the `encryption` tag, or advertise
+# `nip04`). NIP-44 v2 is always on — it is the spec-mandated default.
+default = ["nip04"]
+nip04 = ["nula-core/nip04"]
+# Ship a working tokio-tungstenite client for the embedded pool.
+default-transport = ["nula-relay/default-transport"]
+
+[dependencies]
+nula-core  = { workspace = true, features = ["nip44"] }
+nula-relay = { workspace = true, features = ["pool"] }
+
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+# Tokio: Mutex for the pending map, oneshot for per-RPC replies,
+# broadcast for the notification fan-out, spawn for the dispatcher
+# actor, time for per-call timeouts.
+tokio = { workspace = true, features = ["sync", "rt", "macros", "time"] }
+
+[dev-dependencies]
+nula-core    = { workspace = true, features = ["nip44", "nip04"] }
+nula-relay   = { workspace = true, features = ["pool", "server", "mock", "default-transport"] }
+nula-storage = { workspace = true, features = ["memory"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "test-util"] }
+serde_json.workspace = true
+
+[lints]
+workspace = true

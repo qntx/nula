@@ -6,6 +6,7 @@
 //! [`Tags::find_first`] give NIP-aware code a one-line lookup without
 //! re-implementing the iteration.
 
+use std::collections::HashMap;
 use std::fmt;
 use std::slice;
 
@@ -14,6 +15,10 @@ use serde::{Deserialize, Serialize};
 use super::kind::TagKind;
 use super::single_letter::{Alphabet, SingleLetterTag};
 use super::tag::Tag;
+use crate::event::coordinate::Coordinate;
+use crate::event::id::EventId;
+use crate::key::PublicKey;
+use crate::types::Timestamp;
 
 /// An ordered, mutable collection of [`Tag`]s.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -121,6 +126,97 @@ impl Tags {
     #[must_use]
     pub fn identifier(&self) -> Option<&str> {
         self.find_letter(Alphabet::D).next().and_then(Tag::content)
+    }
+
+    /// Extract the [`PublicKey`]s referenced by `p` tags, skipping any whose
+    /// value is not a valid 32-byte hex key.
+    pub fn public_keys(&self) -> impl Iterator<Item = PublicKey> + '_ {
+        self.find_letter(Alphabet::P)
+            .filter_map(|tag| PublicKey::parse(tag.content()?).ok())
+    }
+
+    /// Extract the [`EventId`]s referenced by `e` tags, skipping any whose
+    /// value is not a valid 32-byte hex id.
+    pub fn event_ids(&self) -> impl Iterator<Item = EventId> + '_ {
+        self.find_letter(Alphabet::E)
+            .filter_map(|tag| EventId::parse(tag.content()?).ok())
+    }
+
+    /// Extract the [`Coordinate`]s referenced by `a` tags, skipping any whose
+    /// value is not a valid `<kind>:<author>:<identifier>` triple.
+    pub fn coordinates(&self) -> impl Iterator<Item = Coordinate> + '_ {
+        self.find_letter(Alphabet::A)
+            .filter_map(|tag| Coordinate::parse(tag.content()?).ok())
+    }
+
+    /// Extract the hashtag values carried by `t` tags.
+    pub fn hashtags(&self) -> impl Iterator<Item = &str> {
+        self.find_letter(Alphabet::T).filter_map(Tag::content)
+    }
+
+    /// Return the NIP-40 `expiration` [`Timestamp`], if a well-formed
+    /// `expiration` tag is present.
+    #[must_use]
+    pub fn expiration(&self) -> Option<Timestamp> {
+        let secs: u64 = self
+            .find_first(&TagKind::custom("expiration"))?
+            .content()?
+            .parse()
+            .ok()?;
+        Some(Timestamp::from_secs(secs))
+    }
+
+    /// Return the NIP-42 `challenge` string, if a `challenge` tag is present.
+    #[must_use]
+    pub fn challenge(&self) -> Option<&str> {
+        self.find_first(&TagKind::custom("challenge"))?.content()
+    }
+
+    /// Deduplicate tags in place.
+    ///
+    /// Two tags are duplicates when they share the same head *and* the same
+    /// content (the value at index 1, if any). Among duplicates the longest
+    /// tag is retained, placed at the position of the earliest occurrence;
+    /// shorter duplicates are dropped. Tag order is otherwise preserved.
+    pub fn dedup(&mut self) {
+        /// Tracks, per dedup key, the earliest occurrence and the longest
+        /// (best) tag seen so far.
+        struct DedupVal {
+            first_idx: usize,
+            best_idx: usize,
+        }
+
+        if self.items.is_empty() {
+            return;
+        }
+
+        let mut map: HashMap<(&str, Option<&str>), DedupVal> =
+            HashMap::with_capacity(self.items.len());
+        for (idx, tag) in self.items.iter().enumerate() {
+            let key = (tag.name(), tag.content());
+            let entry = map.entry(key).or_insert(DedupVal {
+                first_idx: idx,
+                best_idx: idx,
+            });
+            let best_len = self.items.get(entry.best_idx).map_or(0, Tag::len);
+            if tag.len() > best_len {
+                entry.best_idx = idx;
+            }
+        }
+
+        let mut new_list: Vec<Option<Tag>> = vec![None; self.items.len()];
+        for DedupVal {
+            first_idx,
+            best_idx,
+        } in map.into_values()
+        {
+            if let (Some(slot), Some(best)) =
+                (new_list.get_mut(first_idx), self.items.get(best_idx))
+            {
+                *slot = Some(best.clone());
+            }
+        }
+        self.items = new_list.into_iter().flatten().collect();
     }
 
     /// Decompose into the underlying `Vec<Tag>`.
@@ -294,5 +390,90 @@ mod tests {
         tags.push_unique_kind(marker);
         let head_kind = TagKind::from_wire("-");
         assert_eq!(tags.find_all(&head_kind).count(), 1);
+    }
+
+    const PK_HEX: &str = "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798";
+    const ID_HEX: &str = "1111111111111111111111111111111111111111111111111111111111111111";
+
+    #[test]
+    fn public_keys_extracts_valid_p_tags_only() {
+        let tags = Tags::from_vec(vec![
+            tag(&["p", PK_HEX]),
+            tag(&["p", "not-hex"]),
+            tag(&["e", PK_HEX]),
+        ]);
+        let keys: Vec<PublicKey> = tags.public_keys().collect();
+        assert_eq!(keys, vec![PublicKey::parse(PK_HEX).unwrap()]);
+    }
+
+    #[test]
+    fn event_ids_extracts_valid_e_tags_only() {
+        let tags = Tags::from_vec(vec![tag(&["e", ID_HEX]), tag(&["e", "bad"])]);
+        let ids: Vec<EventId> = tags.event_ids().collect();
+        assert_eq!(ids, vec![EventId::parse(ID_HEX).unwrap()]);
+    }
+
+    #[test]
+    fn coordinates_extracts_valid_a_tags_only() {
+        let coord = format!("30023:{PK_HEX}:alpha");
+        let tags = Tags::from_vec(vec![tag(&["a", &coord]), tag(&["a", "bad"])]);
+        let coords: Vec<Coordinate> = tags.coordinates().collect();
+        assert_eq!(coords, vec![Coordinate::parse(&coord).unwrap()]);
+    }
+
+    #[test]
+    fn hashtags_extracts_t_tags() {
+        let tags = Tags::from_vec(vec![
+            tag(&["t", "nostr"]),
+            tag(&["t", "rust"]),
+            tag(&["e", "x"]),
+        ]);
+        let collected: Vec<&str> = tags.hashtags().collect();
+        assert_eq!(collected, ["nostr", "rust"]);
+    }
+
+    #[test]
+    fn expiration_parses_well_formed_tag() {
+        let tags = Tags::from_vec(vec![tag(&["expiration", "1700000000"])]);
+        assert_eq!(tags.expiration(), Some(Timestamp::from_secs(1_700_000_000)));
+        let bad = Tags::from_vec(vec![tag(&["expiration", "not-a-number"])]);
+        assert_eq!(bad.expiration(), None);
+        assert_eq!(Tags::new().expiration(), None);
+    }
+
+    #[test]
+    fn challenge_returns_first_challenge_tag() {
+        let tags = Tags::from_vec(vec![tag(&["challenge", "abc123"])]);
+        assert_eq!(tags.challenge(), Some("abc123"));
+        assert_eq!(Tags::new().challenge(), None);
+    }
+
+    #[test]
+    fn dedup_keeps_longest_at_earliest_position() {
+        // Mirrors the upstream rust-nostr `Tags::dedup` doc example.
+        let mut tags = Tags::from_vec(vec![
+            tag(&["t", "test"]),
+            tag(&["t", "test1"]),
+            tag(&["t", "test", "wss://relay.damus.io"]),
+        ]);
+        tags.dedup();
+        let expected = Tags::from_vec(vec![
+            tag(&["t", "test", "wss://relay.damus.io"]),
+            tag(&["t", "test1"]),
+        ]);
+        assert_eq!(tags, expected);
+    }
+
+    #[test]
+    fn dedup_distinguishes_by_content() {
+        let mut tags = Tags::from_vec(vec![
+            tag(&["p", "alice"]),
+            tag(&["p", "bob"]),
+            tag(&["p", "alice"]),
+        ]);
+        tags.dedup();
+        assert_eq!(tags.len(), 2);
+        assert_eq!(tags.as_slice()[0], tag(&["p", "alice"]));
+        assert_eq!(tags.as_slice()[1], tag(&["p", "bob"]));
     }
 }

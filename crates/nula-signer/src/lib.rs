@@ -53,6 +53,7 @@ use nula_storage as _;
 use tracing as _;
 
 pub mod auth;
+pub mod bunker;
 pub mod error;
 pub mod options;
 
@@ -64,6 +65,10 @@ mod pool_handle;
 mod signer_impl;
 
 pub use self::auth::{AuthUrlHandler, IntoAuthUrlHandler, RejectAuthUrl};
+pub use self::bunker::{
+    ApproveAll, BunkerPolicy, NostrConnectKeys, NostrConnectRemoteSigner,
+    NostrConnectRemoteSignerBuilder,
+};
 pub use self::client::{NostrConnect, NostrConnectBuilder};
 pub use self::error::Error;
 pub use self::options::NostrConnectOptions;

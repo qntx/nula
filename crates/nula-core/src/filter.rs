@@ -157,6 +157,31 @@ pub struct Filter {
     pub generic_tags: IndexMap<SingleLetterTag, Vec<String>>,
 }
 
+/// A canonical, order-independent identity key for a [`Filter`].
+///
+/// Produced by [`Filter::fingerprint`]. Because [`Filter`] preserves
+/// insertion order on the wire it implements neither `Hash` nor `Ord`;
+/// `FilterKey` is the hashable/orderable stand-in for deduplicating
+/// subscriptions or keying a cache. Two filters that differ only in the
+/// order of their `ids` / `authors` / `kinds` / tag values map to the
+/// same key.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct FilterKey(String);
+
+impl FilterKey {
+    /// Borrow the canonical string form.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for FilterKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 impl Filter {
     /// Construct an empty filter that matches every event.
     #[must_use]
@@ -631,6 +656,63 @@ impl Filter {
             && self.limit.is_none()
             && self.search.is_none()
             && self.generic_tags.is_empty()
+    }
+
+    /// Derive a canonical, order-independent [`FilterKey`].
+    ///
+    /// [`Filter`] preserves insertion order on the wire (for byte-level
+    /// interop) and therefore implements neither `Hash` nor `Ord`. This
+    /// method fills the gap for cache / subscription-dedup keys: every
+    /// list is sorted and each component is JSON-encoded, so two filters
+    /// that are logically equal (same constraints, any order) produce the
+    /// same key, and delimiter-bearing tag values cannot collide.
+    #[must_use]
+    pub fn fingerprint(&self) -> FilterKey {
+        fn array<T: Serialize>(values: &[T]) -> String {
+            serde_json::to_string(values).unwrap_or_default()
+        }
+
+        let mut parts: Vec<String> = Vec::new();
+        if let Some(ids) = &self.ids {
+            let mut v: Vec<String> = ids.iter().map(|id| id.to_hex()).collect();
+            v.sort();
+            parts.push(format!("ids:{}", array(&v)));
+        }
+        if let Some(authors) = &self.authors {
+            let mut v: Vec<String> = authors.iter().map(|pk| pk.to_hex()).collect();
+            v.sort();
+            parts.push(format!("authors:{}", array(&v)));
+        }
+        if let Some(kinds) = &self.kinds {
+            let mut v: Vec<u16> = kinds.iter().map(|kind| kind.as_u16()).collect();
+            v.sort_unstable();
+            parts.push(format!("kinds:{}", array(&v)));
+        }
+        if let Some(since) = self.since {
+            parts.push(format!("since:{}", since.as_secs()));
+        }
+        if let Some(until) = self.until {
+            parts.push(format!("until:{}", until.as_secs()));
+        }
+        if let Some(limit) = self.limit {
+            parts.push(format!("limit:{limit}"));
+        }
+        if let Some(search) = &self.search {
+            parts.push(format!("search:{}", array(std::slice::from_ref(search))));
+        }
+        let mut tag_parts: Vec<String> = self
+            .generic_tags
+            .iter()
+            .map(|(letter, values)| {
+                let mut v = values.clone();
+                v.sort();
+                format!("#{letter}:{}", array(&v))
+            })
+            .collect();
+        tag_parts.sort();
+        parts.extend(tag_parts);
+
+        FilterKey(parts.join("\n"))
     }
 
     /// True when `event` satisfies every set component of the filter.
@@ -1300,6 +1382,35 @@ mod tests {
         let id = id_c();
         let f = Filter::new().id(id).event(id);
         assert_eq!(f.extract_event_ids(), vec![id]);
+    }
+
+    #[test]
+    fn fingerprint_is_order_independent() {
+        let a = Filter::new()
+            .kinds([Kind::new(1), Kind::new(3)])
+            .authors([pk(1), pk(2)]);
+        let b = Filter::new()
+            .kinds([Kind::new(3), Kind::new(1)])
+            .authors([pk(2), pk(1)]);
+        // Wire order differs, so the filters are not `==` ...
+        assert_ne!(a, b);
+        // ... but they are logically equal, so the fingerprints match.
+        assert_eq!(a.fingerprint(), b.fingerprint());
+    }
+
+    #[test]
+    fn fingerprint_distinguishes_different_filters() {
+        let a = Filter::new().kind(Kind::new(1));
+        let b = Filter::new().kind(Kind::new(2));
+        assert_ne!(a.fingerprint(), b.fingerprint());
+    }
+
+    #[test]
+    fn fingerprint_is_usable_as_a_set_key() {
+        let mut seen = std::collections::HashSet::new();
+        assert!(seen.insert(Filter::new().kind(Kind::new(1)).fingerprint()));
+        // The same logical filter does not insert twice.
+        assert!(!seen.insert(Filter::new().kind(Kind::new(1)).fingerprint()));
     }
 
     #[test]
