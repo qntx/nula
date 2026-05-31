@@ -336,7 +336,10 @@ impl Tags {
         let mut indexes = TagsIndexes::new();
         for tag in &self.items {
             if let (Some(letter), Some(content)) = (tag.single_letter_tag(), tag.content()) {
-                indexes.entry(letter).or_default().insert(content.to_owned());
+                indexes
+                    .entry(letter)
+                    .or_default()
+                    .insert(content.to_owned());
             }
         }
         indexes
@@ -662,7 +665,11 @@ mod tests {
             t.hash(&mut hasher);
             hasher.finish()
         };
-        assert_eq!(digest(&warm), digest(&cold), "the cache must not affect Hash");
+        assert_eq!(
+            digest(&warm),
+            digest(&cold),
+            "the cache must not affect Hash"
+        );
     }
 
     #[test]
@@ -671,6 +678,10 @@ mod tests {
         assert_eq!(tags.indexes().len(), 1); // warm the cache
         tags.push(tag(&["p", PK_HEX])); // invalidate it
         let cloned = tags.clone();
-        assert_eq!(cloned.indexes().len(), 2, "clone must reflect the live list");
+        assert_eq!(
+            cloned.indexes().len(),
+            2,
+            "clone must reflect the live list"
+        );
     }
 }

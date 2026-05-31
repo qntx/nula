@@ -790,7 +790,10 @@ impl Filter {
 /// semantics). The index is built once per event and reused, so matching
 /// one event against many filters costs a single build rather than a full
 /// tag scan per filter.
-fn generic_tags_match(generic_tags: &IndexMap<SingleLetterTag, Vec<String>>, event: &Event) -> bool {
+fn generic_tags_match(
+    generic_tags: &IndexMap<SingleLetterTag, Vec<String>>,
+    event: &Event,
+) -> bool {
     if generic_tags.is_empty() {
         return true;
     }

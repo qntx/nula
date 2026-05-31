@@ -19,6 +19,13 @@ use tokio::sync::mpsc;
 /// One frame on a [`SubscriptionHandle`].
 #[derive(Debug, Clone)]
 #[non_exhaustive]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "the Event variant carries a full Event while the lifecycle \
+              frames (EOSE/CLOSED/NEG-MSG/NEG-ERR) are small; Event is the \
+              dominant item on this stream and is moved straight through from \
+              the relay message, so boxing it would only add allocation churn."
+)]
 pub enum SubscriptionItem {
     /// An event matched by this subscription.
     Event(Event),
