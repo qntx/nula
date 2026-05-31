@@ -88,7 +88,7 @@ tracing = { version = "0.1.41", default-features = false, features = ["std", "at
 getrandom = { version = "0.4.2", default-features = false, features = ["std"] }
 
 # HTTP (NIP-05 / NIP-11)
-reqwest = { version = "0.13.3", default-features = false, features = ["rustls", "json", "http2", "charset"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["rustls", "json", "http2", "charset"] }
 
 # Async / WebSocket transport (nula-net)
 # `futures` provides the Sink/Stream traits the transport surface is shaped
