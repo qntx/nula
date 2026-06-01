@@ -100,6 +100,11 @@ reqwest = { version = "0.13.3", default-features = false, features = ["rustls", 
 futures = { version = "0.3.32", default-features = false, features = ["std", "alloc"] }
 tokio = { version = "1.52.3", default-features = false }
 tokio-tungstenite = { version = "0.29.0", default-features = false }
+# SOCKS5 proxy dialer for the `socks` feature (Tor / `.onion` relays).
+# Remote DNS resolution by the proxy is required for `.onion`, so the
+# transport hands the hostname (not a pre-resolved IP) to the proxy.
+# The `tokio` feature gates the async `Socks5Stream::connect` dialer.
+tokio-socks = { version = "0.5", default-features = false, features = ["tokio"] }
 # `tokio-stream` adapts mpsc receivers into `Stream` and provides the
 # `SelectAll` combinator the relay-pool driver task uses to merge
 # per-relay subscription streams.

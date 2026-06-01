@@ -13,29 +13,36 @@ use std::task::{Context, Poll};
 use futures::SinkExt;
 use futures::sink::Sink;
 use futures::stream::SplitSink;
-use tokio::net::TcpStream;
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio_tungstenite::WebSocketStream as TgWebSocketStream;
 use tokio_tungstenite::tungstenite::protocol::Message as TgMessage;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream as TgWebSocketStream};
 
 use crate::transport::default::convert::{from_tungstenite_error, to_tungstenite};
 use crate::transport::error::Error;
 use crate::transport::message::Message;
 
-type TgSink = SplitSink<TgWebSocketStream<MaybeTlsStream<TcpStream>>, TgMessage>;
+type TgSink<S> = SplitSink<TgWebSocketStream<S>, TgMessage>;
 
 /// Adapter that maps `nula-net`'s [`Message`] / [`Error`] onto the
 /// `tungstenite` sink without the `SinkMapErr` panic.
-pub(super) struct TransportSink {
-    inner: TgSink,
+///
+/// Generic over the underlying byte stream `S` so the same adapter wraps
+/// both a direct `MaybeTlsStream<TcpStream>` (the `Direct` mode) and a
+/// SOCKS5-tunnelled stream (the `Socks5` mode).
+pub(super) struct TransportSink<S> {
+    inner: TgSink<S>,
 }
 
-impl TransportSink {
-    pub(super) const fn new(inner: TgSink) -> Self {
+impl<S> TransportSink<S> {
+    pub(super) const fn new(inner: TgSink<S>) -> Self {
         Self { inner }
     }
 }
 
-impl Sink<Message> for TransportSink {
+impl<S> Sink<Message> for TransportSink<S>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
     type Error = Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

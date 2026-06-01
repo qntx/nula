@@ -4,6 +4,8 @@
 use futures::stream::StreamExt;
 use nula_core::RelayUrl;
 use nula_core::boxed::BoxFuture;
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio_tungstenite::WebSocketStream as TgWebSocketStream;
 use tokio_tungstenite::connect_async_with_config;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
@@ -120,14 +122,6 @@ impl WebSocketTransport for DefaultTransport {
             nostr.relay.url = %url.as_str(),
         );
         let fut = async move {
-            // `ConnectionMode` is `#[non_exhaustive]`; today the only
-            // variant is `Direct`. The match is exhaustive at the
-            // language level but we still guard against future
-            // additions that this transport does not support.
-            match *mode {
-                ConnectionMode::Direct => {}
-            }
-
             let config = self
                 .config
                 .max_frame_size
@@ -140,20 +134,22 @@ impl WebSocketTransport for DefaultTransport {
                 .map_or(config, |size| config.max_message_size(Some(size)));
             let config = config.accept_unmasked_frames(self.config.accept_unmasked_frames);
 
-            let (ws, _resp) = connect_async_with_config(url.as_str(), Some(config), false)
-                .await
-                .map_err(from_tungstenite_error)?;
-
-            let (tx, rx) = ws.split();
-
-            let sink: WebSocketSink = Box::pin(TransportSink::new(tx));
-            let stream: WebSocketStream = Box::pin(rx.map(|frame| {
-                frame
-                    .map_err(from_tungstenite_error)
-                    .and_then(from_tungstenite)
-            }));
-
-            Ok((sink, stream))
+            // `ConnectionMode` is `#[non_exhaustive]`; the match below is
+            // exhaustive within this crate, so adding a future variant
+            // will surface here as a compile error rather than silently
+            // falling through.
+            match *mode {
+                ConnectionMode::Direct => {
+                    let (ws, _resp) = connect_async_with_config(url.as_str(), Some(config), false)
+                        .await
+                        .map_err(from_tungstenite_error)?;
+                    Ok(into_halves(ws))
+                }
+                #[cfg(feature = "socks")]
+                ConnectionMode::Socks5 { proxy } => connect_via_socks5(url, proxy, config).await,
+                #[cfg(not(feature = "socks"))]
+                ConnectionMode::Socks5 { .. } => Err(Error::UnsupportedMode(*mode)),
+            }
         };
 
         #[cfg(feature = "tracing")]
@@ -161,4 +157,48 @@ impl WebSocketTransport for DefaultTransport {
 
         Box::pin(fut)
     }
+}
+
+/// Split a tungstenite WebSocket stream into the boxed
+/// [`WebSocketSink`] / [`WebSocketStream`] pair the transport trait
+/// returns. Generic over the byte stream `S` so it serves both the
+/// direct (`MaybeTlsStream<TcpStream>`) and SOCKS5-tunnelled paths,
+/// whose concrete stream types differ but are erased by boxing.
+fn into_halves<S>(ws: TgWebSocketStream<S>) -> (WebSocketSink, WebSocketStream)
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let (tx, rx) = ws.split();
+    let sink: WebSocketSink = Box::pin(TransportSink::new(tx));
+    let stream: WebSocketStream = Box::pin(rx.map(|frame| {
+        frame
+            .map_err(from_tungstenite_error)
+            .and_then(from_tungstenite)
+    }));
+    (sink, stream)
+}
+
+/// Dial `url` through the SOCKS5 proxy at `proxy`.
+///
+/// The proxy resolves DNS, so the relay hostname is handed over verbatim
+/// — this is what lets a `.onion` relay be reached over Tor. TLS is then
+/// negotiated end-to-end with the relay over the tunnel for `wss` URLs
+/// (the `connector: None` argument makes tungstenite build the default
+/// rustls + webpki-roots connector enabled by `default-transport`).
+#[cfg(feature = "socks")]
+async fn connect_via_socks5(
+    url: &RelayUrl,
+    proxy: std::net::SocketAddr,
+    config: WebSocketConfig,
+) -> Result<(WebSocketSink, WebSocketStream), Error> {
+    let default_port = if url.is_secure() { 443 } else { 80 };
+    let port = url.as_url().port_or_known_default().unwrap_or(default_port);
+    let tunnel = tokio_socks::tcp::Socks5Stream::connect(proxy, (url.host(), port))
+        .await
+        .map_err(Error::backend)?;
+    let (ws, _resp) =
+        tokio_tungstenite::client_async_tls_with_config(url.as_str(), tunnel, Some(config), None)
+            .await
+            .map_err(from_tungstenite_error)?;
+    Ok(into_halves(ws))
 }

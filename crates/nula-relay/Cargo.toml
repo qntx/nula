@@ -30,6 +30,12 @@ default-transport = [
     "tokio-tungstenite/rustls-tls-webpki-roots",
 ]
 
+# SOCKS5 / Tor proxy dialing for the default transport. Activates the
+# `ConnectionMode::Socks5` code path in `DefaultTransport::connect`, so
+# it requires `default-transport`. Without this feature that mode
+# returns `Error::UnsupportedMode`.
+socks = ["default-transport", "dep:tokio-socks"]
+
 # The `transport::mock` transport for driving upper-layer state
 # machines without real sockets.
 mock = []
@@ -74,6 +80,9 @@ getrandom.workspace = true
 # the `default-transport` and `server` features above.
 tokio-tungstenite = { workspace = true, optional = true }
 
+# SOCKS5 proxy dialer (feature `socks`). Pulls its own `tokio/net`.
+tokio-socks = { workspace = true, optional = true }
+
 # Pool (feature `pool`).
 bitflags     = { version = "2.6", optional = true }
 lru          = { version = "0.16", optional = true }
@@ -94,6 +103,10 @@ tokio = { workspace = true, features = [
     "rt-multi-thread",
     "time",
     "test-util",
+    # `net` + `io-util` back the in-test minimal SOCKS5 proxy
+    # (`TcpListener`, `read_exact`, `copy_bidirectional`).
+    "net",
+    "io-util",
 ] }
 serde_json.workspace = true
 
@@ -131,6 +144,11 @@ required-features = ["mock"]
 name = "transport_default"
 path = "tests/transport_default.rs"
 required-features = ["default-transport"]
+
+[[test]]
+name = "transport_socks5"
+path = "tests/transport_socks5.rs"
+required-features = ["socks", "default-transport"]
 
 [[test]]
 name = "transport_mock"
