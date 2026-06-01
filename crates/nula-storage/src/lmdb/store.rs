@@ -183,9 +183,12 @@ impl Store {
             let Some(bytes) = self.events.get(&txn, &id)? else {
                 continue;
             };
-            let event = codec::decode(bytes)?;
-            if filter.match_event(&event, opts) {
-                events.push(event);
+            // Match on a zero-parse projection; pay the ~2µs secp256k1
+            // pubkey parse (and content/tag allocation) only for the
+            // candidates that survive the filter.
+            let view = codec::decode_match_view(bytes)?;
+            if filter.match_event(&view, opts) {
+                events.push(codec::decode(bytes)?);
             }
         }
         Ok(events)
@@ -381,8 +384,10 @@ impl Store {
                 let Some(bytes) = self.events.get(&txn, &id)? else {
                     continue;
                 };
-                let event = codec::decode(bytes)?;
-                if filter.match_event(&event, opts) {
+                // Only the id is kept, so the zero-parse projection is
+                // sufficient — no full decode or pubkey parse at all.
+                let view = codec::decode_match_view(bytes)?;
+                if filter.match_event(&view, opts) {
                     acc.push(id);
                 }
             }
@@ -536,9 +541,9 @@ impl Store {
         let Some(bytes) = self.events.get(txn, &id_bytes)? else {
             return Ok(None);
         };
-        let existing_event = codec::decode(bytes)?;
+        let existing_created_at = codec::decode_created_at(bytes)?;
         Ok(Some(pick_loser_id(
-            existing_event.created_at,
+            existing_created_at,
             &existing_id,
             event,
         )))
@@ -589,8 +594,8 @@ impl Store {
                     let mut id_arr = [0u8; keys::ID_LEN];
                     id_arr.copy_from_slice(&existing_id);
                     if let Some(bytes) = self.events.get(txn, &id_arr)? {
-                        let existing_event = codec::decode(bytes)?;
-                        if existing_event.created_at <= event.created_at {
+                        let existing_created_at = codec::decode_created_at(bytes)?;
+                        if existing_created_at <= event.created_at {
                             self.remove_event_inner(txn, &id_arr)?;
                         }
                     }

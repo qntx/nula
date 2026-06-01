@@ -13,6 +13,7 @@ use std::sync::Arc;
 use nula_core::signer::NostrSigner;
 #[cfg(feature = "gossip")]
 use nula_gossip::Gossip;
+use nula_relay::RelayOptions;
 use nula_relay::pool::{PoolNotification, RelayPool, RelayPoolOptions};
 use nula_storage::NostrDatabase;
 use tokio::sync::Mutex;
@@ -134,6 +135,32 @@ impl ClientBuilder {
     #[must_use]
     pub const fn pool_options(mut self, options: RelayPoolOptions) -> Self {
         self.pool_options = options;
+        self
+    }
+
+    /// Set the default per-relay [`RelayOptions`] applied to **every**
+    /// relay the client spawns — explicitly added ones and the relays
+    /// the gossip layer discovers on demand alike.
+    ///
+    /// This is the ergonomic entry point for routing all traffic through
+    /// a single SOCKS5 / Tor proxy:
+    ///
+    /// ```rust,no_run
+    /// # use nula_sdk::{Client, RelayOptions, ConnectionMode};
+    /// # use std::net::SocketAddr;
+    /// # fn doc(tor: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::builder()
+    ///     .relay_options(RelayOptions::new().connection_mode(ConnectionMode::socks5(tor)))
+    ///     .build()?;
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// Equivalent to `pool_options(self.pool_options.relay_options(opts))`;
+    /// for one-off per-relay overrides use
+    /// [`Client::add_relay_with_options`](crate::Client::add_relay_with_options).
+    #[must_use]
+    pub const fn relay_options(mut self, options: RelayOptions) -> Self {
+        self.pool_options = self.pool_options.relay_options(options);
         self
     }
 

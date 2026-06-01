@@ -724,29 +724,38 @@ impl Filter {
     /// `opts` controls the optional NIP-40 expiration check and the
     /// future-date guard. See [`MatchEventOptions`].
     #[must_use]
-    pub fn match_event(&self, event: &Event, opts: MatchEventOptions) -> bool {
+    pub fn match_event<E: MatchableEvent>(&self, event: &E, opts: MatchEventOptions) -> bool {
         if let Some(ids) = &self.ids
-            && !ids.contains(&event.id)
+            && !ids.contains(&event.matchable_id())
         {
             return false;
         }
-        if let Some(authors) = &self.authors
-            && !authors.contains(&event.pubkey)
-        {
-            return false;
+        if let Some(authors) = &self.authors {
+            // Compare raw bytes rather than parsed `PublicKey`s: a borrowed
+            // implementor can answer this without the ~2µs secp256k1 point
+            // parse it would otherwise pay for every candidate, including
+            // those this filter rejects.
+            let pubkey = event.matchable_pubkey_bytes();
+            if !authors
+                .iter()
+                .any(|author| author.to_byte_array() == pubkey)
+            {
+                return false;
+            }
         }
         if let Some(kinds) = &self.kinds
-            && !kinds.contains(&event.kind)
+            && !kinds.contains(&event.matchable_kind())
         {
             return false;
         }
+        let created_at = event.matchable_created_at();
         if let Some(since) = self.since
-            && event.created_at < since
+            && created_at < since
         {
             return false;
         }
         if let Some(until) = self.until
-            && event.created_at > until
+            && created_at > until
         {
             return false;
         }
@@ -756,10 +765,15 @@ impl Filter {
         // Runtime guards live OUTSIDE the per-NIP-01 fields. They
         // only fire when the caller seeds `opts.now`.
         if let Some(now) = opts.now {
-            if !opts.allow_future_dates && event.created_at > now {
+            if !opts.allow_future_dates && created_at > now {
                 return false;
             }
-            if !opts.allow_expired && matches!(event.is_expired(now), Ok(true)) {
+            // Mirrors `nip40::is_expired`: a missing or malformed
+            // `expiration` tag yields `None`, i.e. never expired.
+            if !opts.allow_expired
+                && let Some(deadline) = event.matchable_expiration()
+                && now >= deadline
+            {
                 return false;
             }
         }
@@ -782,30 +796,77 @@ impl Filter {
     }
 }
 
-/// Match an event's tags against a filter's `#<letter>` constraints using
-/// the event's cached single-letter index.
+/// Match an event's tags against a filter's `#<letter>` constraints.
 ///
 /// Returns `true` when, for every single-letter constraint, the event
 /// carries at least one of the requested values (NIP-01 AND-of-ORs
-/// semantics). The index is built once per event and reused, so matching
-/// one event against many filters costs a single build rather than a full
-/// tag scan per filter.
-fn generic_tags_match(
+/// semantics). An empty constraint set matches everything; a non-empty
+/// one against a tag-less event matches nothing — both fall out of the
+/// `all` over the (possibly empty) constraints.
+fn generic_tags_match<E: MatchableEvent>(
     generic_tags: &IndexMap<SingleLetterTag, Vec<String>>,
-    event: &Event,
+    event: &E,
 ) -> bool {
-    if generic_tags.is_empty() {
-        return true;
+    generic_tags
+        .iter()
+        .all(|(letter, expected)| event.matchable_has_tag(*letter, expected))
+}
+
+/// A read-only projection of the fields [`Filter::match_event`] inspects.
+///
+/// Implemented by the owned [`Event`] and by zero-parse borrowed views
+/// (e.g. the LMDB backend's storage projection), so the matcher keeps a
+/// single source of truth and the two can never silently diverge.
+///
+/// The author is exposed as **raw bytes**, never a parsed [`PublicKey`]:
+/// a borrowed implementor reading bytes straight from storage can then
+/// match without paying the ~2µs secp256k1 x-only point parse (≈2000× an
+/// id copy — see `nula-core`'s `event/decode_primitives` bench) for every
+/// candidate, including the ones a filter rejects.
+pub trait MatchableEvent {
+    /// The event id.
+    fn matchable_id(&self) -> EventId;
+    /// The 32-byte x-only author key, unparsed.
+    fn matchable_pubkey_bytes(&self) -> [u8; 32];
+    /// The event kind.
+    fn matchable_kind(&self) -> Kind;
+    /// The authored timestamp.
+    fn matchable_created_at(&self) -> Timestamp;
+    /// Whether the event carries a `<letter>` tag whose value (index 1)
+    /// is one of `values` — NIP-01 `#<letter>` AND-of-ORs semantics.
+    fn matchable_has_tag(&self, letter: SingleLetterTag, values: &[String]) -> bool;
+    /// The NIP-40 expiration deadline, or `None` when the `expiration`
+    /// tag is absent or malformed.
+    fn matchable_expiration(&self) -> Option<Timestamp>;
+}
+
+impl MatchableEvent for Event {
+    fn matchable_id(&self) -> EventId {
+        self.id
     }
-    if event.tags.is_empty() {
-        return false;
+
+    fn matchable_pubkey_bytes(&self) -> [u8; 32] {
+        self.pubkey.to_byte_array()
     }
-    let indexes = event.tags.indexes();
-    generic_tags.iter().all(|(letter, expected)| {
-        indexes
-            .get(letter)
-            .is_some_and(|present| expected.iter().any(|value| present.contains(value)))
-    })
+
+    fn matchable_kind(&self) -> Kind {
+        self.kind
+    }
+
+    fn matchable_created_at(&self) -> Timestamp {
+        self.created_at
+    }
+
+    fn matchable_has_tag(&self, letter: SingleLetterTag, values: &[String]) -> bool {
+        self.tags
+            .indexes()
+            .get(&letter)
+            .is_some_and(|present| values.iter().any(|value| present.contains(value)))
+    }
+
+    fn matchable_expiration(&self) -> Option<Timestamp> {
+        self.expiration().ok().flatten()
+    }
 }
 
 /// Compose `#<letter>` from a [`SingleLetterTag`].

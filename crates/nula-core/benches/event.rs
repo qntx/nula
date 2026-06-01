@@ -42,8 +42,8 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use nula_core::{
-    Event, EventBuilder, JsonUtil, Keys, Kind, Tag, Tags, Timestamp, UnsignedEvent,
-    compute_event_id,
+    Event, EventBuilder, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Tags, Timestamp,
+    UnsignedEvent, compute_event_id,
 };
 
 const FIXTURE_SECRET: &str = "0000000000000000000000000000000000000000000000000000000000000003";
@@ -158,6 +158,34 @@ fn bench_unsigned_canonical(c: &mut Criterion) {
     });
 }
 
+fn bench_decode_primitives(c: &mut Criterion) {
+    // Isolates the per-event cost a *borrowed* storage decode would
+    // avoid: parsing the 32-byte x-only pubkey back into a secp256k1
+    // point (curve validation) versus the trivial id copy. The delta is
+    // the headline opportunity behind the zero-copy read path (P2): a
+    // query that decodes N storage candidates into owned `Event`s pays
+    // this point-parse N times, even for events it filters out or only
+    // needs the id of.
+    let keys = fixture_keys();
+    let pubkey_bytes = keys.public_key().to_byte_array();
+    let id_bytes = fixture_event(16, 0).id.to_byte_array();
+    let mut group = c.benchmark_group("event/decode_primitives");
+    group.bench_function("pubkey_from_byte_array", |b| {
+        b.iter(|| {
+            let pubkey = PublicKey::from_byte_array(std::hint::black_box(pubkey_bytes))
+                .expect("fixture pubkey is a valid point");
+            std::hint::black_box(pubkey);
+        });
+    });
+    group.bench_function("event_id_from_byte_array", |b| {
+        b.iter(|| {
+            let id = EventId::from_byte_array(std::hint::black_box(id_bytes));
+            std::hint::black_box(id);
+        });
+    });
+    group.finish();
+}
+
 fn bench_json_round_trip(c: &mut Criterion) {
     let mut group = c.benchmark_group("event/json_round_trip");
     for &size in CONTENT_SIZES {
@@ -184,6 +212,7 @@ criterion_group!(
     bench_sign,
     bench_verify,
     bench_unsigned_canonical,
+    bench_decode_primitives,
     bench_json_round_trip,
 );
 criterion_main!(benches);

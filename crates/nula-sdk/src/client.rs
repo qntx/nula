@@ -25,7 +25,7 @@ use nula_core::types::RelayUrl;
 #[cfg(feature = "gossip")]
 use nula_gossip::Gossip;
 use nula_relay::pool::{Output, PoolNotification, RelayCapabilities, RelayPool};
-use nula_relay::{Relay, RelayStatus, SubscribeOptions};
+use nula_relay::{Relay, RelayOptions, RelayStatus, SubscribeOptions};
 use nula_storage::{Events, NostrDatabase};
 use tokio::sync::Mutex;
 
@@ -238,6 +238,33 @@ impl Client {
     ) -> Result<bool, Error> {
         self.check_admit_relay(&url).await?;
         Ok(self.inner.pool.add_relay(url, capabilities).await?)
+    }
+
+    /// Same as [`Self::add_relay_with_capabilities`] but pins per-relay
+    /// [`RelayOptions`] (e.g. a SOCKS5 / Tor
+    /// [`nula_relay::transport::ConnectionMode`], reconnect policy, or
+    /// timeout) instead of the pool-wide default.
+    ///
+    /// Use this when one relay needs a different proxy or policy than
+    /// the rest. To route **every** relay through the same proxy, prefer
+    /// [`ClientBuilder::relay_options`](crate::ClientBuilder::relay_options)
+    /// so gossip-discovered relays inherit it too.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::add_relay`].
+    pub async fn add_relay_with_options(
+        &self,
+        url: RelayUrl,
+        capabilities: RelayCapabilities,
+        options: RelayOptions,
+    ) -> Result<bool, Error> {
+        self.check_admit_relay(&url).await?;
+        Ok(self
+            .inner
+            .pool
+            .add_relay_with_options(url, capabilities, options)
+            .await?)
     }
 
     /// Disconnect and forget a relay.

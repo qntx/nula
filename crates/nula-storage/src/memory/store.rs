@@ -233,9 +233,15 @@ impl MemoryStore {
         // because the match call borrows the event.
         let opts = MatchEventOptions::default();
         let materialise = move |iter: Box<dyn Iterator<Item = &'a Arc<Event>> + 'a>| {
-            iter.filter(move |e| filter.match_event(e, opts))
-                .take(limit)
-                .map(|e| EventKey::from_event(e))
+            // `match_event` is generic over `MatchableEvent`, which does not
+            // deref-coerce: pin the `&Event` explicitly out of the
+            // `&&Arc<Event>` the predicate receives.
+            iter.filter(move |e| {
+                let event: &Event = e;
+                filter.match_event(event, opts)
+            })
+            .take(limit)
+            .map(|e| EventKey::from_event(e))
         };
 
         match pattern {
@@ -265,7 +271,7 @@ impl MemoryStore {
                 author,
                 identifier,
             } => match self.by_coordinate.get(&(kind, author, identifier)) {
-                Some(arc) if filter.match_event(arc, opts) => {
+                Some(arc) if filter.match_event(arc.as_ref(), opts) => {
                     Box::new(std::iter::once(EventKey::from_event(arc)))
                 }
                 _ => Box::new(std::iter::empty()),

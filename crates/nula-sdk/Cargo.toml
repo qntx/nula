@@ -28,6 +28,10 @@ gossip            = ["dep:nula-gossip"]
 sync              = ["dep:nula-sync", "nula-sync/storage"]
 nip46             = ["dep:nula-signer"]
 default-transport = ["nula-relay/default-transport"]
+# SOCKS5 / Tor proxy dialing for every relay the client spawns (including
+# gossip-discovered ones). Set the proxy via
+# `ClientBuilder::relay_options(RelayOptions::new().connection_mode(...))`.
+socks             = ["nula-relay/socks"]
 # Enable `nula-storage`'s in-memory backend so `ClientBuilder::build`
 # can default to `MemoryDatabase::new()` when the caller skipped
 # `.database(...)`. Turn this off to enforce explicit database
@@ -65,7 +69,23 @@ nula-core               = { workspace = true, features = ["nip06"] }
 nula-relay              = { workspace = true, features = ["pool", "server", "mock", "default-transport"] }
 nula-storage            = { workspace = true, features = ["memory"] }
 nula-sync               = { workspace = true, features = ["storage"] }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util", "time"] }
+# `net` + `io-util` back the in-test minimal SOCKS5 proxy used by
+# `tests/socks5_routing.rs`.
+tokio = { workspace = true, features = [
+    "macros",
+    "rt-multi-thread",
+    "test-util",
+    "time",
+    "net",
+    "io-util",
+] }
 
 [lints]
 workspace = true
+
+# Gated behind `socks` so the default integration suite stays free of the
+# proxy dependency; run with `--features socks`.
+[[test]]
+name = "socks5_routing"
+path = "tests/socks5_routing.rs"
+required-features = ["socks"]

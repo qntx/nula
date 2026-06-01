@@ -98,7 +98,8 @@ impl RelayPool {
         self.inner.is_shutdown()
     }
 
-    /// Add a relay to the pool.
+    /// Add a relay to the pool using the pool-wide default
+    /// [`RelayOptions`] ([`crate::pool::RelayPoolOptions::relay_options`]).
     ///
     /// Returns `Ok(true)` when the relay was newly inserted, `Ok(false)`
     /// when the url was already present (capabilities are merged in
@@ -113,6 +114,29 @@ impl RelayPool {
         &self,
         url: RelayUrl,
         capabilities: crate::pool::RelayCapabilities,
+    ) -> Result<bool, Error> {
+        self.add_relay_with_options(url, capabilities, self.inner.options.relay_options)
+            .await
+    }
+
+    /// Add a relay with caller-chosen [`RelayOptions`], overriding the
+    /// pool-wide default for this one relay (e.g. a per-relay SOCKS5
+    /// [`crate::transport::ConnectionMode`], reconnect policy, or
+    /// timeout).
+    ///
+    /// `options` is only applied when the relay is **freshly inserted**;
+    /// a relay already in the pool keeps the options it was spawned with
+    /// (its actor is live) and only merges the new `capabilities`.
+    ///
+    /// # Errors
+    ///
+    /// - [`Error::Shutdown`] if the pool has already been shut down.
+    /// - [`Error::TooManyRelays`] when the configured cap is reached.
+    pub async fn add_relay_with_options(
+        &self,
+        url: RelayUrl,
+        capabilities: crate::pool::RelayCapabilities,
+        options: RelayOptions,
     ) -> Result<bool, Error> {
         if self.is_shutdown() {
             return Err(Error::Shutdown);
@@ -140,7 +164,7 @@ impl RelayPool {
         // failure modes.
         let relay = RelayBuilder::new(url.clone())
             .transport(Arc::clone(&self.inner.state.transport))
-            .options(RelayOptions::default())
+            .options(options)
             .build()?;
 
         // Wire its notification stream onto the pool broadcast.

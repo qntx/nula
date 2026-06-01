@@ -74,7 +74,9 @@ pub use nula_core::{
 #[cfg(feature = "gossip")]
 #[cfg_attr(docsrs, doc(cfg(feature = "gossip")))]
 pub use nula_gossip::Gossip;
+pub use nula_relay::RelayOptions;
 pub use nula_relay::pool::{Output, PoolNotification, RelayCapabilities, RelayPoolOptions};
+pub use nula_relay::transport::ConnectionMode;
 #[cfg(feature = "nip46")]
 use nula_signer as _;
 #[cfg(test)]

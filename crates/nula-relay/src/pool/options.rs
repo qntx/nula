@@ -2,6 +2,8 @@
 
 use std::num::NonZeroUsize;
 
+use crate::options::RelayOptions;
+
 /// Defaults captured as named constants so the [`Default`] impl and
 /// the module-level docs cannot drift.
 mod defaults {
@@ -51,6 +53,18 @@ pub struct RelayPoolOptions {
     /// event is persisted at most once. Failures are swallowed (the
     /// event is still observable on the returned stream).
     pub auto_save_events: bool,
+
+    /// Default [`RelayOptions`] applied to every relay added via
+    /// [`crate::pool::RelayPool::add_relay`] (and the capability-tagged
+    /// variants). Callers that need a different connection mode,
+    /// reconnect policy, or timeout for one specific relay use
+    /// [`crate::pool::RelayPool::add_relay_with_options`] to override
+    /// this default per relay.
+    ///
+    /// This is how a SOCKS5 / Tor [`crate::transport::ConnectionMode`]
+    /// reaches every relay — including the ones the gossip layer adds
+    /// on demand — from a single pool-wide setting.
+    pub relay_options: RelayOptions,
 }
 
 impl Default for RelayPoolOptions {
@@ -60,6 +74,7 @@ impl Default for RelayPoolOptions {
             notification_channel_size: defaults::NOTIFICATION_CHANNEL_SIZE,
             dedup_cache_size: defaults::DEDUP_CACHE_SIZE,
             auto_save_events: true,
+            relay_options: RelayOptions::new(),
         }
     }
 }
@@ -96,6 +111,14 @@ impl RelayPoolOptions {
     #[must_use]
     pub const fn auto_save_events(mut self, value: bool) -> Self {
         self.auto_save_events = value;
+        self
+    }
+
+    /// Override the default per-relay [`RelayOptions`] applied to every
+    /// relay the pool spawns.
+    #[must_use]
+    pub const fn relay_options(mut self, options: RelayOptions) -> Self {
+        self.relay_options = options;
         self
     }
 }

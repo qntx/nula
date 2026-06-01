@@ -23,7 +23,13 @@ allowed-idents-below-min-chars = [
     "_",
 ]
 
-pass-by-value-size-limit = 128
+# Clippy's own default. Config/builder structs (`RelayPoolOptions`,
+# `RelayOptions`, `GossipOptions`, …) are `Copy` and threaded by value
+# through cold builder paths; the by-value convention is uniform across
+# the workspace. A stricter override produced false positives once
+# `RelayPoolOptions` grew to embed a `RelayOptions` whose
+# `ConnectionMode::Socks5` carries a 32-byte `SocketAddr`.
+pass-by-value-size-limit = 256
 trivial-copy-size-limit = 8
 
 large-error-threshold = 128

@@ -48,6 +48,13 @@ pub enum Error {
     #[error("stored event payload is empty")]
     EmptyPayload,
 
+    /// A record decoded structurally but a field violated an invariant
+    /// the writer guarantees (e.g. a non-hex id / pubkey in the borrowed
+    /// match projection). Indicates on-disk corruption or an
+    /// incompatible writer.
+    #[error("corrupt stored record: {0}")]
+    CorruptRecord(&'static str),
+
     /// Writer thread has exited; subsequent operations cannot make
     /// progress. The handle should be dropped.
     #[error("writer thread is gone")]
