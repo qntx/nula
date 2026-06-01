@@ -966,6 +966,262 @@ async fn nip65_refresh_relay_metadata_drives_gossip_routing() {
     relay.shutdown();
 }
 
+#[cfg(feature = "gossip")]
+#[tokio::test]
+async fn gossip_inbound_fetch_routes_to_advertised_outbox() {
+    use std::sync::Arc;
+
+    use nula_core::nips::nip65::{RelayList, RelayMarker};
+    use nula_storage::memory::MemoryDatabase;
+
+    // Two distinct real relays: a discovery relay that carries Alice's
+    // kind:10002, and the outbox relay her list points at (where her
+    // note actually lives). Bob knows only the discovery relay.
+    let discovery = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("discovery relay binds");
+    let outbox = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("outbox relay binds");
+    let outbox_url = outbox.url().clone();
+
+    // Alice (no gossip) advertises her outbox and parks a note there.
+    let alice_keys = Keys::generate().expect("alice keys");
+    let alice = Client::builder()
+        .signer(alice_keys.clone())
+        .build()
+        .expect("alice builds");
+    alice
+        .add_relay(discovery.url())
+        .await
+        .expect("add discovery");
+    alice.add_relay(outbox.url()).await.expect("add outbox");
+    alice.connect().await;
+
+    let mut alice_list = RelayList::new();
+    alice_list.insert(outbox_url.clone(), RelayMarker::Write);
+    alice
+        .set_relay_list(&alice_list)
+        .await
+        .expect("alice publishes kind-10002");
+
+    let note = alice
+        .sign_event_builder(text_note("hello via outbox", "gossip-inbound"))
+        .await
+        .expect("alice signs note");
+    let note_id = note.id;
+    alice
+        .send_event_to([outbox.url()], note)
+        .await
+        .expect("alice parks note on outbox only");
+
+    // Bob (gossip) knows only the discovery relay at first. Permissive
+    // policy so the loopback MockRelay urls survive route selection.
+    let gossip_db: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    let gossip = nula_gossip::Gossip::builder()
+        .options(
+            nula_gossip::GossipOptions::new().allowed(nula_gossip::AllowedRelays::permissive()),
+        )
+        .database(Arc::clone(&gossip_db))
+        .build()
+        .expect("gossip builds");
+    let bob = Client::builder()
+        .signer(Keys::generate().expect("bob keys"))
+        .database_arc(Arc::clone(&gossip_db))
+        .gossip(gossip)
+        .build()
+        .expect("bob builds with gossip");
+    bob.add_relay(discovery.url()).await.expect("add discovery");
+    bob.connect().await;
+    assert!(
+        !bob.relays().await.contains(&outbox_url),
+        "Bob must start out knowing only the discovery relay",
+    );
+
+    // Learn Alice's outbox from the discovery relay. The second leg of
+    // this refresh (kind:10050) already routes via the freshly-learnt
+    // outbox, so it adds that relay to Bob's pool on demand.
+    bob.refresh_relay_metadata([*alice_keys.public_key()], Some(Duration::from_secs(5)))
+        .await
+        .expect("refresh succeeds");
+
+    // Fetch Alice's notes: gossip routes the author filter to her
+    // outbox relay, adding+connecting it on demand.
+    let events = bob
+        .fetch_events(
+            Filter::new()
+                .author(*alice_keys.public_key())
+                .kind(Kind::TEXT_NOTE),
+            Some(Duration::from_secs(5)),
+        )
+        .await
+        .expect("gossip-routed fetch succeeds");
+    assert!(
+        events.iter().any(|e| e.id == note_id),
+        "the note must be fetched from Alice's advertised outbox relay",
+    );
+    assert!(
+        bob.relays().await.contains(&outbox_url),
+        "the outbox relay must have been added to Bob's pool on demand",
+    );
+
+    alice.shutdown().await;
+    bob.shutdown().await;
+    discovery.shutdown();
+    outbox.shutdown();
+}
+
+#[cfg(feature = "gossip")]
+#[tokio::test]
+async fn gossip_outbound_send_targets_recipient_inbox() {
+    use std::sync::Arc;
+
+    use nula_core::nips::nip65::{RelayList, RelayMarker};
+    use nula_storage::memory::MemoryDatabase;
+
+    // Discovery relay carries Bob's kind:10002; the inbox relay is the
+    // read relay his list advertises and where Alice's reply must land.
+    let discovery = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("discovery relay binds");
+    let inbox = MockRelayBuilder::new()
+        .run()
+        .await
+        .expect("inbox relay binds");
+    let inbox_url = inbox.url().clone();
+
+    // Bob (no gossip) advertises his inbox via NIP-65.
+    let bob_keys = Keys::generate().expect("bob keys");
+    let bob = Client::builder()
+        .signer(bob_keys.clone())
+        .build()
+        .expect("bob builds");
+    bob.add_relay(discovery.url()).await.expect("add discovery");
+    bob.add_relay(inbox.url()).await.expect("add inbox");
+    bob.connect().await;
+    let mut bob_list = RelayList::new();
+    bob_list.insert(inbox_url.clone(), RelayMarker::Read);
+    bob.set_relay_list(&bob_list)
+        .await
+        .expect("bob publishes kind-10002");
+
+    // Alice (gossip) knows only the discovery relay. Permissive policy
+    // so the loopback MockRelay urls survive route selection.
+    let gossip_db: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    let gossip = nula_gossip::Gossip::builder()
+        .options(
+            nula_gossip::GossipOptions::new().allowed(nula_gossip::AllowedRelays::permissive()),
+        )
+        .database(Arc::clone(&gossip_db))
+        .build()
+        .expect("gossip builds");
+    let alice_keys = Keys::generate().expect("alice keys");
+    let alice = Client::builder()
+        .signer(alice_keys.clone())
+        .database_arc(Arc::clone(&gossip_db))
+        .gossip(gossip)
+        .build()
+        .expect("alice builds with gossip");
+    alice
+        .add_relay(discovery.url())
+        .await
+        .expect("add discovery");
+    alice.connect().await;
+    alice
+        .refresh_relay_metadata([*bob_keys.public_key()], Some(Duration::from_secs(5)))
+        .await
+        .expect("refresh succeeds");
+
+    // Alice sends a note mentioning Bob; gossip must route it to Bob's
+    // inbox relay (added on demand) and nowhere else.
+    let note_builder = text_note("reply to bob", "gossip-outbound")
+        .tag(Tag::new(["p", bob_keys.public_key().to_hex().as_str()]).expect("valid p tag"));
+    let note = alice
+        .sign_event_builder(note_builder)
+        .await
+        .expect("alice signs note");
+    let note_id = note.id;
+    let output = alice.send_event(note).await.expect("gossip-routed send");
+    assert!(
+        output.success.contains(&inbox_url),
+        "the note must be published to Bob's inbox relay; failed={:?}",
+        output.failed,
+    );
+    assert!(
+        !output.success.contains(discovery.url()),
+        "gossip routing must not broadcast the note to the discovery relay",
+    );
+    assert!(
+        alice.relays().await.contains(&inbox_url),
+        "the inbox relay must have been added to Alice's pool on demand",
+    );
+
+    // Confirm the note is actually archived on the inbox relay.
+    let archived = alice
+        .fetch_events_from(
+            [inbox.url()],
+            Filter::new()
+                .author(*alice_keys.public_key())
+                .kind(Kind::TEXT_NOTE),
+            Some(Duration::from_secs(5)),
+        )
+        .await
+        .expect("read-back from inbox succeeds");
+    assert!(
+        archived.iter().any(|e| e.id == note_id),
+        "the routed note must be retrievable from Bob's inbox relay",
+    );
+
+    alice.shutdown().await;
+    bob.shutdown().await;
+    discovery.shutdown();
+    inbox.shutdown();
+}
+
+#[cfg(feature = "gossip")]
+#[tokio::test]
+async fn gossip_send_gift_wrap_without_dm_relays_errors() {
+    use std::sync::Arc;
+
+    use nula_storage::memory::MemoryDatabase;
+
+    // Gossip is enabled but the routing graph is empty, so the gift
+    // wrap's recipient advertises no NIP-17 DM relays.
+    let gossip_db: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
+    let gossip = nula_gossip::Gossip::builder()
+        .database(Arc::clone(&gossip_db))
+        .build()
+        .expect("gossip builds");
+    let alice = Client::builder()
+        .signer(Keys::generate().expect("alice keys"))
+        .database_arc(Arc::clone(&gossip_db))
+        .gossip(gossip)
+        .build()
+        .expect("alice builds with gossip");
+
+    let recipient = Keys::generate().expect("recipient keys");
+    let ephemeral = Keys::generate().expect("ephemeral wrap key");
+    let wrap = EventBuilder::new(Kind::GIFT_WRAP, "")
+        .tag(Tag::new(["p", recipient.public_key().to_hex().as_str()]).expect("valid p tag"))
+        .created_at(Timestamp::now().expect("system clock available"))
+        .sign_with_keys(&ephemeral)
+        .expect("signed gift wrap");
+
+    let err = alice
+        .send_event(wrap)
+        .await
+        .expect_err("a gift wrap with no DM relays must not be broadcast");
+    assert!(
+        matches!(err, nula_sdk::Error::PrivateMessageRelaysNotFound),
+        "expected PrivateMessageRelaysNotFound, got {err:?}",
+    );
+
+    alice.shutdown().await;
+}
+
 #[tokio::test]
 async fn nip17_set_and_get_dm_relays_round_trip() {
     let relay = MockRelayBuilder::new()

@@ -14,7 +14,7 @@
 use std::sync::Arc;
 
 use nula_core::nips::nip65::{RelayList, RelayMarker};
-use nula_core::{Event, EventBuilder, Keys, Kind, RelayUrl, Tag, Timestamp};
+use nula_core::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl, Tag, Timestamp};
 use nula_gossip::{Gossip, GossipOptions};
 use nula_storage::NostrDatabase;
 use nula_storage::memory::MemoryDatabase;
@@ -88,6 +88,21 @@ pub fn build_text_with_relay_hints(keys: &Keys, hints: &[RelayUrl]) -> Event {
         builder = builder.tag(Tag::new(["r", hint.as_str()]).expect("valid r tag"));
     }
     builder.sign_with_keys(keys).expect("text note")
+}
+
+/// Build a signed event of `kind` that `#p`-tags every key in
+/// `recipients`. Used to exercise outgoing-event routing.
+pub fn build_event_with_p_tags(
+    author: &Keys,
+    kind: Kind,
+    recipients: &[PublicKey],
+    created_at: Timestamp,
+) -> Event {
+    let mut builder = EventBuilder::new(kind, "").created_at(created_at);
+    for pk in recipients {
+        builder = builder.tag(Tag::new(["p", pk.to_hex().as_str()]).expect("valid p tag"));
+    }
+    builder.sign_with_keys(author).expect("signed event")
 }
 
 /// Convenience: parse a relay URL or panic.

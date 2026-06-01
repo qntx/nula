@@ -240,11 +240,25 @@ impl ClientBuilder {
             }
         });
 
+        // Spawn the background NIP-65/17 refresher when gossip is
+        // configured with a tick interval. Reads discovery relays from
+        // the live pool each tick, so it tracks relays added after the
+        // client is built. Aborts on drop with the last `Client` clone.
+        #[cfg(feature = "gossip")]
+        let gossip_refresher = self.gossip.as_ref().and_then(|gossip| {
+            gossip
+                .options()
+                .refresher_interval
+                .map(|_| crate::gossip::spawn_refresher(gossip.clone(), pool.clone()))
+        });
+
         let inner = InnerClient {
             pool,
             signer: self.signer,
             #[cfg(feature = "gossip")]
             gossip: self.gossip,
+            #[cfg(feature = "gossip")]
+            gossip_refresher,
             config: ClientConfig {
                 automatic_authentication: self.automatic_authentication,
             },

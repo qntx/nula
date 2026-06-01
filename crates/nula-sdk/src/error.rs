@@ -36,6 +36,17 @@ pub enum Error {
     #[error(transparent)]
     Gossip(#[from] nula_gossip::Error),
 
+    /// `gossip` feature only. A NIP-17 gift wrap (`kind:1059`) was
+    /// routed through the gossip engine but none of its `#p`
+    /// recipients advertise `kind:10050` DM relays. Per
+    /// [NIP-17](https://github.com/nostr-protocol/nips/blob/master/17.md)
+    /// the client SHOULD NOT publish in this case, so the send path
+    /// surfaces this error instead of falling back to a broadcast.
+    #[cfg(feature = "gossip")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "gossip")))]
+    #[error("no NIP-17 DM relays found for the gift wrap recipients")]
+    PrivateMessageRelaysNotFound,
+
     /// `sync` feature only. Wraps a [`nula_sync::Error`] from the
     /// NIP-77 reconciliation helpers.
     #[cfg(feature = "sync")]

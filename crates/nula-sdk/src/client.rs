@@ -59,6 +59,16 @@ pub(crate) struct InnerClient {
     pub(crate) signer: Option<Arc<dyn NostrSigner>>,
     #[cfg(feature = "gossip")]
     pub(crate) gossip: Option<Gossip>,
+    /// Background NIP-65 / NIP-17 refresher task. `Some` when gossip
+    /// is configured with a non-`None`
+    /// [`refresher_interval`](nula_gossip::GossipOptions::refresher_interval);
+    /// dropping it (with the last [`Client`] clone) aborts the loop.
+    #[cfg(feature = "gossip")]
+    #[allow(
+        dead_code,
+        reason = "drop guard: the field is never read, its Drop aborts the refresher task"
+    )]
+    pub(crate) gossip_refresher: Option<crate::gossip::GossipRefresher>,
     pub(crate) config: ClientConfig,
     /// Client-side registry of every active subscription. Keyed by
     /// `SubscriptionId`, the value records which relays the
@@ -306,13 +316,27 @@ impl Client {
         Ok(event)
     }
 
-    /// Publish `event` to every relay carrying
+    /// Publish `event`.
+    ///
+    /// When a gossip router is configured (the `gossip` feature plus
+    /// `ClientBuilder::gossip`) the event is routed via the NIP-65
+    /// outbox model — the author's outbox relays unioned with each
+    /// `#p` recipient's inbox relays (DM relays for NIP-17 gift
+    /// wraps) — auto-adding and connecting any relay the pool does not
+    /// yet know. Otherwise it broadcasts to every relay carrying
     /// [`RelayCapabilities::WRITE`].
     ///
     /// # Errors
     ///
+    /// - `Error::PrivateMessageRelaysNotFound` (gossip only) when
+    ///   routing a NIP-17 gift wrap whose recipients advertise no DM
+    ///   relays.
     /// - [`Error::Pool`] when the pool has no WRITE-capable relays.
     pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
+        #[cfg(feature = "gossip")]
+        if let Some(gossip) = &self.inner.gossip {
+            return self.gossip_send_event(gossip, event).await;
+        }
         Ok(self.inner.pool.send_event(event).await?)
     }
 
@@ -414,6 +438,13 @@ impl Client {
     /// arrive rather than materialising the full [`Events`] set;
     /// otherwise prefer [`Self::fetch_events`].
     ///
+    /// When a gossip router is configured (the `gossip` feature plus
+    /// `ClientBuilder::gossip`) the filter is broken into per-relay
+    /// sub-filters via the NIP-65 inbox/outbox model and the
+    /// resulting per-relay streams are merged; relays the pool does
+    /// not yet know are added and connected on demand. Filters with
+    /// no public-key routing signal stream from the generic READ pool.
+    ///
     /// # Errors
     ///
     /// See [`nula_relay::pool::RelayPool::stream_events`].
@@ -422,6 +453,10 @@ impl Client {
         filter: Filter,
         timeout: Option<Duration>,
     ) -> Result<BoxStream<'static, (RelayUrl, Result<Event, nula_relay::Error>)>, Error> {
+        #[cfg(feature = "gossip")]
+        if let Some(gossip) = &self.inner.gossip {
+            return self.gossip_stream_events(gossip, filter, timeout).await;
+        }
         let options = SubscribeOptions::default().close_on_eose(true);
         Ok(self
             .inner
@@ -492,6 +527,10 @@ impl Client {
         filter: Filter,
         options: SubscribeOptions,
     ) -> Result<Output<SubscriptionId>, Error> {
+        #[cfg(feature = "gossip")]
+        if let Some(gossip) = &self.inner.gossip {
+            return self.gossip_subscribe(gossip, id, filter, options).await;
+        }
         let output = self
             .inner
             .pool

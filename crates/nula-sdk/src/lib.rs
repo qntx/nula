@@ -50,6 +50,8 @@
 pub mod builder;
 pub mod client;
 pub mod error;
+#[cfg(feature = "gossip")]
+mod gossip;
 pub mod monitor;
 pub mod nips;
 pub mod policy;

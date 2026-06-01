@@ -74,6 +74,7 @@ pub mod options;
 pub mod routes;
 pub mod ttl;
 
+mod event;
 mod filter;
 mod gossip;
 mod inner;
@@ -81,6 +82,7 @@ mod refresher;
 mod selection;
 
 pub use self::error::Error;
+pub use self::event::EventRoute;
 pub use self::filter::BrokenDownFilters;
 pub use self::gossip::{Gossip, GossipBuilder};
 pub use self::options::{AllowedRelays, GossipLimits, GossipOptions, ListKind};

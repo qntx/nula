@@ -140,6 +140,16 @@ impl Gossip {
         break_down(&self.inner, filter).await
     }
 
+    /// Resolve the outbox-model relay set an outgoing `event` should be
+    /// published to. See [`EventRoute`] for the possible outcomes and
+    /// the crate's [`event`](crate::event) module for the per-kind
+    /// routing table.
+    ///
+    /// [`EventRoute`]: crate::EventRoute
+    pub async fn break_down_event(&self, event: &Event) -> crate::event::EventRoute {
+        crate::event::break_down_event(&self.inner, event).await
+    }
+
     /// Freshness verdict for a stored list.
     pub async fn status(&self, user: &PublicKey, kind: ListKind) -> PublicKeyStatus {
         let routes = self.inner.routes.read().await;
