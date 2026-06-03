@@ -8,6 +8,7 @@ use flume::Sender;
 use nula_core::boxed::BoxFuture;
 use nula_core::event::{Event, EventId};
 use nula_core::filter::Filter;
+use nula_core::types::Timestamp;
 use tokio::sync::oneshot;
 
 use crate::lmdb::builder::LmdbDatabaseBuilder;
@@ -156,6 +157,23 @@ impl NostrDatabase for LmdbDatabase {
         let store = self.inner.store.clone();
         Box::pin(async move {
             tokio::task::spawn_blocking(move || store.count(&filter))
+                .await
+                .map_err(|e| StorageError::backend(Error::from(e)))?
+                .map_err(StorageError::from)
+        })
+    }
+
+    // Override the trait default (which materialises every match via
+    // `query`): the store serves negentropy items from the zero-parse
+    // match projection, so reconciliation never pays the secp pubkey
+    // parse or content/tag allocation per event.
+    fn negentropy_items(
+        &self,
+        filter: Filter,
+    ) -> BoxFuture<'_, Result<Vec<(EventId, Timestamp)>, StorageError>> {
+        let store = self.inner.store.clone();
+        Box::pin(async move {
+            tokio::task::spawn_blocking(move || store.negentropy_items(&filter))
                 .await
                 .map_err(|e| StorageError::backend(Error::from(e)))?
                 .map_err(StorageError::from)

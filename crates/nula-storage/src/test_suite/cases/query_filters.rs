@@ -139,6 +139,48 @@ pub async fn count_matches_query_length<F: DatabaseFactory>(factory: &F) {
     );
 }
 
+/// `negentropy_items` must yield the matching events' `(id, created_at)` set.
+///
+/// It must equal the pairs `query` would produce, regardless of order
+/// (`NegentropyStorageVector::seal` sorts). Pins LMDB's zero-parse
+/// override against the materialising default the other backends use.
+pub async fn negentropy_items_match_query<F: DatabaseFactory>(factory: &F) {
+    let (db, _guard) = factory.build().await;
+    let k = keys();
+    // A tagged event exercises the borrowed projection's tag decode; a
+    // plain one covers the common case.
+    db.save_event(&event_with_tags(
+        &k,
+        Kind::TEXT_NOTE,
+        "tagged",
+        100,
+        [Tag::new(["t", "rust"]).expect("t tag")],
+    ))
+    .await
+    .expect("save tagged");
+    db.save_event(&text_note(&k, "plain", 200))
+        .await
+        .expect("save plain");
+
+    let mut from_neg = db
+        .negentropy_items(Filter::new())
+        .await
+        .expect("negentropy_items ok");
+    let mut from_query: Vec<_> = db
+        .query(Filter::new())
+        .await
+        .expect("query ok")
+        .into_iter()
+        .map(|e| (e.id, e.created_at))
+        .collect();
+    from_neg.sort();
+    from_query.sort();
+    assert_eq!(
+        from_neg, from_query,
+        "negentropy items must equal the query-derived (id, created_at) set"
+    );
+}
+
 /// `delete(filter)` must drop matching events **without** writing a
 /// tombstone (re-inserting the same id afterwards must succeed).
 pub async fn delete_matching_drops_events_without_tombstoning<F: DatabaseFactory>(factory: &F) {

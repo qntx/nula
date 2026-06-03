@@ -94,6 +94,7 @@ pub async fn run_query_path<F: DatabaseFactory>(factory: &F) {
     cases::query_filters::time_bounds_are_inclusive(factory).await;
     cases::query_filters::limit_caps_returned_events(factory).await;
     cases::query_filters::count_matches_query_length(factory).await;
+    cases::query_filters::negentropy_items_match_query(factory).await;
     cases::query_filters::delete_matching_drops_events_without_tombstoning(factory).await;
 }
 

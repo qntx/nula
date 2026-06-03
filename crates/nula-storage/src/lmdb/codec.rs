@@ -126,9 +126,21 @@ pub(crate) fn decode_match_view(bytes: &[u8]) -> Result<EventView<'_>, Error> {
     })
 }
 
+impl EventView<'_> {
+    /// The event id (decoded from the stored hex; no curve parse).
+    pub(crate) const fn id(&self) -> EventId {
+        EventId::from_byte_array(self.id)
+    }
+
+    /// The authored timestamp.
+    pub(crate) const fn created_at(&self) -> Timestamp {
+        self.created_at
+    }
+}
+
 impl MatchableEvent for EventView<'_> {
     fn matchable_id(&self) -> EventId {
-        EventId::from_byte_array(self.id)
+        self.id()
     }
 
     fn matchable_pubkey_bytes(&self) -> [u8; 32] {
@@ -140,7 +152,7 @@ impl MatchableEvent for EventView<'_> {
     }
 
     fn matchable_created_at(&self) -> Timestamp {
-        self.created_at
+        self.created_at()
     }
 
     fn matchable_has_tag(&self, letter: SingleLetterTag, values: &[String]) -> bool {

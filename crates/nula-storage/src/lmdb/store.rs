@@ -195,7 +195,59 @@ impl Store {
     }
 
     pub(crate) fn count(&self, filter: &Filter) -> Result<usize, Error> {
-        Ok(self.query(filter)?.len())
+        let txn = self.env.read_txn()?;
+        let opts = MatchEventOptions::default();
+        let limit = filter.limit.unwrap_or(usize::MAX);
+
+        let mut count = 0usize;
+        for id in self.candidate_ids(&txn, filter)? {
+            if count >= limit {
+                break;
+            }
+            let Some(bytes) = self.events.get(&txn, &id)? else {
+                continue;
+            };
+            // Counting needs only the verdict, never an owned event — the
+            // zero-parse projection skips the secp pubkey parse for every
+            // match.
+            let view = codec::decode_match_view(bytes)?;
+            if filter.match_event(&view, opts) {
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+
+    /// `(EventId, created_at)` pairs matching `filter`, for NIP-77
+    /// negentropy reconciliation.
+    ///
+    /// Like [`Self::query`] but yields only the id + timestamp each
+    /// negentropy item needs, so it matches on the zero-parse projection
+    /// and never decodes a full [`Event`] (no secp pubkey parse, no
+    /// content / tag allocation). Insertion order is irrelevant —
+    /// `NegentropyStorageVector::seal` sorts.
+    pub(crate) fn negentropy_items(
+        &self,
+        filter: &Filter,
+    ) -> Result<Vec<(EventId, Timestamp)>, Error> {
+        let txn = self.env.read_txn()?;
+        let opts = MatchEventOptions::default();
+        let limit = filter.limit.unwrap_or(usize::MAX);
+
+        let mut items: Vec<(EventId, Timestamp)> = Vec::new();
+        for id in self.candidate_ids(&txn, filter)? {
+            if items.len() >= limit {
+                break;
+            }
+            let Some(bytes) = self.events.get(&txn, &id)? else {
+                continue;
+            };
+            let view = codec::decode_match_view(bytes)?;
+            if filter.match_event(&view, opts) {
+                items.push((view.id(), view.created_at()));
+            }
+        }
+        Ok(items)
     }
 
     /// Stream candidate event ids in newest-first order, picking the
