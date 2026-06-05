@@ -27,110 +27,46 @@ nula-sync = { version = "0.1.0", path = "crates/nula-sync", default-features = f
 nula-sdk = { version = "0.1.0", path = "crates/nula-sdk", default-features = false }
 nula-cli = { version = "0.1.0", path = "crates/nula-cli", default-features = false }
 
-# Serialization
-serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
-serde_json = { version = "1.0.149", default-features = false, features = ["alloc"] }
-
-# Cryptography (always-on)
-secp256k1 = { version = "0.31.1", default-features = false, features = ["std", "serde"] }
-sha2 = "0.11.0"
-# `base64` is consumed by NIP-04 (legacy DM), NIP-44 (v2 encrypted
-# payloads), and NIP-98 (HTTP auth). It is effectively a core codec
-# rather than an optional addon, so it lives alongside the other
-# always-on cryptography crates.
-base64 = "0.22.1"
-zeroize = { version = "1.8.2", default-features = false, features = ["zeroize_derive"] }
-
-# Cryptography (NIP-04 / NIP-44 / NIP-49 - feature-gated)
 aes = "0.9.0"
-# `alloc` enables the `encrypt_padded_vec` / `decrypt_padded_vec`
-# helpers on `cbc::Encryptor` / `cbc::Decryptor`. NIP-04 ciphertexts
-# already require allocation for the wire payload, so there is no
-# `no_std` use case to preserve here.
+anyhow = { version = "1.0.100", default-features = false, features = ["std"] }
+assert_cmd = "2.0.18"
+base64 = "0.22.1"
+bech32 = { version = "0.11.1", default-features = false, features = ["std"] }
+bip39 = "2.2.2"
 cbc = { version = "0.2.0", features = ["alloc"] }
 chacha20 = "0.10.0"
 chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["alloc"] }
+clap = { version = "4.6.0", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions", "env", "wrap_help"] }
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+faster-hex = { version = "0.10.0", default-features = false, features = ["std"] }
+futures = { version = "0.3.32", default-features = false, features = ["std", "alloc"] }
+getrandom = { version = "0.4.2", default-features = false, features = ["std"] }
+hex-literal = "1.1.0"
 hkdf = "0.13.0"
 hmac = "0.13.0"
-scrypt = "0.12.0"
-
-# Mnemonic derivation (NIP-06)
-bip39 = "2.2.2"
-
-# Unicode NFKC normalization (NIP-49 password handling)
-unicode-normalization = "0.1.25"
-
-# Encoding
-bech32 = { version = "0.11.1", default-features = false, features = ["std"] }
-faster-hex = { version = "0.10.0", default-features = false, features = ["std"] }
-url = { version = "2.5.8", default-features = false, features = ["serde"] }
-
-# Containers
 indexmap = { version = "2.14.0", default-features = false, features = ["std", "serde"] }
-
-# NIP-77 Negentropy synchronisation algorithm. Pure-Rust, no
-# transport / no allocation policy of its own; we provide the storage
-# adapter and wire codec in `nula-sync`.
-negentropy = { version = "0.5", default-features = false, features = ["std"] }
-
-# Error handling
-thiserror = "2.0.18"
-
-# Observability (opt-in via the `tracing` feature).
-# `std` enables thread-local spans; `attributes` enables `#[instrument]`.
-tracing = { version = "0.1.41", default-features = false, features = ["std", "attributes"] }
-
-# Random number generation
-getrandom = { version = "0.4.2", default-features = false, features = ["std"] }
-
-# HTTP (NIP-05 / NIP-11)
-reqwest = { version = "0.13.3", default-features = false, features = ["rustls", "json", "http2", "charset"] }
-
-# Async / WebSocket transport (nula-net)
-# `futures` provides the Sink/Stream traits the transport surface is shaped
-# around; it carries no executor itself. `tokio` and `tokio-tungstenite` back
-# the default native implementation and are gated by `nula-net`'s features.
-futures = { version = "0.3.32", default-features = false, features = ["std", "alloc"] }
-tokio = { version = "1.52.3", default-features = false }
-tokio-tungstenite = { version = "0.29.0", default-features = false }
-# SOCKS5 proxy dialer for the `socks` feature (Tor / `.onion` relays).
-# Remote DNS resolution by the proxy is required for `.onion`, so the
-# transport hands the hostname (not a pre-resolved IP) to the proxy.
-# The `tokio` feature gates the async `Socks5Stream::connect` dialer.
-tokio-socks = { version = "0.5", default-features = false, features = ["tokio"] }
-# `tokio-stream` adapts mpsc receivers into `Stream` and provides the
-# `SelectAll` combinator the relay-pool driver task uses to merge
-# per-relay subscription streams.
-tokio-stream = { version = "0.1", default-features = false, features = ["sync"] }
-bytes = { version = "1.11.1", default-features = false, features = ["std"] }
-
-# Storage (nula-storage `redb` backend). `redb` is a pure-Rust, ACID,
-# copy-on-write B-tree embedded store — no C dependency and no `unsafe`
-# at the engine boundary (it supersedes the former LMDB/SQLite backends).
-# `postcard` is the canonical serde wire format for our on-disk events.
-redb = { version = "4.1", default-features = false }
-postcard = { version = "1.1", default-features = false, features = ["use-std"] }
-tempfile = "3.16"
-
-# Secret storage (nula-keyring). `apple-native` / `windows-native` route
-# to the macOS Keychain / Windows Credential Manager; on Linux
-# `linux-native` uses the in-kernel keyutils ring. The Secret Service
-# backends are deliberately omitted so the build pulls no system libdbus,
-# keeping nula-keyring pure-Rust and free of system dependencies.
 keyring = { version = "3.6", default-features = false, features = ["apple-native", "linux-native", "windows-native"] }
-
-# CLI (consumed by `nula-cli`)
-clap = { version = "4.6.0", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions", "env", "wrap_help"] }
-anyhow = { version = "1.0.100", default-features = false, features = ["std"] }
-tracing-subscriber = { version = "0.3.21", default-features = false, features = ["fmt", "ansi", "env-filter", "smallvec", "tracing-log"] }
-
-# Testing
-hex-literal = "1.1.0"
-assert_cmd = "2.0.18"
+negentropy = { version = "0.5", default-features = false, features = ["std"] }
+postcard = { version = "1.1", default-features = false, features = ["use-std"] }
 predicates = "3.1.4"
-
-# Benchmarking
-criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+redb = { version = "4.1", default-features = false }
+reqwest = { version = "0.13.3", default-features = false, features = ["rustls", "json", "http2", "charset"] }
+scrypt = "0.12.0"
+secp256k1 = { version = "0.31.1", default-features = false, features = ["std", "serde"] }
+serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
+serde_json = { version = "1.0.149", default-features = false, features = ["alloc"] }
+sha2 = "0.11.0"
+tempfile = "3.16"
+thiserror = "2.0.18"
+tokio = { version = "1.52.3", default-features = false }
+tokio-socks = { version = "0.5", default-features = false, features = ["tokio"] }
+tokio-stream = { version = "0.1", default-features = false, features = ["sync"] }
+tokio-tungstenite = { version = "0.29.0", default-features = false }
+tracing = { version = "0.1.41", default-features = false, features = ["std", "attributes"] }
+tracing-subscriber = { version = "0.3.21", default-features = false, features = ["fmt", "ansi", "env-filter", "smallvec", "tracing-log"] }
+unicode-normalization = "0.1.25"
+url = { version = "2.5.8", default-features = false, features = ["serde"] }
+zeroize = { version = "1.8.2", default-features = false, features = ["zeroize_derive"] }
 
 [profile.release]
 codegen-units = 1
