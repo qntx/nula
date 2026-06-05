@@ -190,3 +190,8 @@ required-features = ["pool", "server", "default-transport"]
 name = "pool_subscribe"
 path = "tests/pool_subscribe.rs"
 required-features = ["pool", "server", "default-transport"]
+
+[[test]]
+name = "min_pow"
+path = "tests/min_pow.rs"
+required-features = ["pool", "server", "default-transport"]

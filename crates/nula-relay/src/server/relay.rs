@@ -101,6 +101,7 @@ impl MockRelay {
             write_policy,
             read_policy,
             require_nip42: options.require_nip42,
+            min_pow: options.min_pow,
             broadcast: live_tx,
         };
 

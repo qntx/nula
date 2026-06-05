@@ -18,6 +18,13 @@ pub struct MockRelayOptions {
     /// **Note**: the AUTH event signature is *not* verified — this is
     /// a transport-layer test hook, not a real auth gate.
     pub require_nip42: bool,
+
+    /// Minimum NIP-13 proof-of-work difficulty (leading zero bits)
+    /// demanded of inbound `EVENT`s. `None` (the default) accepts any
+    /// difficulty; `Some(d)` rejects events whose id has fewer than
+    /// `d` leading zero bits with a `pow:` reason — mirroring upstream
+    /// `nostr-relay-builder`'s `min_pow` admission gate.
+    pub min_pow: Option<u8>,
 }
 
 impl Default for MockRelayOptions {
@@ -25,6 +32,7 @@ impl Default for MockRelayOptions {
         Self {
             bind_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0),
             require_nip42: false,
+            min_pow: None,
         }
     }
 }
@@ -50,6 +58,18 @@ impl MockRelayOptions {
         self.require_nip42 = value;
         self
     }
+
+    /// Require a minimum NIP-13 proof-of-work difficulty for inbound
+    /// events. A difficulty of `0` clears the requirement.
+    #[must_use]
+    pub const fn min_pow(mut self, difficulty: u8) -> Self {
+        self.min_pow = if difficulty > 0 {
+            Some(difficulty)
+        } else {
+            None
+        };
+        self
+    }
 }
 
 #[cfg(test)]
@@ -62,5 +82,12 @@ mod tests {
         assert_eq!(opts.bind_addr.ip(), IpAddr::V4(Ipv4Addr::LOCALHOST));
         assert_eq!(opts.bind_addr.port(), 0);
         assert!(!opts.require_nip42);
+        assert!(opts.min_pow.is_none());
+    }
+
+    #[test]
+    fn min_pow_zero_clears_requirement() {
+        assert_eq!(MockRelayOptions::new().min_pow(8).min_pow, Some(8));
+        assert_eq!(MockRelayOptions::new().min_pow(0).min_pow, None);
     }
 }

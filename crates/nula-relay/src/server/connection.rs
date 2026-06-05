@@ -30,6 +30,9 @@ pub(crate) struct ConnectionContext {
     pub(crate) write_policy: Arc<dyn WritePolicy>,
     pub(crate) read_policy: Arc<dyn ReadPolicy>,
     pub(crate) require_nip42: bool,
+    /// Minimum NIP-13 proof-of-work difficulty required of inbound
+    /// events; `None` accepts any difficulty.
+    pub(crate) min_pow: Option<u8>,
     /// Relay-wide live broadcast: every accepted [`ClientMessage::Event`]
     /// frame fans out to every connection's subscription matchers
     /// here. Slow consumers see `RecvError::Lagged`, not back
@@ -281,6 +284,22 @@ async fn handle_event(
     event: Event,
 ) -> Result<(), DispatchError> {
     let event_id: EventId = event.id;
+
+    // NIP-13 admission gate (mirrors upstream `nostr-relay-builder`'s
+    // `min_pow`): reject under-powered events before policy or storage.
+    if let Some(min) = ctx.min_pow
+        && let Err(err) = nula_core::nips::nip13::verify_pow(&event, min)
+    {
+        return send(
+            sink,
+            &RelayMessage::Ok {
+                event_id,
+                accepted: false,
+                message: format!("{}: {err}", MachineReadablePrefix::Pow.as_str()),
+            },
+        )
+        .await;
+    }
 
     let verdict = ctx.write_policy.admit_event(&event).await;
     if let AdmitVerdict::Reject(reason) = verdict {
