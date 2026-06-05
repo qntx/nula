@@ -1,4 +1,9 @@
-//! Conformance against the shared [`nula_storage_test_suite`].
+//! Conformance against the shared
+//! [`nula_storage_test_suite`].
+//!
+//! Backend-specific edge cases (persistence across handle drop +
+//! reopen) live alongside in `redb_persistence.rs` because they
+//! exercise behaviour the in-memory backend does not model.
 
 #![allow(
     unused_crate_dependencies,
@@ -15,26 +20,28 @@
 use std::sync::Arc;
 
 use nula_storage::NostrDatabase;
-use nula_storage::sqlite::SqliteDatabase;
+use nula_storage::redb::RedbDatabase;
 use nula_storage::test_suite::{DatabaseFactory, run_suite};
 use tempfile::TempDir;
 
-struct SqliteFactory;
+struct RedbFactory;
 
-impl DatabaseFactory for SqliteFactory {
-    /// Hold the `TempDir` for the case's lifetime so the `SQLite`
-    /// file outlives every async write.
+impl DatabaseFactory for RedbFactory {
+    /// Hold the `TempDir` for the case's lifetime so the redb file
+    /// outlives every async write.
     type Guard = TempDir;
 
     async fn build(&self) -> (Arc<dyn NostrDatabase>, Self::Guard) {
         let tmp = tempfile::tempdir().expect("tempdir creation");
-        let path = tmp.path().join("events.sqlite");
-        let db = SqliteDatabase::open(&path).await.expect("open sqlite");
+        let db = RedbDatabase::builder(tmp.path().join("events.redb"))
+            .build()
+            .await
+            .expect("open redb");
         (Arc::new(db), tmp)
     }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn conformance() {
-    run_suite(&SqliteFactory).await;
+    run_suite(&RedbFactory).await;
 }

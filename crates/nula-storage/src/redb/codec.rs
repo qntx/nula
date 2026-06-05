@@ -1,31 +1,31 @@
 //! On-disk event codec.
 //!
-//! Every event payload stored in the LMDB `events` dbi carries a
+//! Every event payload stored in the redb `events` table carries a
 //! one-byte version prefix followed by the `postcard`-serialised
 //! [`Event`]. The version prefix lets future schema changes be
 //! detected at read time without forcing a coordinated downgrade —
 //! readers older than the current `STORED_EVENT_VERSION` simply error
-//! out with [`crate::lmdb::Error::UnsupportedCodecVersion`].
+//! out with [`crate::redb::Error::UnsupportedCodecVersion`].
 //!
 //! The codec is deliberately opaque: it round-trips through the
-//! upstream `Event` serde impls and adds nothing of its own beyond
-//! the version byte. If a future deserialisation needs to read a
-//! superset of `Event` (e.g. an indexing hint), that lives in a
-//! `StoredEventVN` newtype with its own version byte, not by
-//! shoe-horning extra fields onto the wire shape.
+//! upstream `Event` serde impls and adds nothing of its own beyond the
+//! version byte. If a future deserialisation needs to read a superset
+//! of `Event` (e.g. an indexing hint), that lives in a `StoredEventVN`
+//! newtype with its own version byte, not by shoe-horning extra fields
+//! onto the wire shape.
 
 use nula_core::event::{Event, EventId, Kind, SingleLetterTag};
 use nula_core::filter::MatchableEvent;
 use nula_core::types::Timestamp;
 use nula_core::util::hex;
 
-use crate::lmdb::error::Error;
+use crate::redb::error::Error;
 
-/// Current on-disk format identifier. Bump any time the encoded
-/// shape changes in a way old readers cannot understand.
+/// Current on-disk format identifier. Bump any time the encoded shape
+/// changes in a way old readers cannot understand.
 ///
-/// We start at 1 (not 0) so a zero-byte payload — which a corrupt
-/// LMDB read could plausibly hand back — is unambiguously invalid.
+/// We start at 1 (not 0) so a zero-byte payload — which a corrupt read
+/// could plausibly hand back — is unambiguously invalid.
 pub(crate) const STORED_EVENT_VERSION: u8 = 1;
 
 /// Encode `event` for storage.
@@ -53,9 +53,8 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<Event, Error> {
 /// Conflict-resolution and deletion paths (`resolve_addressable`,
 /// `apply_deletion`) need an incumbent event's `created_at` and nothing
 /// else. Decoding the full [`Event`] there re-parses the 32-byte x-only
-/// pubkey into a secp256k1 point — a ~2µs curve operation, ≈2000× the
-/// cost of the id copy (see `nula-core`'s `event/decode_primitives`
-/// bench) — purely to read an 8-byte integer.
+/// pubkey into a curve point — a curve operation orders of magnitude
+/// more expensive than the id copy — purely to read an 8-byte integer.
 ///
 /// The stored body is `postcard(Event)`, whose field order is
 /// `(id, pubkey, created_at, kind, tags, content, sig)`. postcard encodes
@@ -79,13 +78,13 @@ pub(crate) fn decode_created_at(bytes: &[u8]) -> Result<Timestamp, Error> {
 /// [`nula_core::Filter::match_event`] inspects.
 ///
 /// Matching against this instead of a full [`Event`] skips, for every
-/// candidate a query *rejects*, the ~2µs secp256k1 pubkey point parse and
-/// the content / signature allocations. Surviving candidates are then
+/// candidate a query *rejects*, the curve pubkey point parse and the
+/// content / signature allocations. Surviving candidates are then
 /// materialised with [`decode`].
 ///
 /// `id` / `pubkey` are decoded from their stored hex form to raw bytes (a
-/// cheap hex pass, **not** a curve parse); `tags` borrow directly from the
-/// LMDB-mapped buffer; `content` and `sig` are skipped entirely.
+/// cheap hex pass, **not** a curve parse); `tags` borrow directly from
+/// the mapped buffer; `content` and `sig` are skipped entirely.
 #[derive(Debug)]
 pub(crate) struct EventView<'a> {
     id: [u8; 32],
@@ -216,9 +215,9 @@ mod tests {
     fn unknown_version_byte_is_rejected() {
         let event = fixture();
         let mut bytes = encode(&event).expect("encode");
-        // Bump the version prefix to an unsupported value. The
-        // first byte is always present because `encode` writes it
-        // up front, so the indexed write is bounds-safe.
+        // Bump the version prefix to an unsupported value. The first
+        // byte is always present because `encode` writes it up front,
+        // so the indexed write is bounds-safe.
         #[allow(
             clippy::indexing_slicing,
             reason = "encode always emits a non-empty buffer; the first byte is the version prefix"

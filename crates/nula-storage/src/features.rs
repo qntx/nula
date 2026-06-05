@@ -15,12 +15,10 @@ use bitflags::bitflags;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Backend {
-    /// In-process `BTreeSet`-backed store (`nula-storage-memory`).
+    /// In-process `BTreeSet`-backed store (`memory` module).
     Memory,
-    /// LMDB-backed persistent store (`nula-storage-lmdb`).
-    Lmdb,
-    /// SQLite-backed persistent store (`nula-storage-sqlite`).
-    Sqlite,
+    /// redb-backed persistent store (`redb` module).
+    Redb,
     /// Custom third-party backend; the inner `&'static str` is the
     /// crate name for telemetry.
     Custom(&'static str),
@@ -32,8 +30,7 @@ impl Backend {
     pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Memory => "memory",
-            Self::Lmdb => "lmdb",
-            Self::Sqlite => "sqlite",
+            Self::Redb => "redb",
             Self::Custom(name) => name,
         }
     }

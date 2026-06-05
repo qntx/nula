@@ -79,7 +79,7 @@ impl ClientBuilder {
     /// Required: every Layer-5 read path (cache hits, NIP-77
     /// reconciliation, NIP-65 routing) needs a place to look events
     /// up. Use [`nula_storage::memory::MemoryDatabase`] for ephemeral
-    /// processes and `nula_storage::lmdb::LmdbDatabase` for
+    /// processes and `nula_storage::redb::RedbDatabase` for
     /// long-running ones.
     #[must_use]
     pub fn database<D>(mut self, database: D) -> Self

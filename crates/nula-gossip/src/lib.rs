@@ -40,12 +40,11 @@
 //! ingested NIP-65 / NIP-17 event back through the configured
 //! [`nula_storage::NostrDatabase`]. On startup the caller invokes
 //! [`Gossip::warm_up`] for the public keys they care about and the
-//! cache rebuilds itself from disk. There is **no** dedicated
-//! `nula-gossip-sqlite` crate -- pick the backend you already use
-//! for events (`nula-storage-sqlite` for survive-a-reboot,
-//! `nula-storage-lmdb` for high-throughput, `nula-storage-memory`
-//! for ephemeral processes) and the gossip layer inherits its
-//! durability story for free.
+//! cache rebuilds itself from disk. Persistence is **not** a
+//! dedicated gossip concern -- pick the backend you already use for
+//! events (the `redb` backend for survive-a-reboot durability, the
+//! `memory` backend for ephemeral processes) and the gossip layer
+//! inherits its durability story for free.
 //!
 //! # Feature flags
 //!

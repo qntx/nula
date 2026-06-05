@@ -142,8 +142,8 @@ pub async fn count_matches_query_length<F: DatabaseFactory>(factory: &F) {
 /// `negentropy_items` must yield the matching events' `(id, created_at)` set.
 ///
 /// It must equal the pairs `query` would produce, regardless of order
-/// (`NegentropyStorageVector::seal` sorts). Pins LMDB's zero-parse
-/// override against the materialising default the other backends use.
+/// (`NegentropyStorageVector::seal` sorts). Pins the redb backend's
+/// zero-parse override against the materialising default `memory` uses.
 pub async fn negentropy_items_match_query<F: DatabaseFactory>(factory: &F) {
     let (db, _guard) = factory.build().await;
     let k = keys();

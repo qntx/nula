@@ -12,11 +12,10 @@
 //! | Feature      | Module             | Storage              | Persistence |
 //! | ------------ | ------------------ | -------------------- | :--------:  |
 //! | `memory`     | [`memory`]         | `BTreeMap` + indexes |     —       |
-//! | `lmdb`       | [`lmdb`]           | LMDB (`heed`)        |     ✅      |
-//! | `sqlite`     | [`sqlite`]         | `SQLite` log + replica |   ✅      |
+//! | `redb`       | [`redb`]           | redb (pure Rust)     |     ✅      |
 //! | `test-suite` | [`test_suite`]     | conformance harness  |     —       |
 //!
-//! `memory` is on by default; the persistent backends and the
+//! `memory` is on by default; the persistent `redb` backend and the
 //! conformance suite are opt-in.
 //!
 //! # Trait shape
@@ -56,18 +55,17 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(html_root_url = "https://docs.rs/nula-storage")]
-// `deny` (not `forbid`) so the LMDB backend can carry a single
-// localized `#[allow(unsafe_code, ...)]` over `heed`'s mmap open;
-// see `lmdb::store` and ADR-0007.
-#![deny(unsafe_code)]
+// Every backend (`memory`, `redb`) is pure safe Rust; redb removed the
+// last `unsafe` boundary the LMDB engine required (see ADR-0007).
+#![forbid(unsafe_code)]
 
 // `tracing` is an optional dependency wired for future hot-path
 // instrumentation in the persistent backends; no span call site
 // exists yet. Bind it `as _` so the workspace
 // `unused_crate_dependencies` lint stays quiet when the feature is on.
-// `tempfile` is a dev-dependency consumed only by the `lmdb` /
-// `sqlite` persistence integration tests; hedge it so the lib's
-// test build stays quiet under `unused_crate_dependencies`.
+// `tempfile` is a dev-dependency consumed only by the `redb`
+// persistence integration tests; hedge it so the lib's test build
+// stays quiet under `unused_crate_dependencies`.
 #[cfg(test)]
 use tempfile as _;
 #[cfg(feature = "tracing")]
@@ -81,12 +79,10 @@ pub mod features;
 pub mod profile;
 pub mod status;
 
-#[cfg(feature = "lmdb")]
-pub mod lmdb;
 #[cfg(feature = "memory")]
 pub mod memory;
-#[cfg(feature = "sqlite")]
-pub mod sqlite;
+#[cfg(feature = "redb")]
+pub mod redb;
 #[cfg(feature = "test-suite")]
 pub mod test_suite;
 

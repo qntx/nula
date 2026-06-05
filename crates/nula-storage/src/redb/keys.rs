@@ -9,18 +9,18 @@
 
 //! Lexicographic key encoding for the secondary indexes.
 //!
-//! Every secondary index uses raw bytes as its key so LMDB's natural
+//! Every secondary index uses raw bytes as its key so redb's natural
 //! byte-order iteration matches the logical order we want:
 //!
 //! - **`Timestamp`** — big-endian `u64`. Ascending byte order =
-//!   ascending numeric. We iterate `iter_rev` for newest-first
+//!   ascending numeric. We reverse the collected ids for newest-first
 //!   queries; encoding is otherwise vanilla.
 //! - **`Kind`** — big-endian `u16`.
 //! - **`PublicKey` / `EventId`** — raw 32-byte fixed-width form.
 //!
 //! The layout of each index is documented next to its builder
-//! function. Adding a new index means writing a new builder here and
-//! a new dbi handle in `store.rs`.
+//! function. Adding a new index means writing a new builder here and a
+//! new table definition in `store.rs`.
 
 use nula_core::event::{EventId, Kind};
 use nula_core::key::PublicKey;
@@ -37,8 +37,8 @@ pub(crate) const KIND_LEN: usize = 2;
 
 /// `by_created_at` key: `[ts_be(8)] [event_id(32)]`.
 ///
-/// Length 40. Iterating the dbi ascending visits oldest-first;
-/// iterating descending visits newest-first.
+/// Length 40. Iterating the table ascending visits oldest-first;
+/// reversing the collection yields newest-first.
 pub(crate) fn by_created_at(ts: Timestamp, id: &EventId) -> [u8; TS_LEN + ID_LEN] {
     let mut out = [0u8; TS_LEN + ID_LEN];
     out[..TS_LEN].copy_from_slice(&ts.as_secs().to_be_bytes());
@@ -49,8 +49,8 @@ pub(crate) fn by_created_at(ts: Timestamp, id: &EventId) -> [u8; TS_LEN + ID_LEN
 /// `by_author_ts` key: `[pubkey(32)] [ts_be(8)] [event_id(32)]`.
 ///
 /// Length 72. Range scans over a single author fix the leading 32
-/// bytes; iteration then walks all that author's events in
-/// timestamp order.
+/// bytes; iteration then walks all that author's events in timestamp
+/// order.
 pub(crate) fn by_author_ts(
     pubkey: &PublicKey,
     ts: Timestamp,
@@ -65,8 +65,8 @@ pub(crate) fn by_author_ts(
 
 /// `by_kind_author_ts` key: `[kind_be(2)] [pubkey(32)] [ts_be(8)] [event_id(32)]`.
 ///
-/// Length 74. Range scans for `(kind, author)` fix the leading
-/// 34 bytes; the most common Nostr filter shape lands here.
+/// Length 74. Range scans for `(kind, author)` fix the leading 34
+/// bytes; the most common Nostr filter shape lands here.
 pub(crate) fn by_kind_author_ts(
     kind: Kind,
     pubkey: &PublicKey,
@@ -86,8 +86,8 @@ pub(crate) fn by_kind_author_ts(
 
 /// `by_coordinate` key: `[kind_be(2)] [pubkey(32)] [identifier_utf8(..)]`.
 ///
-/// Variable length. Identifier is appended verbatim; LMDB compares
-/// the resulting byte slices lexicographically, which gives us the
+/// Variable length. Identifier is appended verbatim; redb compares the
+/// resulting byte slices lexicographically, which gives us the
 /// canonical NIP-33 ordering.
 pub(crate) fn by_coordinate(kind: Kind, pubkey: &PublicKey, identifier: &str) -> Vec<u8> {
     let mut out = Vec::with_capacity(KIND_LEN + PUBKEY_LEN + identifier.len());
@@ -117,7 +117,7 @@ pub(crate) fn author_prefix(pubkey: &PublicKey) -> [u8; PUBKEY_LEN] {
 /// strictly greater than every key whose prefix matches `prefix`. It
 /// works by bumping the rightmost non-`0xFF` byte; if every byte is
 /// `0xFF` the prefix occupies the very end of the key space and the
-/// scan should run until the end of the dbi.
+/// scan should run until the end of the table.
 pub(crate) fn upper_bound(prefix: &[u8]) -> Option<Vec<u8>> {
     let mut out = prefix.to_vec();
     for byte in out.iter_mut().rev() {

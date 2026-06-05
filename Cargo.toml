@@ -1,12 +1,5 @@
 [workspace]
 members = ["crates/*"]
-# `nula-fuzz` is detached because `cargo-fuzz` injects nightly-only
-# `RUSTFLAGS` (sanitizer + coverage) the rest of the workspace does not
-# tolerate on stable. `nula-signer-browser` is detached because its
-# wasm32 build needs a `getrandom_backend="wasm_js"` cfg + a wasm-capable
-# C toolchain (CC/AR for secp256k1-sys); keeping it out of the parent
-# workspace stops the `wasm_js` backend feature from unifying into — and
-# breaking — every native build.
 exclude = ["crates/nula-fuzz", "crates/nula-signer-browser"]
 default-members = ["crates/nula-core"]
 resolver = "3"
@@ -111,21 +104,13 @@ tokio-socks = { version = "0.5", default-features = false, features = ["tokio"] 
 tokio-stream = { version = "0.1", default-features = false, features = ["sync"] }
 bytes = { version = "1.11.1", default-features = false, features = ["std"] }
 
-# Storage (nula-storage-lmdb)
-# `heed` is the safe-ish Rust binding over LMDB (still wraps unsafe C calls;
-# ADR-0007 records the unsafe-code exemption for nula-storage-lmdb).
+# Storage (nula-storage `redb` backend). `redb` is a pure-Rust, ACID,
+# copy-on-write B-tree embedded store — no C dependency and no `unsafe`
+# at the engine boundary (it supersedes the former LMDB/SQLite backends).
 # `postcard` is the canonical serde wire format for our on-disk events.
-# `flume` is the bounded MPSC channel feeding the single-writer ingester.
-heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
+redb = { version = "4.1", default-features = false }
 postcard = { version = "1.1", default-features = false, features = ["use-std"] }
-flume = { version = "0.11", default-features = false, features = ["async"] }
 tempfile = "3.16"
-
-# Storage (nula-storage-sqlite). `bundled` ships a vendored SQLite so
-# the crate works out of the box on every supported target. Off-by-default
-# at the workspace level so callers wanting to link against the
-# system SQLite can opt out via `default-features = false`.
-rusqlite = { version = "0.32.1", default-features = false, features = ["bundled"] }
 
 # Secret storage (nula-keyring). `apple-native` / `windows-native` route
 # to the macOS Keychain / Windows Credential Manager; on Linux

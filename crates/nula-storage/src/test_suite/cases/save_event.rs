@@ -1,8 +1,8 @@
 //! Save-path semantics: duplicate, ephemeral, expired, deleted,
 //! replaced.
 //!
-//! Mirrors the per-backend `save_event.rs` files that used to live
-//! in `nula-storage-memory` and `nula-storage-lmdb`.
+//! Runs against any `NostrDatabase` backend (`memory`, `redb`)
+//! through the shared conformance suite.
 
 use nula_core::event::Kind;
 

@@ -11,15 +11,15 @@ replaceable / addressable / ephemeral kind routing, NIP-62 vanish).
 Backends ship as feature-gated modules, so a default build is
 pure-Rust with zero C dependencies:
 
-| Feature      | Module                  | Storage                | Use case                  |
-| ------------ | ----------------------- | ---------------------- | ------------------------- |
-| `memory`     | `nula_storage::memory`  | `BTreeMap` + indexes   | Tests, ephemeral pools    |
-| `lmdb`       | `nula_storage::lmdb`    | LMDB (`heed`)          | Persistent client / relay |
-| `sqlite`     | `nula_storage::sqlite`  | `SQLite` log + replica | Durable, portable store   |
-| `test-suite` | `nula_storage::test_suite` | conformance harness | Backend authors           |
+| Feature      | Module                     | Storage                 | Use case                  |
+| ------------ | -------------------------- | ----------------------- | ------------------------- |
+| `memory`     | `nula_storage::memory`     | `BTreeMap` + indexes    | Tests, ephemeral pools    |
+| `redb`       | `nula_storage::redb`       | redb (pure-Rust B-tree) | Persistent client / relay |
+| `test-suite` | `nula_storage::test_suite` | conformance harness     | Backend authors           |
 
-`memory` is on by default; the persistent backends and the
-conformance suite are opt-in.
+`memory` is on by default; the persistent `redb` backend and the
+conformance suite are opt-in. Every backend is pure Rust — even a
+`redb` build links no C libraries and carries no `unsafe` code.
 
 ## Status
 

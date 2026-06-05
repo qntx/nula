@@ -1,11 +1,11 @@
 //! Gossip + persistent storage integration: ingest NIP-65, drop the
 //! handle, rebuild, and verify `warm_up` recovers the route table.
 //!
-//! `nula-gossip` does not own its own `SQLite` layer -- persistence is
+//! `nula-gossip` does not own its own persistence layer -- it is
 //! delegated to whatever `nula_storage::NostrDatabase` the builder
 //! was constructed with. This test exercises that contract end-to-
-//! end with `nula-storage-sqlite`, the same backend production apps
-//! would pick for survive-a-reboot behaviour.
+//! end with the `redb` backend, the one production apps would pick for
+//! survive-a-reboot behaviour.
 
 #![allow(
     unused_crate_dependencies,
@@ -24,7 +24,7 @@ use nula_core::nips::nip65::RelayMarker;
 use nula_core::{Keys, RelayUrl, Timestamp};
 use nula_gossip::Gossip;
 use nula_storage::NostrDatabase;
-use nula_storage::sqlite::SqliteDatabase;
+use nula_storage::redb::RedbDatabase;
 
 mod helpers;
 use helpers::{build_relay_list, relay_list_from_iter};
@@ -35,19 +35,20 @@ fn keys() -> Keys {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn warm_up_rehydrates_routes_from_sqlite_after_restart() {
+async fn warm_up_rehydrates_routes_from_redb_after_restart() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("gossip.sqlite");
+    let path = tmp.path().join("gossip.redb");
     let alice = *keys().public_key();
 
-    // First run: stand up gossip backed by SqliteDatabase, ingest an
-    // NIP-65 list, drop everything. The list is persisted to the
-    // SQLite file by Gossip::process -> NostrDatabase::save_event.
+    // First run: stand up gossip backed by RedbDatabase, ingest an
+    // NIP-65 list, drop everything. The list is persisted to the redb
+    // file by Gossip::process -> NostrDatabase::save_event.
     {
         let db: Arc<dyn NostrDatabase> = Arc::new(
-            SqliteDatabase::open(&path)
+            RedbDatabase::builder(&path)
+                .build()
                 .await
-                .expect("open sqlite for first run"),
+                .expect("open redb for first run"),
         );
         let gossip = Gossip::builder()
             .database(Arc::clone(&db))
@@ -70,12 +71,13 @@ async fn warm_up_rehydrates_routes_from_sqlite_after_restart() {
         );
     }
 
-    // Second run: reopen the SAME SQLite file, build a fresh Gossip
+    // Second run: reopen the SAME redb file, build a fresh Gossip
     // handle, and warm_up. The route table must come back from disk.
     let db: Arc<dyn NostrDatabase> = Arc::new(
-        SqliteDatabase::open(&path)
+        RedbDatabase::builder(&path)
+            .build()
             .await
-            .expect("open sqlite for second run"),
+            .expect("open redb for second run"),
     );
     let gossip = Gossip::builder()
         .database(Arc::clone(&db))
@@ -89,7 +91,7 @@ async fn warm_up_rehydrates_routes_from_sqlite_after_restart() {
     let inbox = gossip.inbox_relays(&alice).await;
     assert!(
         outbox.contains(&RelayUrl::parse("wss://write.example/").expect("url")),
-        "outbox must survive the SQLite-backed reboot; got {outbox:?}",
+        "outbox must survive the redb-backed reboot; got {outbox:?}",
     );
     assert!(
         outbox.contains(&RelayUrl::parse("wss://both.example/").expect("url")),

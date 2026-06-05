@@ -19,15 +19,15 @@
 use std::path::Path;
 
 use nula_core::filter::Filter;
-use nula_storage::lmdb::{Error, LmdbDatabase};
+use nula_storage::redb::{Error, RedbDatabase};
 use nula_storage::test_suite::helpers::{keys, text_note};
 use nula_storage::{NostrDatabase, SaveEventStatus};
 
-/// Open a fresh `LmdbDatabase` against `path`, propagating typed
-/// errors. Local helper because the rest of the LMDB tests use the
-/// shared `LmdbFactory` in `suite.rs`.
-async fn try_open(path: impl AsRef<Path>) -> Result<LmdbDatabase, Error> {
-    LmdbDatabase::builder(path.as_ref().to_owned())
+/// Open a fresh `RedbDatabase` against `path`, propagating typed
+/// errors. Local helper because the rest of the redb tests use the
+/// shared `RedbFactory` in `redb_suite.rs`.
+async fn try_open(path: impl AsRef<Path>) -> Result<RedbDatabase, Error> {
+    RedbDatabase::builder(path.as_ref().to_owned())
         .build()
         .await
 }
@@ -35,21 +35,22 @@ async fn try_open(path: impl AsRef<Path>) -> Result<LmdbDatabase, Error> {
 #[tokio::test]
 async fn events_survive_handle_drop_and_reopen() {
     let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("events.redb");
     let k = keys();
 
     {
-        let db = try_open(tmp.path()).await.expect("first open");
+        let db = try_open(&path).await.expect("first open");
         for (i, ts) in (100..105_u64).enumerate() {
             let event = text_note(&k, &format!("evt-{i}"), ts);
             let status = db.save_event(&event).await.expect("save ok");
             assert_eq!(status, SaveEventStatus::Success);
         }
-        // Drop the handle — the ingester thread must flush and the
-        // env must close cleanly before we reopen.
+        // Drop the handle — redb must flush and close the file before
+        // we reopen.
         drop(db);
     }
 
-    let reopened = try_open(tmp.path()).await.expect("reopen");
+    let reopened = try_open(&path).await.expect("reopen");
     let events = reopened.query(Filter::new()).await.expect("query ok");
     assert_eq!(events.len(), 5, "events must survive a handle cycle");
 
@@ -61,17 +62,18 @@ async fn events_survive_handle_drop_and_reopen() {
 #[tokio::test]
 async fn wipe_persists_across_reopen() {
     let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("events.redb");
     let k = keys();
 
     {
-        let db = try_open(tmp.path()).await.expect("first open");
+        let db = try_open(&path).await.expect("first open");
         db.save_event(&text_note(&k, "transient", 100))
             .await
             .expect("save");
         db.wipe().await.expect("wipe ok");
     }
 
-    let reopened = try_open(tmp.path()).await.expect("reopen");
+    let reopened = try_open(&path).await.expect("reopen");
     let events = reopened.query(Filter::new()).await.expect("query ok");
     assert!(
         events.is_empty(),

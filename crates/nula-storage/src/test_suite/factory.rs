@@ -15,7 +15,7 @@ use crate::NostrDatabase;
 /// duration.
 ///
 /// Backends that hold no out-of-process state set
-/// `type Guard = ();`. Backends that need cleanup (the LMDB backend
+/// `type Guard = ();`. Backends that need cleanup (the redb backend
 /// uses `tempfile::TempDir`) hand the guard back so the case can
 /// drop it when it finishes.
 ///
