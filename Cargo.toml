@@ -127,13 +127,12 @@ tempfile = "3.16"
 # system SQLite can opt out via `default-features = false`.
 rusqlite = { version = "0.32.1", default-features = false, features = ["bundled"] }
 
-# Secret storage (nula-keyring). `apple-native`, `linux-native`, and
-# `windows-native` route to the OS keychain (macOS Keychain, Linux
-# Secret Service via secret-service / kwallet, Windows Credential
-# Manager). The `linux-native-sync-persistent` flag falls back to a
-# blocking impl when the async D-Bus path is unavailable (headless
-# Linux containers).
-keyring = { version = "3.6", default-features = false, features = ["apple-native", "linux-native", "linux-native-sync-persistent", "windows-native"] }
+# Secret storage (nula-keyring). `apple-native` / `windows-native` route
+# to the macOS Keychain / Windows Credential Manager; on Linux
+# `linux-native` uses the in-kernel keyutils ring. The Secret Service
+# backends are deliberately omitted so the build pulls no system libdbus,
+# keeping nula-keyring pure-Rust and free of system dependencies.
+keyring = { version = "3.6", default-features = false, features = ["apple-native", "linux-native", "windows-native"] }
 
 # CLI (consumed by `nula-cli`)
 clap = { version = "4.6.0", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions", "env", "wrap_help"] }
