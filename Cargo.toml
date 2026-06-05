@@ -125,7 +125,7 @@ tempfile = "3.16"
 # the crate works out of the box on every supported target. Off-by-default
 # at the workspace level so callers wanting to link against the
 # system SQLite can opt out via `default-features = false`.
-rusqlite = { version = "0.32.1", default-features = false, features = ["bundled"] }
+rusqlite = { version = "0.40.0", default-features = false, features = ["bundled"] }
 
 # Secret storage (nula-keyring). `apple-native` / `windows-native` route
 # to the macOS Keychain / Windows Credential Manager; on Linux
