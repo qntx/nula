@@ -9,15 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Storage backend is now pure-Rust `redb`; LMDB + SQLite removed.**
+  The persistent storage layer switches from `heed` (LMDB, C) and
+  `rusqlite` (bundled SQLite, C) to
+  [`redb`](https://github.com/cberner/redb), a pure-Rust ACID embedded
+  store. `nula-storage` is therefore fully pure-Rust: a default or
+  `redb` build links no C libraries, and the crate is now
+  `#![forbid(unsafe_code)]` (the LMDB mmap `unsafe` exemption recorded
+  in ADR-0007 is gone). The `redb` backend passes the same shared
+  conformance suite the LMDB backend did, so NIP-09 / NIP-40 /
+  replaceable / addressable semantics and the on-disk `postcard` codec
+  are byte-for-byte unchanged.
+
+  **BREAKING CHANGE:** the `lmdb` and `sqlite` cargo features and the
+  `nula_storage::{lmdb, sqlite}` modules are removed. Use the `redb`
+  feature and `nula_storage::redb::RedbDatabase`
+  (`RedbDatabase::builder(path).build().await`); `Backend::Lmdb` and
+  `Backend::Sqlite` are replaced by `Backend::Redb`.
+
 - **Workspace crate consolidation (17 → 9 crates).** The
   rust-nostr-style fan-out of single-purpose crates is collapsed into
   cohesive, feature-gated crates following Rust 2024 conventions:
-  - **Storage (5 → 1):** `nula-storage-memory`, `nula-storage-lmdb`,
-    `nula-storage-sqlite`, and `nula-storage-test-suite` are folded
-    into `nula-storage` as the feature-gated modules
-    `nula_storage::{memory, lmdb, sqlite, test_suite}` (default
-    `memory`; the persistent backends pull their C deps only when
-    enabled).
+  - **Storage (5 → 1):** the former single-purpose storage crates are
+    folded into `nula-storage` as the feature-gated modules
+    `nula_storage::{memory, redb, test_suite}` (default `memory`; the
+    persistent `redb` backend is opt-in). Every backend is pure Rust —
+    see the dedicated redb-migration entry above.
   - **Relay (4 → 1):** `nula-net`, `nula-relay-pool`, and
     `nula-relay-builder` are folded into `nula-relay` as
     `nula_relay::{transport, pool, server}` (transport always on;
