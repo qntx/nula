@@ -687,6 +687,34 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn naddr_kind_above_u16_is_rejected_not_truncated() {
+        // NIP-19 encodes the `kind` TLV as a 32-bit big-endian integer,
+        // but nula's `Kind` is a 16-bit type. nula refuses any kind that
+        // does not fit in `u16` (`KindOutOfRange`) instead of silently
+        // mangling it.
+        //
+        // Interop note: `rust-nostr` 0.45 decodes the same TLV with
+        // `u32::from_be_bytes(..) as u16` (`nip19.rs`), which *truncates*
+        // out-of-range kinds (e.g. 70000 -> 4464) and accepts the address
+        // with a corrupted kind. nula's reject-don't-truncate stance is
+        // the safer one; this test pins the divergence.
+        let pk = *fixture_keys().public_key();
+        let oversized_kind: u32 = 70_000; // > u16::MAX (65_535)
+        let payload = tlv::encode([
+            (tlv::SPECIAL, b"alpha".as_slice()),
+            (tlv::AUTHOR, pk.to_byte_array().as_slice()),
+            (tlv::KIND, oversized_kind.to_be_bytes().as_slice()),
+        ])
+        .unwrap();
+        let encoded = encode_raw(hrp::NADDR, &payload).unwrap();
+        let err = Nip19Entity::from_bech32(&encoded).unwrap_err();
+        assert!(matches!(
+            err,
+            FromBech32Error::KindOutOfRange { raw } if raw == oversized_kind
+        ));
+    }
+
     /// Vectors copied verbatim from the [NIP-19 specification].
     ///
     /// [NIP-19 specification]: https://github.com/nostr-protocol/nips/blob/master/19.md

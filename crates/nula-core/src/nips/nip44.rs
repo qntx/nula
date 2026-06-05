@@ -21,10 +21,17 @@
 //!
 //! Plaintext is padded to the next power-of-two boundary (32-byte
 //! minimum) per NIP-44 §Encryption step 4. We strictly enforce the
-//! spec's `1..=65535` plaintext range; non-spec extensions (e.g. the
-//! 4-byte length prefix some implementations carry for >64 KiB messages)
-//! are rejected on decrypt to keep round-trip behaviour identical to
-//! `nostr-tools`, `rust-nostr`, and the reference Python implementation.
+//! spec's `1..=65535` plaintext range — the maximum the 2-byte length
+//! prefix can express — matching `nostr-tools` and the reference Python
+//! implementation.
+//!
+//! Heads-up on interop: `rust-nostr` 0.45 is *stricter* here. Its
+//! `pad()` caps plaintext at `65536 - 128 = 65408` bytes, so a message
+//! whose plaintext length falls in `65409..=65535` round-trips in nula
+//! (and the reference impls) but is refused by `rust-nostr`. The
+//! `plaintext_bound_follows_spec_not_rust_nostr_cap` test pins this
+//! divergence. Non-spec extensions (e.g. the 4-byte length prefix some
+//! implementations carry for >64 KiB messages) are rejected on decrypt.
 //!
 //! # Test vectors
 //!
@@ -659,6 +666,41 @@ mod tests {
         let b = key_pair_b();
         let plaintext = "a".repeat(MAX_PLAINTEXT_BYTES + 1);
         let err = encrypt(a.secret_key(), b.public_key(), &plaintext).unwrap_err();
+        assert!(matches!(err, Nip44Error::PlaintextTooLong(_)));
+    }
+
+    #[test]
+    fn plaintext_bound_follows_spec_not_rust_nostr_cap() {
+        // nula follows the NIP-44 spec's `1..=65535` plaintext range (the
+        // maximum the 2-byte length prefix can express), matching
+        // `nostr-tools` and the reference Python implementation.
+        //
+        // `rust-nostr` 0.45 is *stricter*: its `pad()` rejects plaintext
+        // longer than `65536 - 128 = 65408` bytes (`MessageTooLong`).
+        // This test pins nula's spec-faithful behaviour across the
+        // divergence window so the difference stays intentional and
+        // visible: every length in `[65408, 65409, 65535]` must
+        // round-trip in nula even though `rust-nostr` refuses the upper
+        // two.
+        let a = key_pair_a();
+        let b = key_pair_b();
+        for len in [65_408_usize, 65_409, MAX_PLAINTEXT_BYTES] {
+            let plaintext = "a".repeat(len);
+            let payload = encrypt(a.secret_key(), b.public_key(), &plaintext).unwrap_or_else(|e| {
+                panic!(
+                    "nula must accept {len}-byte plaintext (spec max {MAX_PLAINTEXT_BYTES}): {e:?}"
+                )
+            });
+            let recovered = decrypt(b.secret_key(), a.public_key(), &payload).unwrap();
+            assert_eq!(recovered.len(), len);
+        }
+        // One byte past the spec maximum is rejected by nula too.
+        let err = encrypt(
+            a.secret_key(),
+            b.public_key(),
+            &"a".repeat(MAX_PLAINTEXT_BYTES + 1),
+        )
+        .unwrap_err();
         assert!(matches!(err, Nip44Error::PlaintextTooLong(_)));
     }
 

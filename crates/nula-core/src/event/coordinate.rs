@@ -154,13 +154,28 @@ mod tests {
 
     #[test]
     fn allows_colon_in_identifier() {
-        // Identifiers may contain `:` (NIP-01 doesn't forbid it); splitn(3)
-        // keeps the rest of the string in the third segment.
+        // Identifiers may contain `:` (NIP-01 doesn't forbid it); nula's
+        // `splitn(3, ':')` keeps everything after the second colon in the
+        // third segment, so a multi-colon identifier round-trips intact.
+        //
+        // Interop note: `rust-nostr` 0.45 parses coordinates with
+        // `coordinate.split(':')` and takes only the first three segments
+        // (`nip01/mod.rs::from_kpi_format`), which *truncates* this
+        // identifier to `"weird"` and silently drops `:id:with:colons`.
+        // nula's behaviour is the spec-faithful one; this test pins the
+        // divergence so it stays intentional and visible.
         let coord = Coordinate::new(Kind::from(30_023_u16), pk(), "weird:id:with:colons");
         let wire = coord.to_string();
         let parsed: Coordinate = wire.parse().unwrap();
         assert_eq!(parsed, coord);
         assert_eq!(parsed.identifier, "weird:id:with:colons");
+
+        // Pin the exact divergence point: parsing a hand-built wire string
+        // keeps the full colon-bearing tail as the identifier rather than
+        // truncating at the first colon (what `split(':')` would do).
+        let tail_wire = format!("30023:{}:a:b:c", pk().to_hex());
+        let tail_parsed: Coordinate = tail_wire.parse().unwrap();
+        assert_eq!(tail_parsed.identifier, "a:b:c");
     }
 
     #[test]
