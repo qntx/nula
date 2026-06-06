@@ -45,7 +45,7 @@ pub enum Error {
     /// The filter would expand to an unbounded scan and was rejected.
     ///
     /// Backends are free to enforce a maximum-result-set policy. The
-    /// in-memory backend never raises this; the LMDB backend raises it
+    /// in-memory backend never raises this; the redb backend raises it
     /// when the filter cannot be served by any secondary index and the
     /// caller did not supply a `limit`.
     #[error("query would scan the entire store; supply a filter or limit")]

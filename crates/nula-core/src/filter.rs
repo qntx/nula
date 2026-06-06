@@ -815,7 +815,7 @@ fn generic_tags_match<E: MatchableEvent>(
 /// A read-only projection of the fields [`Filter::match_event`] inspects.
 ///
 /// Implemented by the owned [`Event`] and by zero-parse borrowed views
-/// (e.g. the LMDB backend's storage projection), so the matcher keeps a
+/// (e.g. the redb backend's storage projection), so the matcher keeps a
 /// single source of truth and the two can never silently diverge.
 ///
 /// The author is exposed as **raw bytes**, never a parsed [`PublicKey`]:

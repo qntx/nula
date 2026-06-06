@@ -44,9 +44,11 @@ use crate::status::{DatabaseEventStatus, SaveEventStatus};
 /// # Cancellation
 ///
 /// Dropping the returned future after the backend has begun writing
-/// must not corrupt the store. Backends that do their own work on a
-/// background thread (e.g. the LMDB ingester) treat the future as a
-/// receipt for the commit decision; the write itself still completes.
+/// must not corrupt the store. Backends that offload the write to a
+/// blocking task (e.g. the redb backend's `spawn_blocking` writer)
+/// treat the future as a receipt for the commit decision; the write
+/// itself still runs to completion and the ACID engine keeps the
+/// store consistent.
 pub trait NostrDatabase: Debug + Send + Sync {
     /// Identifier for the concrete backend (used for telemetry).
     fn backend(&self) -> Backend;
@@ -96,7 +98,7 @@ pub trait NostrDatabase: Debug + Send + Sync {
     /// Count the events matching `filter` without materialising them.
     ///
     /// Backends are free to implement this on top of [`Self::query`] —
-    /// the LMDB backend uses index-only scans for a much faster count.
+    /// the redb backend uses index-only scans for a much faster count.
     fn count(&self, filter: Filter) -> BoxFuture<'_, Result<usize, Error>>;
 
     /// Materialise the events matching `filter`.
