@@ -87,7 +87,6 @@ pub(crate) async fn handle_connection(
                 }
             }
 
-            // Inbound frame.
             next = stream.next() => {
                 if handle_inbound_frame(
                     &ctx,

@@ -47,7 +47,6 @@ mod tests {
                 .and_then(serde_json::Value::as_str),
             Some("magnet:?xt=urn:btih:abc")
         );
-        // The extra field survives re-serialization.
         let reserialized = serde_json::to_string(&descriptor).unwrap();
         assert!(reserialized.contains("magnet"));
     }

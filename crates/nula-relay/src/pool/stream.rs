@@ -79,7 +79,6 @@ async fn driver(
                 }
             } => break,
 
-            // Incoming subscription frame.
             next = workers.next() => {
                 let Some((url, sub_id, item)) = next else {
                     // Every per-relay stream has terminated.
