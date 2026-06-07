@@ -37,7 +37,7 @@ tracing = ["dep:tracing"]
 [dependencies]
 nula-core = { workspace = true }
 
-bitflags  = "2.6"
+bitflags  = "2.13"
 thiserror.workspace = true
 
 # Backend dependencies (feature-gated).
