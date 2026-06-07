@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Relay server policy API is now IP-aware and NIP-20-typed
+  (BREAKING).** The `server` feature's admission hooks gain the client
+  `SocketAddr` and structured rejections: `WritePolicy::admit_event`
+  takes the peer address; `ReadPolicy` is renamed to `QueryPolicy` with
+  `admit_query(&mut Filter, SocketAddr)` so a policy can rewrite a
+  filter in place (e.g. clamp an unbounded `limit`);
+  `AdmitVerdict::Reject(&'static str)` becomes `Reject { prefix:
+  MachineReadablePrefix, message: String }` (NIP-20); and
+  `AcceptAllReads` is renamed `AcceptAllQueries`. The default
+  accept-all behaviour is unchanged, so relays that install no policy
+  are unaffected. See ADR-0012.
+
+- **Relay server NIP-42 is now real and mode-selectable (BREAKING).**
+  The `server` feature verifies the inbound AUTH event's Schnorr
+  signature, `relay` / `challenge` tags, and freshness (previously the
+  AUTH frame flipped an authenticated flag without any verification),
+  and replies with `OK true` / `OK false "restricted: …"`.
+  `MockRelayOptions::require_nip42: bool` is replaced by
+  `nip42_mode: Nip42Mode` (`Disabled` / `Read` / `Write` / `Both`),
+  gating reads, writes, or both. See ADR-0012.
+
 - **Storage backend is now pure-Rust `redb`; LMDB + SQLite removed.**
   The persistent storage layer switches from `heed` (LMDB, C) and
   `rusqlite` (bundled SQLite, C) to
@@ -53,6 +74,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matching feature.
 
 ### Added
+
+- **Embedded relay server resource caps & rate limits (`server`
+  feature).** New opt-in `MockRelayOptions` knobs mirroring
+  `nostr-relay-builder`: `max_connections` (drops sockets past the cap
+  before the WebSocket handshake), `max_subid_length` (rejects
+  over-long `REQ` / NIP-77 subscription ids with an `invalid:` reason),
+  `max_filter_limit` (clamps every filter `limit` down before the query
+  runs), and a per-connection `RateLimit { notes_per_minute,
+  reqs_per_minute }` (rolling 60-second window, surfacing
+  `rate-limited:` rejections). All default to unlimited, so relays that
+  set none are unaffected. See ADR-0012.
+
+- **Author-restricted relays & test fault injection (`server`
+  feature).** A built-in `AuthorAllowlist` `WritePolicy` admits only
+  allowlisted authors (upstream's pubkey mode), rejecting others with a
+  `blocked:` reason. Two opt-in `MockRelayOptions` fault knobs —
+  `unresponsive` (complete the handshake but never reply to NIP-01
+  frames) and `send_random_events` (answer every `REQ` with N random
+  events) — exercise client resilience paths. See ADR-0012.
+
+- **Test & quality hardening (Phase A).**
+  - `nula-core` property tests (`proptest`): signed-event self-verify,
+    event-id / public-key / secret-key hex + bech32 round trips, and
+    NIP-44 encrypt/decrypt inversion.
+  - Three new fuzz targets (`event_verify`, `nip49_decrypt`,
+    `metadata_parse`) bring the `nula-fuzz` set to ten, plus a
+    `make fuzz` smoke-run entry point.
+  - `nula-storage` redb benchmarks (`save_event` / `query` /
+    `negentropy_items` / `count`) and four new conformance edge cases
+    (empty-store reads, reversed time bounds, id filter, `#t` hashtag)
+    that run against both `memory` and `redb`.
 
 - **`nula-signer-browser` — NIP-07 `window.nostr` browser signer (new
   crate).** Implements `nula_core::NostrSigner` against a browser

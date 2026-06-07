@@ -4,7 +4,7 @@
 //! a real [`tokio::net::TcpListener`], speaks NIP-01 over WebSocket
 //! via `tokio-tungstenite`, persists events through any
 //! [`nula_storage::NostrDatabase`] backend, and accepts pluggable
-//! [`WritePolicy`] / [`ReadPolicy`] hooks for filtering inbound
+//! [`WritePolicy`] / [`QueryPolicy`] hooks for filtering inbound
 //! traffic.
 //!
 //! # Why a real server?
@@ -47,6 +47,8 @@ mod relay;
 
 pub use self::builder::MockRelayBuilder;
 pub use self::error::Error;
-pub use self::options::MockRelayOptions;
-pub use self::policy::{AcceptAllReads, AcceptAllWrites, AdmitVerdict, ReadPolicy, WritePolicy};
+pub use self::options::{MockRelayOptions, Nip42Mode, RateLimit};
+pub use self::policy::{
+    AcceptAllQueries, AcceptAllWrites, AdmitVerdict, AuthorAllowlist, QueryPolicy, WritePolicy,
+};
 pub use self::relay::MockRelay;

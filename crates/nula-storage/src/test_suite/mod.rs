@@ -96,6 +96,10 @@ pub async fn run_query_path<F: DatabaseFactory>(factory: &F) {
     cases::query_filters::count_matches_query_length(factory).await;
     cases::query_filters::negentropy_items_match_query(factory).await;
     cases::query_filters::delete_matching_drops_events_without_tombstoning(factory).await;
+    cases::query_filters::empty_store_queries_are_empty(factory).await;
+    cases::query_filters::reversed_time_bounds_return_nothing(factory).await;
+    cases::query_filters::id_filter_selects_only_requested(factory).await;
+    cases::query_filters::hashtag_filter_matches_t_tag(factory).await;
 }
 
 /// NIP-09 deletion semantics.

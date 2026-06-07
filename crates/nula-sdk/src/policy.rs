@@ -1,8 +1,8 @@
 //! Client-side admission policy.
 //!
 //! [`AdmitPolicy`] is the SDK's symmetric counterpart to the
-//! relay-side `WritePolicy` / `ReadPolicy` traits in
-//! `nula-relay-builder`: it lets a [`Client`] gate which relays it
+//! relay-side `WritePolicy` / `QueryPolicy` traits in
+//! `nula_relay::server`: it lets a [`Client`] gate which relays it
 //! is willing to *register*, *connect to*, and which inbound events
 //! it is willing to *persist* during sync / fetch flows.
 //!

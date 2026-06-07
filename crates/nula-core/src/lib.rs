@@ -80,6 +80,10 @@ pub mod util;
 // `unused-crate-dependencies`.
 #[cfg(test)]
 use criterion as _;
+// `proptest` backs `tests/property.rs` only; hedge it so the lib build
+// stays warning-clean under `unused-crate-dependencies`.
+#[cfg(test)]
+use proptest as _;
 use zeroize as _;
 
 // Crate-root re-exports: only the small set of types that callers reach

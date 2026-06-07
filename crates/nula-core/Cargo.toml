@@ -98,6 +98,7 @@ tracing = { workspace = true, optional = true }
 bech32.workspace = true
 criterion.workspace = true
 hex-literal.workspace = true
+proptest.workspace = true
 serde_json = { workspace = true, features = ["std"] }
 
 [lints]
@@ -111,6 +112,11 @@ required-features = ["nip44"]
 [[test]]
 name = "interop_boundaries"
 path = "tests/interop_boundaries.rs"
+
+[[test]]
+name = "property"
+path = "tests/property.rs"
+required-features = ["nip44"]
 
 [[bench]]
 name = "event"

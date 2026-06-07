@@ -66,6 +66,11 @@
 // `tempfile` is a dev-dependency consumed only by the `redb`
 // persistence integration tests; hedge it so the lib's test build
 // stays quiet under `unused_crate_dependencies`.
+// `criterion` backs `benches/redb_ops.rs` only; hedge it like
+// `tempfile` so the lib's test build stays warning-clean under
+// `unused_crate_dependencies`.
+#[cfg(test)]
+use criterion as _;
 #[cfg(test)]
 use tempfile as _;
 #[cfg(feature = "tracing")]

@@ -8,10 +8,15 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use futures::{SinkExt, StreamExt};
 use nula_core::message::{MachineReadablePrefix, RelayMessage};
-use nula_core::{ClientMessage, Event, EventId, Filter, JsonUtil, SubscriptionId};
+use nula_core::nips::nip42;
+use nula_core::{
+    ClientMessage, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, RelayUrl, SubscriptionId,
+    Timestamp,
+};
 use nula_storage::{NostrDatabase, SaveEventStatus};
 use nula_sync::Responder;
 use serde_json::Value;
@@ -20,7 +25,8 @@ use tokio::sync::broadcast;
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::protocol::Message as WsMessage;
 
-use crate::server::policy::{AdmitVerdict, ReadPolicy, WritePolicy};
+use crate::server::options::{Nip42Mode, RateLimit};
+use crate::server::policy::{AdmitVerdict, QueryPolicy, WritePolicy};
 
 /// Connection-scoped resources. Cloned cheaply (every field is
 /// `Arc`-shared with the relay handle).
@@ -28,11 +34,31 @@ use crate::server::policy::{AdmitVerdict, ReadPolicy, WritePolicy};
 pub(crate) struct ConnectionContext {
     pub(crate) storage: Arc<dyn NostrDatabase>,
     pub(crate) write_policy: Arc<dyn WritePolicy>,
-    pub(crate) read_policy: Arc<dyn ReadPolicy>,
-    pub(crate) require_nip42: bool,
+    pub(crate) query_policy: Arc<dyn QueryPolicy>,
+    /// Address of the connected client, set once per accepted socket
+    /// in [`handle_connection`] and handed to every policy call.
+    pub(crate) peer: SocketAddr,
+    /// This relay's own url, used to verify the `relay` tag of an
+    /// inbound NIP-42 AUTH event.
+    pub(crate) relay_url: RelayUrl,
+    /// NIP-42 authentication enforcement mode.
+    pub(crate) nip42_mode: Nip42Mode,
     /// Minimum NIP-13 proof-of-work difficulty required of inbound
     /// events; `None` accepts any difficulty.
     pub(crate) min_pow: Option<u8>,
+    /// Reject subscription ids longer than this many characters.
+    /// `None` is unlimited; mirrors NIP-11 `max_subid_length`.
+    pub(crate) max_subid_length: Option<usize>,
+    /// Clamp every `REQ` / NIP-77 filter `limit` to at most this.
+    /// `None` leaves client limits untouched; mirrors NIP-11 `max_limit`.
+    pub(crate) max_filter_limit: Option<usize>,
+    /// Per-connection, per-minute rate limits.
+    pub(crate) rate_limit: RateLimit,
+    /// Test fault injection: never reply to NIP-01 frames.
+    pub(crate) unresponsive: bool,
+    /// Test fault injection: answer every `REQ` with this many random
+    /// events instead of querying storage.
+    pub(crate) send_random_events: Option<u16>,
     /// Relay-wide live broadcast: every accepted [`ClientMessage::Event`]
     /// frame fans out to every connection's subscription matchers
     /// here. Slow consumers see `RecvError::Lagged`, not back
@@ -47,25 +73,32 @@ pub(crate) struct ConnectionContext {
 /// closed.
 pub(crate) async fn handle_connection(
     ws: WebSocketStream<TcpStream>,
-    _peer: SocketAddr,
-    ctx: ConnectionContext,
+    peer: SocketAddr,
+    mut ctx: ConnectionContext,
     mut shutdown: broadcast::Receiver<()>,
 ) {
+    ctx.peer = peer;
     let (mut sink, mut stream) = ws.split();
     let mut subscriptions: HashMap<SubscriptionId, Vec<Filter>> = HashMap::new();
     let mut neg_sessions: HashMap<SubscriptionId, Responder> = HashMap::new();
     let mut live = ctx.broadcast.subscribe();
 
-    // Optional NIP-42 challenge — fires once at the top of the loop.
-    let challenge_required = ctx.require_nip42;
-    let mut authenticated = !challenge_required;
-    if challenge_required {
-        let challenge = format!("nula-mock-{}", random_hex_token());
-        let frame = encode_relay(&RelayMessage::Auth(challenge));
+    // Optional NIP-42 challenge — issued once at the top of the loop
+    // when a non-`Disabled` mode is configured. The challenge string is
+    // retained so the AUTH reply can be verified against it.
+    let mut auth = AuthState {
+        authenticated: !ctx.nip42_mode.is_enabled(),
+        challenge: String::new(),
+    };
+    if ctx.nip42_mode.is_enabled() {
+        auth.challenge = format!("nula-mock-{}", random_hex_token());
+        let frame = encode_relay(&RelayMessage::Auth(auth.challenge.clone()));
         if sink.send(WsMessage::text(frame)).await.is_err() {
             return;
         }
     }
+
+    let mut rate = RateLimiter::new(ctx.rate_limit);
 
     loop {
         tokio::select! {
@@ -93,7 +126,8 @@ pub(crate) async fn handle_connection(
                     &mut subscriptions,
                     &mut neg_sessions,
                     &mut sink,
-                    &mut authenticated,
+                    &mut auth,
+                    &mut rate,
                     next,
                 )
                 .await
@@ -124,7 +158,8 @@ async fn handle_inbound_frame(
     subscriptions: &mut HashMap<SubscriptionId, Vec<Filter>>,
     neg_sessions: &mut HashMap<SubscriptionId, Responder>,
     sink: &mut Sink,
-    authenticated: &mut bool,
+    auth: &mut AuthState,
+    rate: &mut RateLimiter,
     frame: Option<Result<WsMessage, tokio_tungstenite::tungstenite::Error>>,
 ) -> ControlFlow<()> {
     let Some(frame) = frame else {
@@ -153,6 +188,12 @@ async fn handle_inbound_frame(
         Ok(WsMessage::Close(_)) | Err(_) => return ControlFlow::Break(()),
     };
 
+    // Fault injection: swallow NIP-01 frames without replying. Control
+    // frames (ping/pong/close) were handled in the match above.
+    if ctx.unresponsive {
+        return ControlFlow::Continue(());
+    }
+
     let msg = match ClientMessage::from_json(&text) {
         Ok(m) => m,
         Err(e) => {
@@ -165,24 +206,39 @@ async fn handle_inbound_frame(
         }
     };
 
-    if !*authenticated && !is_auth_message(&msg) {
-        let reply = if let ClientMessage::Event(event) = &msg {
-            RelayMessage::Ok {
+    if !auth.authenticated && message_needs_auth(&msg, ctx.nip42_mode) {
+        let reply = match &msg {
+            ClientMessage::Event(event) => RelayMessage::Ok {
                 event_id: event.id,
                 accepted: false,
                 message: format!(
-                    "{}: client must AUTH before publishing",
+                    "{}: authentication required to publish",
                     MachineReadablePrefix::AuthRequired.as_str()
                 ),
-            }
-        } else {
-            RelayMessage::Notice("auth-required: this relay requires NIP-42 authentication".into())
+            },
+            ClientMessage::Req {
+                subscription_id, ..
+            } => RelayMessage::Closed {
+                subscription_id: subscription_id.clone(),
+                message: format!(
+                    "{}: authentication required to read",
+                    MachineReadablePrefix::AuthRequired.as_str()
+                ),
+            },
+            _ => RelayMessage::Notice(
+                "auth-required: this relay requires NIP-42 authentication".into(),
+            ),
         };
         sink.send(WsMessage::text(encode_relay(&reply))).await.ok();
         return ControlFlow::Continue(());
     }
 
-    if dispatch(ctx, subscriptions, neg_sessions, sink, msg, authenticated)
+    if let Some(reply) = rate.check(&msg) {
+        sink.send(WsMessage::text(encode_relay(&reply))).await.ok();
+        return ControlFlow::Continue(());
+    }
+
+    if dispatch(ctx, subscriptions, neg_sessions, sink, msg, auth)
         .await
         .is_err()
     {
@@ -204,7 +260,7 @@ async fn dispatch(
     neg_sessions: &mut HashMap<SubscriptionId, Responder>,
     sink: &mut Sink,
     msg: ClientMessage,
-    authenticated: &mut bool,
+    auth: &mut AuthState,
 ) -> Result<(), DispatchError> {
     match msg {
         ClientMessage::Event(event) => {
@@ -222,12 +278,24 @@ async fn dispatch(
             subscriptions.remove(&id);
             Ok(())
         }
-        ClientMessage::Auth(_event) => {
-            // Transport-layer hook only: signature is **not**
-            // verified. This is documented on
-            // `MockRelayOptions::require_nip42`.
-            *authenticated = true;
-            Ok(())
+        ClientMessage::Auth(event) => {
+            let event_id = event.id;
+            let reply = match verify_client_auth(&event, &ctx.relay_url, &auth.challenge) {
+                Ok(()) => {
+                    auth.authenticated = true;
+                    RelayMessage::Ok {
+                        event_id,
+                        accepted: true,
+                        message: String::new(),
+                    }
+                }
+                Err(reason) => RelayMessage::Ok {
+                    event_id,
+                    accepted: false,
+                    message: format!("{}: {reason}", MachineReadablePrefix::Restricted.as_str()),
+                },
+            };
+            send(sink, &reply).await
         }
         ClientMessage::Count {
             subscription_id,
@@ -300,14 +368,14 @@ async fn handle_event(
         .await;
     }
 
-    let verdict = ctx.write_policy.admit_event(&event).await;
-    if let AdmitVerdict::Reject(reason) = verdict {
+    let verdict = ctx.write_policy.admit_event(&event, ctx.peer).await;
+    if let AdmitVerdict::Reject { prefix, message } = verdict {
         return send(
             sink,
             &RelayMessage::Ok {
                 event_id,
                 accepted: false,
-                message: format!("{}: {}", MachineReadablePrefix::Blocked.as_str(), reason),
+                message: format!("{}: {message}", prefix.as_str()),
             },
         )
         .await;
@@ -400,8 +468,29 @@ async fn handle_req(
     subscriptions: &mut HashMap<SubscriptionId, Vec<Filter>>,
     sink: &mut Sink,
     subscription_id: SubscriptionId,
-    filters: Vec<Filter>,
+    mut filters: Vec<Filter>,
 ) -> Result<(), DispatchError> {
+    if let Some(max) = ctx.max_subid_length
+        && subscription_id.as_str().len() > max
+    {
+        return send(
+            sink,
+            &RelayMessage::Closed {
+                subscription_id,
+                message: format!(
+                    "{}: subscription id exceeds {max} characters",
+                    MachineReadablePrefix::Invalid.as_str()
+                ),
+            },
+        )
+        .await;
+    }
+
+    // Fault injection: answer with random events instead of querying.
+    if let Some(count) = ctx.send_random_events {
+        return stream_random_events(sink, &subscription_id, count).await;
+    }
+
     if filters.is_empty() {
         return send(
             sink,
@@ -416,18 +505,23 @@ async fn handle_req(
         .await;
     }
 
-    // Per-filter admit gate.
-    for filter in &filters {
-        if let AdmitVerdict::Reject(reason) = ctx.read_policy.admit_filter(filter).await {
+    // Per-filter admit gate. The policy may rewrite each filter in
+    // place (e.g. clamp an unbounded `limit`) before it is queried and
+    // stored as the subscription.
+    for filter in &mut filters {
+        if let AdmitVerdict::Reject { prefix, message } =
+            ctx.query_policy.admit_query(filter, ctx.peer).await
+        {
             return send(
                 sink,
                 &RelayMessage::Closed {
                     subscription_id,
-                    message: format!("{}: {}", MachineReadablePrefix::Restricted.as_str(), reason),
+                    message: format!("{}: {message}", prefix.as_str()),
                 },
             )
             .await;
         }
+        clamp_filter_limit(filter, ctx.max_filter_limit);
     }
 
     // Stream historical matches one filter at a time, then EOSE.
@@ -469,14 +563,64 @@ async fn handle_req(
     Ok(())
 }
 
+/// Clamp a filter's `limit` to `max` when configured. An absent client
+/// `limit` is set to `max`; a larger one is reduced; a smaller one is
+/// left as-is. Mirrors upstream `nostr-relay-builder`'s filter-limit
+/// enforcement so unbounded reads cannot exhaust the relay.
+fn clamp_filter_limit(filter: &mut Filter, max: Option<usize>) {
+    if let Some(max) = max {
+        filter.limit = Some(filter.limit.map_or(max, |limit| limit.min(max)));
+    }
+}
+
+/// Fault injection: stream `count` freshly-signed random events for
+/// `subscription_id`, then `EOSE`. Each batch uses a throwaway key.
+async fn stream_random_events(
+    sink: &mut Sink,
+    subscription_id: &SubscriptionId,
+    count: u16,
+) -> Result<(), DispatchError> {
+    let keys = Keys::generate().map_err(|_| DispatchError)?;
+    for i in 0..count {
+        let Ok(event) = EventBuilder::text_note(format!("random-{i}")).sign_with_keys(&keys) else {
+            continue;
+        };
+        send(
+            sink,
+            &RelayMessage::Event {
+                subscription_id: subscription_id.clone(),
+                event,
+            },
+        )
+        .await?;
+    }
+    send(
+        sink,
+        &RelayMessage::EndOfStoredEvents(subscription_id.clone()),
+    )
+    .await
+}
+
 async fn handle_neg_open(
     ctx: &ConnectionContext,
     neg_sessions: &mut HashMap<SubscriptionId, Responder>,
     sink: &mut Sink,
     subscription_id: SubscriptionId,
-    filter: Filter,
+    mut filter: Filter,
     initial_message_hex: String,
 ) -> Result<(), DispatchError> {
+    if let Some(max) = ctx.max_subid_length
+        && subscription_id.as_str().len() > max
+    {
+        return send_neg_err(
+            sink,
+            subscription_id,
+            MachineReadablePrefix::Invalid,
+            format!("subscription id exceeds {max} characters"),
+        )
+        .await;
+    }
+
     if neg_sessions.contains_key(&subscription_id) {
         return send_neg_err(
             sink,
@@ -489,14 +633,10 @@ async fn handle_neg_open(
 
     // Per-filter admit gate -- mirror REQ semantics so policy still
     // applies to NIP-77 reads.
-    if let AdmitVerdict::Reject(reason) = ctx.read_policy.admit_filter(&filter).await {
-        return send_neg_err(
-            sink,
-            subscription_id,
-            MachineReadablePrefix::Restricted,
-            &reason,
-        )
-        .await;
+    if let AdmitVerdict::Reject { prefix, message } =
+        ctx.query_policy.admit_query(&mut filter, ctx.peer).await
+    {
+        return send_neg_err(sink, subscription_id, prefix, message).await;
     }
 
     let storage = match nula_sync::from_database(ctx.storage.as_ref(), filter).await {
@@ -618,8 +758,115 @@ async fn send(sink: &mut Sink, msg: &RelayMessage) -> Result<(), DispatchError> 
         .map_err(|_| DispatchError)
 }
 
-const fn is_auth_message(msg: &ClientMessage) -> bool {
-    matches!(msg, ClientMessage::Auth(_))
+/// Per-connection NIP-42 state.
+struct AuthState {
+    /// Whether the client has completed a valid AUTH exchange.
+    authenticated: bool,
+    /// The challenge this connection issued; empty when none was sent.
+    challenge: String,
+}
+
+/// Per-connection fixed-window rate limiter (one rolling 60-second
+/// window per connection). Only `EVENT` and `REQ` are metered.
+struct RateLimiter {
+    limit: RateLimit,
+    window_start: Instant,
+    notes: u32,
+    reqs: u32,
+}
+
+impl RateLimiter {
+    fn new(limit: RateLimit) -> Self {
+        Self {
+            limit,
+            window_start: Instant::now(),
+            notes: 0,
+            reqs: 0,
+        }
+    }
+
+    /// Reset the counters when the current 60-second window elapsed.
+    fn roll(&mut self) {
+        if self.window_start.elapsed() >= Duration::from_mins(1) {
+            self.window_start = Instant::now();
+            self.notes = 0;
+            self.reqs = 0;
+        }
+    }
+
+    /// Record `msg` against the per-minute budget. Returns a rejection
+    /// frame when the budget is exhausted, or `None` when the message
+    /// may proceed.
+    fn check(&mut self, msg: &ClientMessage) -> Option<RelayMessage> {
+        self.roll();
+        match msg {
+            ClientMessage::Event(event) => {
+                let max = self.limit.notes_per_minute?;
+                if self.notes >= max {
+                    return Some(RelayMessage::Ok {
+                        event_id: event.id,
+                        accepted: false,
+                        message: format!(
+                            "{}: more than {max} events per minute",
+                            MachineReadablePrefix::RateLimited.as_str()
+                        ),
+                    });
+                }
+                self.notes += 1;
+                None
+            }
+            ClientMessage::Req {
+                subscription_id, ..
+            } => {
+                let max = self.limit.reqs_per_minute?;
+                if self.reqs >= max {
+                    return Some(RelayMessage::Closed {
+                        subscription_id: subscription_id.clone(),
+                        message: format!(
+                            "{}: more than {max} REQs per minute",
+                            MachineReadablePrefix::RateLimited.as_str()
+                        ),
+                    });
+                }
+                self.reqs += 1;
+                None
+            }
+            _ => None,
+        }
+    }
+}
+
+/// Whether `msg` is blocked for an unauthenticated client under `mode`.
+/// Reads (`REQ` / `COUNT` / NIP-77 `NEG-OPEN`) gate under
+/// [`Nip42Mode::Read`] / [`Nip42Mode::Both`]; writes (`EVENT`) gate
+/// under [`Nip42Mode::Write`] / [`Nip42Mode::Both`]. `AUTH` and the
+/// session-control frames are always allowed.
+const fn message_needs_auth(msg: &ClientMessage, mode: Nip42Mode) -> bool {
+    match msg {
+        ClientMessage::Event(_) => mode.requires_for_write(),
+        ClientMessage::Req { .. } | ClientMessage::Count { .. } | ClientMessage::NegOpen { .. } => {
+            mode.requires_for_read()
+        }
+        _ => false,
+    }
+}
+
+/// Full server-side NIP-42 check: Schnorr signature first, then kind,
+/// tags, challenge match, and freshness. Returns a human-readable
+/// reason on failure for the `OK false` frame.
+fn verify_client_auth(event: &Event, relay_url: &RelayUrl, challenge: &str) -> Result<(), String> {
+    event
+        .verify()
+        .map_err(|e| format!("invalid auth event: {e}"))?;
+    let now = Timestamp::now().map_err(|e| format!("relay clock unavailable: {e}"))?;
+    nip42::verify_auth_event(
+        event,
+        relay_url,
+        challenge,
+        now,
+        nip42::DEFAULT_MAX_AGE_SECS,
+    )
+    .map_err(|e| e.to_string())
 }
 
 /// Cheap pseudo-random hex token used for NIP-42 challenges. The

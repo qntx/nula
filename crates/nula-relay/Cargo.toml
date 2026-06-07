@@ -195,3 +195,23 @@ required-features = ["pool", "server", "default-transport"]
 name = "min_pow"
 path = "tests/min_pow.rs"
 required-features = ["pool", "server", "default-transport"]
+
+[[test]]
+name = "server_limits"
+path = "tests/server_limits.rs"
+required-features = ["server", "default-transport"]
+
+[[test]]
+name = "server_nip42"
+path = "tests/server_nip42.rs"
+required-features = ["server", "default-transport"]
+
+[[test]]
+name = "server_policy"
+path = "tests/server_policy.rs"
+required-features = ["pool", "server", "default-transport"]
+
+[[test]]
+name = "server_faults"
+path = "tests/server_faults.rs"
+required-features = ["server", "default-transport"]

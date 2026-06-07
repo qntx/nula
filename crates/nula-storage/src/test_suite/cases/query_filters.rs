@@ -208,3 +208,97 @@ pub async fn delete_matching_drops_events_without_tombstoning<F: DatabaseFactory
         "non-NIP-09 delete must not tombstone"
     );
 }
+
+/// Every read path against a brand-new store returns empty without
+/// panicking — `query`, `count`, and `negentropy_items` alike.
+pub async fn empty_store_queries_are_empty<F: DatabaseFactory>(factory: &F) {
+    let (db, _guard) = factory.build().await;
+
+    assert!(
+        db.query(Filter::new()).await.expect("query ok").is_empty(),
+        "empty store must return no events"
+    );
+    assert_eq!(
+        db.count(Filter::new()).await.expect("count ok"),
+        0,
+        "empty store count must be zero"
+    );
+    assert!(
+        db.negentropy_items(Filter::new())
+            .await
+            .expect("negentropy_items ok")
+            .is_empty(),
+        "empty store must return no negentropy items"
+    );
+}
+
+/// A `since` strictly greater than `until` describes an empty window
+/// and must match nothing — no timestamp underflow or wraparound.
+pub async fn reversed_time_bounds_return_nothing<F: DatabaseFactory>(factory: &F) {
+    let (db, _guard) = factory.build().await;
+    let k = keys();
+    db.save_event(&text_note(&k, "a", 100))
+        .await
+        .expect("save a");
+    db.save_event(&text_note(&k, "b", 200))
+        .await
+        .expect("save b");
+
+    let filter = Filter::new()
+        .since(Timestamp::from_secs(300))
+        .until(Timestamp::from_secs(100));
+    let events = db.query(filter).await.expect("query ok");
+    assert!(events.is_empty(), "since > until must match nothing");
+}
+
+/// An id filter returns exactly the requested events and nothing else,
+/// regardless of how many ids are listed (NIP-01 `ids` is a set).
+pub async fn id_filter_selects_only_requested<F: DatabaseFactory>(factory: &F) {
+    let (db, _guard) = factory.build().await;
+    let k = keys();
+    let a = text_note(&k, "a", 100);
+    let b = text_note(&k, "b", 200);
+    let c = text_note(&k, "c", 300);
+    for event in [&a, &b, &c] {
+        db.save_event(event).await.expect("save");
+    }
+
+    let events = db
+        .query(Filter::new().ids([a.id, c.id]))
+        .await
+        .expect("query ok");
+    let mut got: Vec<&str> = events.iter().map(|e| e.content.as_str()).collect();
+    got.sort_unstable();
+    assert_eq!(
+        got,
+        ["a", "c"],
+        "id filter must return exactly the requested ids, excluding b"
+    );
+}
+
+/// A `#t` hashtag filter matches events carrying the matching
+/// single-letter `t` tag and excludes those without it — exercising the
+/// generic single-letter tag index path.
+pub async fn hashtag_filter_matches_t_tag<F: DatabaseFactory>(factory: &F) {
+    let (db, _guard) = factory.build().await;
+    let k = keys();
+    db.save_event(&event_with_tags(
+        &k,
+        Kind::TEXT_NOTE,
+        "tagged",
+        100,
+        [Tag::new(["t", "rust"]).expect("t tag")],
+    ))
+    .await
+    .expect("save tagged");
+    db.save_event(&text_note(&k, "untagged", 200))
+        .await
+        .expect("save untagged");
+
+    let events = db
+        .query(Filter::new().hashtag("rust"))
+        .await
+        .expect("query ok");
+    assert_eq!(events.len(), 1, "only the #t=rust event matches");
+    assert_eq!(events.first().expect("one event").content, "tagged");
+}

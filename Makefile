@@ -1,6 +1,6 @@
 # Makefile for Rust project using Cargo
 
-.PHONY: all build check run test bench clippy clippy-fix fmt doc update
+.PHONY: all build check run test bench fuzz clippy clippy-fix fmt doc update
 
 all: fmt clippy-fix
 
@@ -53,3 +53,14 @@ fmt:
 # Generate documentation for all crates and open it in the browser
 doc:
 	cargo +nightly doc --all-features --no-deps --open
+
+# Smoke-run every libFuzzer target in crates/nula-fuzz (needs the nightly
+# toolchain + `cargo install cargo-fuzz`). Override the per-target budget
+# with `make fuzz FUZZ_SECS=60`. CI can call this for a short regression
+# pass; long campaigns run locally or on a dedicated runner.
+FUZZ_SECS ?= 10
+fuzz:
+	@cargo +nightly fuzz list --fuzz-dir crates/nula-fuzz | while read target; do \
+		echo "==> fuzzing $$target for $(FUZZ_SECS)s"; \
+		cargo +nightly fuzz run --fuzz-dir crates/nula-fuzz "$$target" -- -max_total_time=$(FUZZ_SECS) || exit 1; \
+	done

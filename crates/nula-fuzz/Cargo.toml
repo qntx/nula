@@ -78,3 +78,24 @@ path = "fuzz_targets/relay_message_parse.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "event_verify"
+path = "fuzz_targets/event_verify.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "nip49_decrypt"
+path = "fuzz_targets/nip49_decrypt.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "metadata_parse"
+path = "fuzz_targets/metadata_parse.rs"
+test = false
+doc = false
+bench = false

@@ -6,7 +6,7 @@ use nula_storage::NostrDatabase;
 
 use crate::server::error::Error;
 use crate::server::options::MockRelayOptions;
-use crate::server::policy::{AcceptAllReads, AcceptAllWrites, ReadPolicy, WritePolicy};
+use crate::server::policy::{AcceptAllQueries, AcceptAllWrites, QueryPolicy, WritePolicy};
 use crate::server::relay::MockRelay;
 
 /// Builder for [`MockRelay`].
@@ -19,7 +19,7 @@ use crate::server::relay::MockRelay;
 pub struct MockRelayBuilder {
     storage: Option<Arc<dyn NostrDatabase>>,
     write_policy: Option<Arc<dyn WritePolicy>>,
-    read_policy: Option<Arc<dyn ReadPolicy>>,
+    query_policy: Option<Arc<dyn QueryPolicy>>,
     options: MockRelayOptions,
 }
 
@@ -35,7 +35,7 @@ impl MockRelayBuilder {
         Self {
             storage: None,
             write_policy: None,
-            read_policy: None,
+            query_policy: None,
             options: MockRelayOptions::default(),
         }
     }
@@ -56,9 +56,12 @@ impl MockRelayBuilder {
         self
     }
 
-    /// Override the read-admit policy. Defaults to "accept all".
-    pub fn read_policy(mut self, policy: Arc<dyn ReadPolicy>) -> Self {
-        self.read_policy = Some(policy);
+    /// Override the query-admit policy. Defaults to "accept all".
+    ///
+    /// A [`QueryPolicy`] sees the client address and may rewrite each
+    /// `REQ` / NIP-77 filter in place (e.g. clamp an unbounded `limit`).
+    pub fn query_policy(mut self, policy: Arc<dyn QueryPolicy>) -> Self {
+        self.query_policy = Some(policy);
         self
     }
 
@@ -84,8 +87,10 @@ impl MockRelayBuilder {
         let write_policy = self
             .write_policy
             .unwrap_or_else(|| Arc::new(AcceptAllWrites));
-        let read_policy = self.read_policy.unwrap_or_else(|| Arc::new(AcceptAllReads));
-        MockRelay::start(self.options, storage, write_policy, read_policy).await
+        let query_policy = self
+            .query_policy
+            .unwrap_or_else(|| Arc::new(AcceptAllQueries));
+        MockRelay::start(self.options, storage, write_policy, query_policy).await
     }
 }
 
