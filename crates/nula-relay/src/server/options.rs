@@ -112,6 +112,22 @@ pub struct MockRelayOptions {
     /// the query runs.
     pub max_filter_limit: Option<usize>,
 
+    /// Default `limit` applied to a `REQ` / NIP-77 filter that omits
+    /// one. `None` (the default) leaves an absent client `limit`
+    /// untouched (unless [`Self::max_filter_limit`] fills it); `Some(n)`
+    /// sets an absent `limit` to `n`, still clamped by
+    /// `max_filter_limit`. Mirrors upstream `nostr-relay-builder`'s
+    /// `default_filter_limit` and NIP-11 `default_limit`.
+    pub default_filter_limit: Option<usize>,
+
+    /// Maximum number of concurrent subscriptions a single connection
+    /// may hold. `None` (the default) is unlimited; once `Some(n)`
+    /// subscriptions are active, a `REQ` opening a *new* id is refused
+    /// with a `rate-limited:` `CLOSED`. Re-using an existing id (which
+    /// replaces that subscription) is always allowed. Mirrors upstream
+    /// `nostr-relay-builder`'s `max_reqs` and NIP-11 `max_subscriptions`.
+    pub max_active_subscriptions: Option<usize>,
+
     /// Per-connection, per-minute rate limits. Both sub-limits default
     /// to unlimited.
     pub rate_limit: RateLimit,
@@ -138,6 +154,8 @@ impl Default for MockRelayOptions {
             max_connections: None,
             max_subid_length: None,
             max_filter_limit: None,
+            default_filter_limit: None,
+            max_active_subscriptions: None,
             rate_limit: RateLimit::DISABLED,
             unresponsive: false,
             send_random_events: None,
@@ -199,6 +217,22 @@ impl MockRelayOptions {
         self
     }
 
+    /// Apply a default `limit` to `REQ` filters that omit one. `0`
+    /// clears the default.
+    #[must_use]
+    pub const fn default_filter_limit(mut self, default: usize) -> Self {
+        self.default_filter_limit = if default > 0 { Some(default) } else { None };
+        self
+    }
+
+    /// Cap the number of concurrent subscriptions per connection. `0`
+    /// clears the cap.
+    #[must_use]
+    pub const fn max_active_subscriptions(mut self, max: usize) -> Self {
+        self.max_active_subscriptions = if max > 0 { Some(max) } else { None };
+        self
+    }
+
     /// Set the per-connection, per-minute [`RateLimit`].
     #[must_use]
     pub const fn rate_limit(mut self, limit: RateLimit) -> Self {
@@ -237,6 +271,8 @@ mod tests {
         assert!(opts.max_connections.is_none());
         assert!(opts.max_subid_length.is_none());
         assert!(opts.max_filter_limit.is_none());
+        assert!(opts.default_filter_limit.is_none());
+        assert!(opts.max_active_subscriptions.is_none());
         assert!(!opts.rate_limit.is_enabled());
         assert!(!opts.unresponsive);
         assert!(opts.send_random_events.is_none());
@@ -263,6 +299,18 @@ mod tests {
                 .max_filter_limit(500)
                 .max_filter_limit,
             Some(500)
+        );
+        assert_eq!(
+            MockRelayOptions::new()
+                .max_active_subscriptions(20)
+                .max_active_subscriptions,
+            Some(20)
+        );
+        assert_eq!(
+            MockRelayOptions::new()
+                .max_active_subscriptions(0)
+                .max_active_subscriptions,
+            None
         );
     }
 

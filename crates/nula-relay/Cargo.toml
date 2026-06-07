@@ -215,3 +215,28 @@ required-features = ["pool", "server", "default-transport"]
 name = "server_faults"
 path = "tests/server_faults.rs"
 required-features = ["server", "default-transport"]
+
+[[test]]
+name = "server_nip11"
+path = "tests/server_nip11.rs"
+required-features = ["server", "default-transport"]
+
+[[test]]
+name = "server_nip70"
+path = "tests/server_nip70.rs"
+required-features = ["server", "default-transport"]
+
+[[test]]
+name = "server_nip40"
+path = "tests/server_nip40.rs"
+required-features = ["server", "default-transport"]
+
+[[test]]
+name = "server_nip09"
+path = "tests/server_nip09.rs"
+required-features = ["server", "default-transport"]
+
+[[test]]
+name = "server_management"
+path = "tests/server_management.rs"
+required-features = ["server", "default-transport"]

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Relay server NIP-86 management API (`server` feature, beyond
+  upstream).** `MockRelayBuilder::management(admins)` enables a served
+  NIP-86 relay-management API over HTTP `POST`
+  (`application/nostr+json+rpc`), authorized by NIP-98
+  (`Authorization: Nostr …`); only the configured admin pubkeys may call
+  it. A shared, mutable `ManagementState` (retrievable via
+  `MockRelay::management`) backs both the API and the relay's write
+  policy, so `banpubkey` / `allowpubkey` / `allowkind` / `blockip` take
+  effect on the next `EVENT`. `changerelayname` / `changerelaydescription`
+  / `changerelayicon` update the served NIP-11 document, which advertises
+  NIP-86 while management is enabled. Upstream `nostr-relay-builder`'s
+  `local` relay has no runtime administration. See ADR-0014.
+
+- **Relay server protocol completeness (`server` feature).** The
+  in-process relay now serves a **NIP-11** relay information document
+  over HTTP (`Accept: application/nostr+json`), auto-derived from the
+  configured options and policies and overridable via
+  `MockRelayBuilder::relay_info`; enforces **NIP-70** protected events
+  (a `["-"]` event is accepted only from its NIP-42-authenticated
+  author, with an on-demand AUTH challenge for unauthenticated authors);
+  and refuses already-expired **NIP-40** events up front with
+  `blocked: event is expired`. Two new `MockRelayOptions` caps mirror
+  upstream `nostr-relay-builder`: `max_active_subscriptions`
+  (per-connection concurrent `REQ` cap, surfaced as NIP-11
+  `max_subscriptions`) and `default_filter_limit` (default `limit`
+  applied to a `REQ` filter that omits one, surfaced as NIP-11
+  `default_limit`). See ADR-0013.
+
 ### Changed
 
 - **Relay server policy API is now IP-aware and NIP-20-typed
@@ -217,6 +247,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`nula-storage` `memory_capacity` / `redb_persistence` tests failed
+  to compile under a workspace build.** Both use
+  `nula_storage::test_suite::helpers` but declared only
+  `required-features = ["memory"]` / `["redb"]`, omitting `test-suite`.
+  A per-crate `--all-features` run masked this (it turns `test-suite`
+  on), but `cargo test --workspace` — where a sibling dev-dependency
+  enables `memory` / `redb` without `test-suite` — tried to build them
+  and failed to resolve the gated module. Both now list `test-suite` in
+  `required-features`, matching their `*_suite` siblings.
 - **`nula-relay` pool `translate()` tripped `unreachable_pattern` /
   `unnecessary_wraps` under partial feature sets** (e.g. when built as a
   dependency with `nip42` off). The `RelayNotification` match now handles

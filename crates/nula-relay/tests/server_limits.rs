@@ -1,5 +1,6 @@
 //! Resource caps and rate limits on the in-process `MockRelay`:
-//! `max_subid_length`, `max_filter_limit`, `max_connections` (B4), and
+//! `max_subid_length`, `max_filter_limit`, `max_connections` (B4),
+//! `max_active_subscriptions` (C4), `default_filter_limit` (C5), and
 //! the per-connection `RateLimit` (B2).
 //!
 //! Mirrors upstream `nostr-relay-builder`'s limit knobs. Each cap is
@@ -258,4 +259,111 @@ async fn rate_limits_reqs_per_minute() {
         ),
         other => panic!("expected CLOSED over budget, got {other:?}"),
     }
+}
+
+#[tokio::test]
+async fn caps_active_subscriptions() {
+    let relay = MockRelayBuilder::new()
+        .options(MockRelayOptions::new().max_active_subscriptions(2))
+        .run()
+        .await
+        .expect("relay binds on 127.0.0.1:0");
+
+    let mut ws = raw_connect(relay.url().as_str()).await;
+
+    // Two distinct subscriptions fill the cap (empty store -> EOSE each).
+    for i in 0..2 {
+        send_text(&mut ws, &format!(r#"["REQ","sub-{i}",{{}}]"#)).await;
+        assert!(
+            matches!(
+                next_relay_msg(&mut ws).await,
+                RelayMessage::EndOfStoredEvents(_)
+            ),
+            "subscription {i} within the cap reaches EOSE"
+        );
+    }
+
+    // A third, new id is refused with `rate-limited:`.
+    send_text(&mut ws, r#"["REQ","sub-over",{}]"#).await;
+    match next_relay_msg(&mut ws).await {
+        RelayMessage::Closed {
+            subscription_id,
+            message,
+        } => {
+            assert_eq!(subscription_id.as_str(), "sub-over");
+            assert!(
+                message.starts_with("rate-limited:"),
+                "expected rate-limited reason, got: {message}"
+            );
+        }
+        other => panic!("expected CLOSED for over-cap subscription, got {other:?}"),
+    }
+
+    // Re-using an existing id replaces it (no net increase) -> allowed.
+    send_text(&mut ws, r#"["REQ","sub-0",{}]"#).await;
+    assert!(
+        matches!(
+            next_relay_msg(&mut ws).await,
+            RelayMessage::EndOfStoredEvents(_)
+        ),
+        "re-subscribing an existing id is allowed at the cap"
+    );
+
+    // Freeing a slot via CLOSE admits a new id again.
+    send_text(&mut ws, r#"["CLOSE","sub-1"]"#).await;
+    send_text(&mut ws, r#"["REQ","sub-over",{}]"#).await;
+    assert!(
+        matches!(
+            next_relay_msg(&mut ws).await,
+            RelayMessage::EndOfStoredEvents(_)
+        ),
+        "a freed slot admits a new subscription"
+    );
+}
+
+async fn count_req_events(ws: &mut WsStream, req: &str) -> usize {
+    send_text(ws, req).await;
+    let mut events = 0_usize;
+    loop {
+        match next_relay_msg(ws).await {
+            RelayMessage::Event { .. } => events += 1,
+            RelayMessage::EndOfStoredEvents(_) => break,
+            other => panic!("unexpected frame during REQ stream: {other:?}"),
+        }
+    }
+    events
+}
+
+#[tokio::test]
+async fn applies_default_filter_limit_only_when_absent() {
+    let relay = MockRelayBuilder::new()
+        .options(MockRelayOptions::new().default_filter_limit(2))
+        .run()
+        .await
+        .expect("relay binds on 127.0.0.1:0");
+
+    // Seed five distinct notes straight into the shared store.
+    for i in 0..5 {
+        relay
+            .database()
+            .save_event(&make_note(&format!("note-{i}")))
+            .await
+            .expect("seed event persists");
+    }
+
+    let mut ws = raw_connect(relay.url().as_str()).await;
+
+    // No `limit` -> the default (2) caps the result set.
+    assert_eq!(
+        count_req_events(&mut ws, r#"["REQ","absent",{}]"#).await,
+        2,
+        "an absent limit must fall back to the default"
+    );
+
+    // An explicit `limit` is respected and not overridden by the default.
+    assert_eq!(
+        count_req_events(&mut ws, r#"["REQ","explicit",{"limit":4}]"#).await,
+        4,
+        "an explicit limit must be respected over the default"
+    );
 }

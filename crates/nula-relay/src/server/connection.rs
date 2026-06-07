@@ -14,8 +14,8 @@ use futures::{SinkExt, StreamExt};
 use nula_core::message::{MachineReadablePrefix, RelayMessage};
 use nula_core::nips::nip42;
 use nula_core::{
-    ClientMessage, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, RelayUrl, SubscriptionId,
-    Timestamp,
+    ClientMessage, Event, EventBuilder, EventId, Filter, JsonUtil, Keys, PublicKey, RelayUrl,
+    SubscriptionId, Timestamp,
 };
 use nula_storage::{NostrDatabase, SaveEventStatus};
 use nula_sync::Responder;
@@ -52,6 +52,12 @@ pub(crate) struct ConnectionContext {
     /// Clamp every `REQ` / NIP-77 filter `limit` to at most this.
     /// `None` leaves client limits untouched; mirrors NIP-11 `max_limit`.
     pub(crate) max_filter_limit: Option<usize>,
+    /// Maximum concurrent subscriptions per connection; `None` is
+    /// unlimited. Mirrors NIP-11 `max_subscriptions`.
+    pub(crate) max_active_subscriptions: Option<usize>,
+    /// Default `limit` applied to a `REQ` / NIP-77 filter that omits
+    /// one; `None` leaves it untouched. Mirrors NIP-11 `default_limit`.
+    pub(crate) default_filter_limit: Option<usize>,
     /// Per-connection, per-minute rate limits.
     pub(crate) rate_limit: RateLimit,
     /// Test fault injection: never reply to NIP-01 frames.
@@ -88,6 +94,7 @@ pub(crate) async fn handle_connection(
     // retained so the AUTH reply can be verified against it.
     let mut auth = AuthState {
         authenticated: !ctx.nip42_mode.is_enabled(),
+        pubkey: None,
         challenge: String::new(),
     };
     if ctx.nip42_mode.is_enabled() {
@@ -264,7 +271,7 @@ async fn dispatch(
 ) -> Result<(), DispatchError> {
     match msg {
         ClientMessage::Event(event) => {
-            handle_event(ctx, sink, event).await?;
+            handle_event(ctx, sink, event, auth).await?;
             Ok(())
         }
         ClientMessage::Req {
@@ -283,6 +290,7 @@ async fn dispatch(
             let reply = match verify_client_auth(&event, &ctx.relay_url, &auth.challenge) {
                 Ok(()) => {
                     auth.authenticated = true;
+                    auth.pubkey = Some(event.pubkey);
                     RelayMessage::Ok {
                         event_id,
                         accepted: true,
@@ -349,8 +357,30 @@ async fn handle_event(
     ctx: &ConnectionContext,
     sink: &mut Sink,
     event: Event,
+    auth: &mut AuthState,
 ) -> Result<(), DispatchError> {
     let event_id: EventId = event.id;
+
+    // NIP-40 expiration: refuse already-expired events up front with the
+    // spec reason. Storage also rejects them, but with a generic reason;
+    // this mirrors upstream's `blocked: event is expired`. A malformed
+    // `expiration` tag is left for storage validation to surface.
+    if let Ok(now) = Timestamp::now()
+        && event.is_expired(now).unwrap_or(false)
+    {
+        return send(
+            sink,
+            &RelayMessage::Ok {
+                event_id,
+                accepted: false,
+                message: format!(
+                    "{}: event is expired",
+                    MachineReadablePrefix::Blocked.as_str()
+                ),
+            },
+        )
+        .await;
+    }
 
     // NIP-13 admission gate (mirrors upstream `nostr-relay-builder`'s
     // `min_pow`): reject under-powered events before policy or storage.
@@ -363,6 +393,43 @@ async fn handle_event(
                 event_id,
                 accepted: false,
                 message: format!("{}: {err}", MachineReadablePrefix::Pow.as_str()),
+            },
+        )
+        .await;
+    }
+
+    // NIP-70 protected events: a `["-"]` event may only be published by
+    // its author, authenticated via NIP-42. An unauthenticated author is
+    // handed a fresh AUTH challenge so it can retry; an event whose
+    // author is not the authenticated pubkey is blocked outright.
+    if event.is_protected() && auth.pubkey != Some(event.pubkey) {
+        if auth.pubkey.is_none() {
+            if auth.challenge.is_empty() {
+                auth.challenge = format!("nula-mock-{}", random_hex_token());
+            }
+            send(sink, &RelayMessage::Auth(auth.challenge.clone())).await?;
+            return send(
+                sink,
+                &RelayMessage::Ok {
+                    event_id,
+                    accepted: false,
+                    message: format!(
+                        "{}: this event may only be published by its author",
+                        MachineReadablePrefix::AuthRequired.as_str()
+                    ),
+                },
+            )
+            .await;
+        }
+        return send(
+            sink,
+            &RelayMessage::Ok {
+                event_id,
+                accepted: false,
+                message: format!(
+                    "{}: this event may only be published by its author",
+                    MachineReadablePrefix::Blocked.as_str()
+                ),
             },
         )
         .await;
@@ -486,6 +553,27 @@ async fn handle_req(
         .await;
     }
 
+    // Per-connection active-subscription cap (mirrors upstream
+    // `nostr-relay-builder`'s `max_reqs`). Re-using an existing id
+    // replaces that subscription, so only a genuinely new id counts
+    // against the cap.
+    if let Some(max) = ctx.max_active_subscriptions
+        && subscriptions.len() >= max
+        && !subscriptions.contains_key(&subscription_id)
+    {
+        return send(
+            sink,
+            &RelayMessage::Closed {
+                subscription_id,
+                message: format!(
+                    "{}: too many concurrent subscriptions (max {max})",
+                    MachineReadablePrefix::RateLimited.as_str()
+                ),
+            },
+        )
+        .await;
+    }
+
     // Fault injection: answer with random events instead of querying.
     if let Some(count) = ctx.send_random_events {
         return stream_random_events(sink, &subscription_id, count).await;
@@ -521,7 +609,7 @@ async fn handle_req(
             )
             .await;
         }
-        clamp_filter_limit(filter, ctx.max_filter_limit);
+        apply_filter_limits(filter, ctx.default_filter_limit, ctx.max_filter_limit);
     }
 
     // Stream historical matches one filter at a time, then EOSE.
@@ -563,11 +651,17 @@ async fn handle_req(
     Ok(())
 }
 
-/// Clamp a filter's `limit` to `max` when configured. An absent client
-/// `limit` is set to `max`; a larger one is reduced; a smaller one is
-/// left as-is. Mirrors upstream `nostr-relay-builder`'s filter-limit
-/// enforcement so unbounded reads cannot exhaust the relay.
-fn clamp_filter_limit(filter: &mut Filter, max: Option<usize>) {
+/// Apply the server's default and maximum filter `limit` policy. An
+/// absent client `limit` is first filled with `default` (when set),
+/// then every limit is clamped to `max` (when set) — which also fills
+/// any still-absent limit, so an unbounded read cannot exhaust the
+/// relay. Mirrors upstream's `default_filter_limit` + `max_filter_limit`.
+fn apply_filter_limits(filter: &mut Filter, default: Option<usize>, max: Option<usize>) {
+    if filter.limit.is_none()
+        && let Some(default) = default
+    {
+        filter.limit = Some(default);
+    }
     if let Some(max) = max {
         filter.limit = Some(filter.limit.map_or(max, |limit| limit.min(max)));
     }
@@ -762,6 +856,9 @@ async fn send(sink: &mut Sink, msg: &RelayMessage) -> Result<(), DispatchError> 
 struct AuthState {
     /// Whether the client has completed a valid AUTH exchange.
     authenticated: bool,
+    /// Public key proven by a successful AUTH; `None` until then.
+    /// Used by the NIP-70 protected-event gate to verify authorship.
+    pubkey: Option<PublicKey>,
     /// The challenge this connection issued; empty when none was sent.
     challenge: String,
 }
