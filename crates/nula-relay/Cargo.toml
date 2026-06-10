@@ -84,7 +84,7 @@ tokio-tungstenite = { workspace = true, optional = true }
 tokio-socks = { workspace = true, optional = true }
 
 # Pool (feature `pool`).
-bitflags     = { version = "2.6", optional = true }
+bitflags     = { version = "2.13", optional = true }
 lru          = { version = "0.16", optional = true }
 nula-storage = { workspace = true, optional = true }
 tokio-stream = { workspace = true, optional = true }
