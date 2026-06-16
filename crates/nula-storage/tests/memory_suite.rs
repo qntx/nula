@@ -29,6 +29,10 @@ struct MemoryFactory;
 impl DatabaseFactory for MemoryFactory {
     type Guard = ();
 
+    #[allow(
+        clippy::unused_async_trait_impl,
+        reason = "trait requires async fn; this impl has nothing to await"
+    )]
     async fn build(&self) -> (Arc<dyn NostrDatabase>, Self::Guard) {
         (Arc::new(MemoryDatabase::new()), ())
     }

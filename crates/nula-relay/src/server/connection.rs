@@ -353,6 +353,79 @@ async fn dispatch(
     }
 }
 
+/// NIP-40 expiration: refuse already-expired events up front with the
+/// spec reason. Storage also rejects them, but with a generic reason;
+/// this mirrors upstream's `blocked: event is expired`.
+fn check_expired(event_id: EventId, event: &Event) -> Option<RelayMessage> {
+    let now = Timestamp::now().ok()?;
+    if event.is_expired(now).unwrap_or(false) {
+        Some(RelayMessage::Ok {
+            event_id,
+            accepted: false,
+            message: format!(
+                "{}: event is expired",
+                MachineReadablePrefix::Blocked.as_str()
+            ),
+        })
+    } else {
+        None
+    }
+}
+
+/// NIP-13 admission gate (mirrors upstream `nostr-relay-builder`'s
+/// `min_pow`): reject under-powered events before policy or storage.
+fn check_pow(event_id: EventId, event: &Event, min: u8) -> Option<RelayMessage> {
+    if let Err(err) = nula_core::nips::nip13::verify_pow(event, min) {
+        Some(RelayMessage::Ok {
+            event_id,
+            accepted: false,
+            message: format!("{}: {err}", MachineReadablePrefix::Pow.as_str()),
+        })
+    } else {
+        None
+    }
+}
+
+/// NIP-70 protected events: a `["-"]` event may only be published by its
+/// author, authenticated via NIP-42. Returns `Some((auth_msg, ok_msg))`
+/// when the event must be rejected; the caller must send the AUTH
+/// challenge (if present) followed by the OK refusal.
+fn check_protected(
+    event_id: EventId,
+    event: &Event,
+    auth: &mut AuthState,
+) -> Option<(Option<RelayMessage>, RelayMessage)> {
+    if !event.is_protected() || auth.pubkey == Some(event.pubkey) {
+        return None;
+    }
+    if auth.pubkey.is_none() {
+        if auth.challenge.is_empty() {
+            auth.challenge = format!("nula-mock-{}", random_hex_token());
+        }
+        let auth_msg = RelayMessage::Auth(auth.challenge.clone());
+        let ok_msg = RelayMessage::Ok {
+            event_id,
+            accepted: false,
+            message: format!(
+                "{}: this event may only be published by its author",
+                MachineReadablePrefix::AuthRequired.as_str()
+            ),
+        };
+        return Some((Some(auth_msg), ok_msg));
+    }
+    Some((
+        None,
+        RelayMessage::Ok {
+            event_id,
+            accepted: false,
+            message: format!(
+                "{}: this event may only be published by its author",
+                MachineReadablePrefix::Blocked.as_str()
+            ),
+        },
+    ))
+}
+
 async fn handle_event(
     ctx: &ConnectionContext,
     sink: &mut Sink,
@@ -361,78 +434,21 @@ async fn handle_event(
 ) -> Result<(), DispatchError> {
     let event_id: EventId = event.id;
 
-    // NIP-40 expiration: refuse already-expired events up front with the
-    // spec reason. Storage also rejects them, but with a generic reason;
-    // this mirrors upstream's `blocked: event is expired`. A malformed
-    // `expiration` tag is left for storage validation to surface.
-    if let Ok(now) = Timestamp::now()
-        && event.is_expired(now).unwrap_or(false)
-    {
-        return send(
-            sink,
-            &RelayMessage::Ok {
-                event_id,
-                accepted: false,
-                message: format!(
-                    "{}: event is expired",
-                    MachineReadablePrefix::Blocked.as_str()
-                ),
-            },
-        )
-        .await;
+    if let Some(msg) = check_expired(event_id, &event) {
+        return send(sink, &msg).await;
     }
 
-    // NIP-13 admission gate (mirrors upstream `nostr-relay-builder`'s
-    // `min_pow`): reject under-powered events before policy or storage.
     if let Some(min) = ctx.min_pow
-        && let Err(err) = nula_core::nips::nip13::verify_pow(&event, min)
+        && let Some(msg) = check_pow(event_id, &event, min)
     {
-        return send(
-            sink,
-            &RelayMessage::Ok {
-                event_id,
-                accepted: false,
-                message: format!("{}: {err}", MachineReadablePrefix::Pow.as_str()),
-            },
-        )
-        .await;
+        return send(sink, &msg).await;
     }
 
-    // NIP-70 protected events: a `["-"]` event may only be published by
-    // its author, authenticated via NIP-42. An unauthenticated author is
-    // handed a fresh AUTH challenge so it can retry; an event whose
-    // author is not the authenticated pubkey is blocked outright.
-    if event.is_protected() && auth.pubkey != Some(event.pubkey) {
-        if auth.pubkey.is_none() {
-            if auth.challenge.is_empty() {
-                auth.challenge = format!("nula-mock-{}", random_hex_token());
-            }
-            send(sink, &RelayMessage::Auth(auth.challenge.clone())).await?;
-            return send(
-                sink,
-                &RelayMessage::Ok {
-                    event_id,
-                    accepted: false,
-                    message: format!(
-                        "{}: this event may only be published by its author",
-                        MachineReadablePrefix::AuthRequired.as_str()
-                    ),
-                },
-            )
-            .await;
+    if let Some((maybe_auth, msg)) = check_protected(event_id, &event, auth) {
+        if let Some(auth_msg) = maybe_auth {
+            send(sink, &auth_msg).await?;
         }
-        return send(
-            sink,
-            &RelayMessage::Ok {
-                event_id,
-                accepted: false,
-                message: format!(
-                    "{}: this event may only be published by its author",
-                    MachineReadablePrefix::Blocked.as_str()
-                ),
-            },
-        )
-        .await;
+        return send(sink, &msg).await;
     }
 
     let verdict = ctx.write_policy.admit_event(&event, ctx.peer).await;
