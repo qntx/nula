@@ -18,6 +18,7 @@
     reason = "integration test file, not production code"
 )]
 
+use std::future::Future;
 use std::sync::Arc;
 
 use nula_storage::NostrDatabase;
@@ -29,12 +30,9 @@ struct MemoryFactory;
 impl DatabaseFactory for MemoryFactory {
     type Guard = ();
 
-    #[allow(
-        clippy::unused_async_trait_impl,
-        reason = "trait requires async fn; this impl has nothing to await"
-    )]
-    async fn build(&self) -> (Arc<dyn NostrDatabase>, Self::Guard) {
-        (Arc::new(MemoryDatabase::new()), ())
+    fn build(&self) -> impl Future<Output = (Arc<dyn NostrDatabase>, Self::Guard)> + Send {
+        let db: Arc<dyn NostrDatabase> = Arc::new(MemoryDatabase::new());
+        std::future::ready((db, ()))
     }
 }
 
