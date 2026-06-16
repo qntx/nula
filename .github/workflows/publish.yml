@@ -8,6 +8,6 @@ jobs:
   publish:
     uses: qntx/workflows/.github/workflows/publish-crates.yml@main
     with:
-      packages: "nula"
+      packages: "nula-core nula-storage nula-signer nula-keyring nula-blossom nula-sdk nula-gossip nula-relay nula-sync nula-nwc nula-cli"
     secrets:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
