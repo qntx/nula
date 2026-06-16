@@ -5,7 +5,7 @@ default-members = ["crates/nula-core"]
 resolver = "3"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT OR Apache-2.0"
@@ -17,15 +17,15 @@ categories = ["cryptography", "network-programming"]
 
 [workspace.dependencies]
 # Internal crates
-nula-core = { version = "0.1.0", path = "crates/nula-core", default-features = false }
-nula-relay = { version = "0.1.0", path = "crates/nula-relay", default-features = false }
-nula-storage = { version = "0.1.0", path = "crates/nula-storage", default-features = false }
-nula-gossip = { version = "0.1.0", path = "crates/nula-gossip", default-features = false }
-nula-signer = { version = "0.1.0", path = "crates/nula-signer", default-features = false }
-nula-keyring = { version = "0.1.0", path = "crates/nula-keyring", default-features = false }
-nula-sync = { version = "0.1.0", path = "crates/nula-sync", default-features = false }
-nula-sdk = { version = "0.1.0", path = "crates/nula-sdk", default-features = false }
-nula-cli = { version = "0.1.0", path = "crates/nula-cli", default-features = false }
+nula-core = { version = "0.2", path = "crates/nula-core", default-features = false }
+nula-relay = { version = "0.2", path = "crates/nula-relay", default-features = false }
+nula-storage = { version = "0.2", path = "crates/nula-storage", default-features = false }
+nula-gossip = { version = "0.2", path = "crates/nula-gossip", default-features = false }
+nula-signer = { version = "0.2", path = "crates/nula-signer", default-features = false }
+nula-keyring = { version = "0.2", path = "crates/nula-keyring", default-features = false }
+nula-sync = { version = "0.2", path = "crates/nula-sync", default-features = false }
+nula-sdk = { version = "0.2", path = "crates/nula-sdk", default-features = false }
+nula-cli = { version = "0.2", path = "crates/nula-cli", default-features = false }
 
 aes = "0.9.0"
 anyhow = { version = "1.0.100", default-features = false, features = ["std"] }
