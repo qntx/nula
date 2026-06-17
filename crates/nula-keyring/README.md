@@ -2,9 +2,7 @@
 
 Persist Nostr `Keys` in the operating system's native secret store.
 
-`nula-keyring` is a thin async wrapper over the
-[`keyring`](https://docs.rs/keyring) crate, plumbed for `nula-core`'s
-[`Keys`] type. Secrets land in:
+`nula-keyring` is a thin async wrapper over the [`keyring`](https://docs.rs/keyring) crate, plumbed for `nula-core`'s [`Keys`] type. Secrets land in:
 
 - **macOS** — Keychain (via `apple-native`)
 - **Linux** — Secret Service over D-Bus (via `linux-native` /
@@ -33,9 +31,7 @@ keyring.delete("primary").await?;
 # Ok(()) }
 ```
 
-Every async method has a sync sibling (`set_blocking`, `get_blocking`,
-`delete_blocking`) for callers that already run on a synchronous
-boundary.
+Every async method has a sync sibling (`set_blocking`, `get_blocking`, `delete_blocking`) for callers that already run on a synchronous boundary.
 
 ## License
 

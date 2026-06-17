@@ -1,10 +1,6 @@
 # nula-fuzz
 
-Coverage-guided fuzz harnesses for `nula-core`, built on
-[`cargo-fuzz`](https://rust-fuzz.github.io/book/cargo-fuzz.html) +
-`libFuzzer`. This crate is **detached from the parent workspace** —
-`cargo-fuzz` injects nightly-only RUSTFLAGS that would otherwise break
-the stable workspace build.
+Coverage-guided fuzz harnesses for `nula-core`, built on [`cargo-fuzz`](https://rust-fuzz.github.io/book/cargo-fuzz.html) + `libFuzzer`. This crate is **detached from the parent workspace** — `cargo-fuzz` injects nightly-only RUSTFLAGS that would otherwise break the stable workspace build.
 
 ## Prerequisites
 
@@ -55,8 +51,7 @@ Crashes land in `crates/nula-fuzz/artifacts/<target>/`. Reproduce with:
 cargo +nightly fuzz run <target> crates/nula-fuzz/artifacts/<target>/crash-<hash>
 ```
 
-Then minimise and capture as a regression test inside the corresponding
-`crates/nula-core/src/...` module before fixing.
+Then minimise and capture as a regression test inside the corresponding `crates/nula-core/src/...` module before fixing.
 
 ## Adding a target
 
@@ -65,8 +60,7 @@ Then minimise and capture as a regression test inside the corresponding
 2. Add the matching `[[bin]]` stanza to `crates/nula-fuzz/Cargo.toml`.
 3. Document the property under test in the table above.
 
-Keep targets focused: one invariant per harness keeps crashes
-attributable.
+Keep targets focused: one invariant per harness keeps crashes attributable.
 
 ## License
 

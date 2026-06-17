@@ -1,15 +1,8 @@
 # nula-sync
 
-NIP-77 [Negentropy](https://github.com/hoytech/negentropy) reconciliation
-sessions and storage adapters for the [`nula`](https://github.com/qntx/nula)
-workspace.
+NIP-77 [Negentropy](https://github.com/hoytech/negentropy) reconciliation sessions and storage adapters for the [`nula`](https://github.com/qntx/nula) workspace.
 
-Negentropy is a set-reconciliation algorithm that lets two peers, each
-holding a (potentially huge) set of `(EventId, created_at)` items,
-discover which items are missing on each side with logarithmic
-bandwidth and round trips. NIP-77 wraps that algorithm in three
-wire frames — `NEG-OPEN`, `NEG-MSG`, `NEG-CLOSE` — that we already
-model in [`nula_core::ClientMessage`] / [`nula_core::RelayMessage`].
+Negentropy is a set-reconciliation algorithm that lets two peers, each holding a (potentially huge) set of `(EventId, created_at)` items, discover which items are missing on each side with logarithmic bandwidth and round trips. NIP-77 wraps that algorithm in three wire frames — `NEG-OPEN`, `NEG-MSG`, `NEG-CLOSE` — that we already model in [`nula_core::ClientMessage`] / [`nula_core::RelayMessage`].
 
 This crate gives you:
 
@@ -23,11 +16,7 @@ This crate gives you:
   - [`nula_core::Filter`] into a ready-to-use session.
 - Reusable hex encoding / decoding helpers for the NIP-77 wire form.
 
-The actual transport loop (open a subscription, fan messages across
-a [`nula_relay_pool::RelayPool`], download missing events,
-upload events the relay does not have) is **not** part of this crate
-— that lives in [`nula`](../nula/) so the algorithm stays
-runtime-free and trivially testable.
+The actual transport loop (open a subscription, fan messages across a [`nula_relay_pool::RelayPool`], download missing events, upload events the relay does not have) is **not** part of this crate — that lives in [`nula`](../nula/) so the algorithm stays runtime-free and trivially testable.
 
 ## Example
 

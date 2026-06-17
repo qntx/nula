@@ -2,9 +2,7 @@
 
 Blossom blob transport client with NIP-24242 authorization.
 
-Upload, download, and manage content-addressed blobs over HTTP. Every blob is
-identified by its SHA-256 digest and authorized with a signed `kind:24242`
-Nostr event.
+Upload, download, and manage content-addressed blobs over HTTP. Every blob is identified by its SHA-256 digest and authorized with a signed `kind:24242` Nostr event.
 
 ## Example
 
@@ -29,4 +27,9 @@ assert_eq!(bytes, b"hello blossom");
 
 ## License
 
-MIT OR Apache-2.0
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.

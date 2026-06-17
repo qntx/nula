@@ -1,14 +1,8 @@
 # nula-signer-browser
 
-NIP-07 `window.nostr` browser-extension signer for
-[nula](https://github.com/qntx/nula). Implements
-[`nula_core::NostrSigner`] by delegating to a NIP-07 extension
-(Alby, nos2x, …) injected into the page.
+NIP-07 `window.nostr` browser-extension signer for [nula](https://github.com/qntx/nula). Implements [`nula_core::NostrSigner`] by delegating to a NIP-07 extension (Alby, nos2x, …) injected into the page.
 
-This crate compiles **only for `wasm32`**; on every other target it is
-empty. It is detached from the parent workspace (like `nula-fuzz`)
-because the wasm build needs a `getrandom_backend="wasm_js"` cfg and a
-wasm-capable C toolchain for `secp256k1-sys`.
+This crate compiles **only for `wasm32`**; on every other target it is empty. It is detached from the parent workspace (like `nula-fuzz`) because the wasm build needs a `getrandom_backend="wasm_js"` cfg and a wasm-capable C toolchain for `secp256k1-sys`.
 
 ## Method mapping
 
@@ -52,8 +46,7 @@ let event = signer.sign_event(unsigned).await?;
 ```sh
 rustup target add wasm32-unknown-unknown
 
-# secp256k1-sys compiles C to wasm, so a wasm-capable clang/llvm-ar is
-# required (the system Apple clang has no wasm backend). macOS example:
+# secp256k1-sys compiles C to wasm, so a wasm-capable clang/llvm-ar is required (the system Apple clang has no wasm backend). macOS example:
 brew install llvm
 
 CC_wasm32_unknown_unknown="$(brew --prefix llvm)/bin/clang" \
@@ -62,10 +55,7 @@ CFLAGS_wasm32_unknown_unknown="-Wno-implicit-function-declaration" \
 cargo build --target wasm32-unknown-unknown --release
 ```
 
-The `getrandom_backend="wasm_js"` cfg is supplied automatically by
-`.cargo/config.toml`. The `CFLAGS` flag relaxes a `memmove` implicit
-declaration that recent clang versions treat as an error; the symbol is
-provided by LLVM builtins at link time.
+The `getrandom_backend="wasm_js"` cfg is supplied automatically by `.cargo/config.toml`. The `CFLAGS` flag relaxes a `memmove` implicit declaration that recent clang versions treat as an error; the symbol is provided by LLVM builtins at link time.
 
 ## Testing
 

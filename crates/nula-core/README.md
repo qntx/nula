@@ -1,12 +1,8 @@
 # nula-core
 
-Protocol primitives for the [Nostr] protocol — events, filters, keys, messages,
-and shared types used across the `nula` workspace.
+Protocol primitives for the [Nostr] protocol — events, filters, keys, messages, and shared types used across the `nula` workspace.
 
-`nula-core` is the lowest layer of the workspace and is consumed by every
-client- or relay-facing crate. It deliberately avoids any I/O, async runtime, or
-networking dependency so it can be reused in tests, embedded relays, signers,
-and offline tooling.
+`nula-core` is the lowest layer of the workspace and is consumed by every client- or relay-facing crate. It deliberately avoids any I/O, async runtime, or networking dependency so it can be reused in tests, embedded relays, signers, and offline tooling.
 
 ## Modules
 
@@ -25,9 +21,7 @@ and offline tooling.
 
 ## Examples
 
-Eight runnable examples live under [`examples/`](./examples/); each is opt-in via
-`cargo run --example <name>`. Pass `--features <feature>` for examples that need
-an opt-in NIP module.
+Eight runnable examples live under [`examples/`](./examples/); each is opt-in via `cargo run --example <name>`. Pass `--features <feature>` for examples that need an opt-in NIP module.
 
 | Example                  | Topic                                        | Required features |
 |--------------------------|----------------------------------------------|-------------------|

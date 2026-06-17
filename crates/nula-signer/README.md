@@ -2,11 +2,7 @@
 
 > NIP-46 (Nostr Connect) remote signer client.
 
-Lets a Nostr application sign events through a remote bunker (NIP-46)
-without ever touching the user's secret key. Built on top of
-[`nula_relay::pool::RelayPool`] for transport and exposes the
-familiar [`nula_core::NostrSigner`] trait so any code already wired
-against an in-process [`nula_core::Keys`] keeps working.
+Lets a Nostr application sign events through a remote bunker (NIP-46) without ever touching the user's secret key. Built on top of [`nula_relay::pool::RelayPool`] for transport and exposes the familiar [`nula_core::NostrSigner`] trait so any code already wired against an in-process [`nula_core::Keys`] keeps working.
 
 ## Highlights
 

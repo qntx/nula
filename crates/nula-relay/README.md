@@ -1,9 +1,6 @@
 # nula-relay
 
-The Nostr relay layer of the [`nula`] workspace: a runtime-agnostic
-WebSocket transport, a single-relay [NIP-01] client, a multi-relay
-pool, and an in-process relay server — all in one crate, gated by
-features.
+The Nostr relay layer of the [`nula`] workspace: a runtime-agnostic WebSocket transport, a single-relay [NIP-01] client, a multi-relay pool, and an in-process relay server — all in one crate, gated by features.
 
 | Module                  | Feature             | Purpose                                              |
 | ----------------------- | ------------------- | ---------------------------------------------------- |
@@ -12,13 +9,9 @@ features.
 | `nula_relay::pool`      | `pool` (default)    | Multi-relay orchestration with cross-relay dedup     |
 | `nula_relay::server`    | `server`            | In-process programmable relay server (tests / dev)   |
 
-The single-relay client wraps a
-`nula_relay::transport::WebSocketTransport` with the protocol state
-machine — connection lifecycle, reconnect backoff, REQ/CLOSE
-subscription tracking, EVENT/EOSE/CLOSED dispatch, publish ACK
-correlation, and an optional NIP-42 AUTH challenge handler.
+The single-relay client wraps a `nula_relay::transport::WebSocketTransport` with the protocol state machine — connection lifecycle, reconnect backoff, REQ/CLOSE subscription tracking, EVENT/EOSE/CLOSED dispatch, publish ACK correlation, and an optional NIP-42 AUTH challenge handler.
 
-## Quickstart
+## Example
 
 ```rust,no_run
 use futures::StreamExt;

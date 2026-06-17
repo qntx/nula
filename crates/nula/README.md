@@ -1,19 +1,16 @@
 # nula
 
-Layer-5 Nostr umbrella facade. Composes `nula-core` (events / filters),
-`nula-relay` (multi-relay coordinator), `nula-gossip` (NIP-65 outbox
-routing), `nula-sync` (NIP-77 Negentropy), and `nula-signer` (NIP-46
-remote signer) into a single [`Client`] + [`ClientBuilder`].
+Layer-5 Nostr umbrella facade. Composes `nula-core` (events / filters), `nula-relay` (multi-relay coordinator), `nula-gossip` (NIP-65 outbox routing), `nula-sync` (NIP-77 Negentropy), and `nula-signer` (NIP-46 remote signer) into a single [`Client`] + [`ClientBuilder`].
 
 ## Feature flags
 
-| Feature             | Default | Description                          |
-| ------------------- | :-----: | -----------------------------------  |
-| `gossip`            |   ✅    | NIP-65 outbox routing.               |
-| `sync`              |   ✅    | NIP-77 reconciliation.               |
-| `nip46`             |   ❌    | NIP-46 remote signer.                |
-| `default-transport` |   ✅    | Built-in WebSocket transport.        |
-| `tracing`           |   ❌    | `tracing` spans on `Client` methods. |
+| Feature             | Default | Description                         |
+| ------------------- | :-----: | ----------------------------------- |
+| `gossip`            |   ✅    | NIP-65 outbox routing.              |
+| `sync`              |   ✅    | NIP-77 reconciliation.              |
+| `nip46`             |   ❌    | NIP-46 remote signer.               |
+| `default-transport` |   ✅    | Built-in WebSocket transport.       |
+| `tracing`           |   ❌    | `tracing` spans on `Client` methods.|
 
 ## Example
 
@@ -43,3 +40,12 @@ for event in events.iter() {
 client.shutdown().await;
 # Ok(()) }
 ```
+
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.

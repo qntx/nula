@@ -1,8 +1,6 @@
 # nula-cli
 
-Command-line interface for the [`nula`](https://github.com/qntx/nula)
-workspace. Wraps `nula` and `nula-relay` into a single
-`nula` binary with six subcommand groups:
+Command-line interface for the [`nula`](https://github.com/qntx/nula) workspace. Wraps `nula` and `nula-relay` into a single `nula` binary with six subcommand groups:
 
 | Group    | Subcommand      | Purpose                                               |
 | -------- | --------------- | ----------------------------------------------------- |
@@ -73,9 +71,7 @@ nula relays get \
 
 ## Output
 
-Every subcommand emits a single JSON object on `stdout` so output
-can be piped into `jq` or any downstream tool. Logs go to `stderr`
-under the `RUST_LOG` env var (default `info`).
+Every subcommand emits a single JSON object on `stdout` so output can be piped into `jq` or any downstream tool. Logs go to `stderr` under the `RUST_LOG` env var (default `info`).
 
 ## Exit codes
 

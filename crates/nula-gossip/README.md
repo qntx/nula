@@ -2,11 +2,7 @@
 
 > NIP-65 / NIP-17 multi-relay routing graph.
 
-Layer 4 crate that turns a stream of Nostr events into a routing
-table: which relays does each user **read** from, **write** to, or
-prefer for **direct messages**? `nula-gossip` answers those
-questions and breaks every outgoing `Filter` into the per-relay
-sub-filters the [`nula-relay`] crate fans out.
+Layer 4 crate that turns a stream of Nostr events into a routing table: which relays does each user **read** from, **write** to, or prefer for **direct messages**? `nula-gossip` answers those questions and breaks every outgoing `Filter` into the per-relay sub-filters the [`nula-relay`] crate fans out.
 
 ## Features
 
