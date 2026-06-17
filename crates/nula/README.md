@@ -1,27 +1,21 @@
 # nula
 
-Layer-5 Nostr SDK facade for the [`nula`](https://github.com/qntx/nula)
-workspace. Composes the lower layers — `nula-core` (events / filters),
-`nula-relay` (multi-relay coordinator), `nula-gossip` (NIP-65
-outbox routing), `nula-sync` (NIP-77 Negentropy), `nula-signer`
-(NIP-46 remote signer) — into a single [`Client`] + [`ClientBuilder`]
-mirroring the surface of `nostr-sdk::Client` from the
-[`rust-nostr`](https://github.com/rust-nostr/nostr) reference.
-
-The crate is the only one downstream applications should need to depend
-on for typical Nostr client work.
+Layer-5 Nostr umbrella facade. Composes `nula-core` (events / filters),
+`nula-relay` (multi-relay coordinator), `nula-gossip` (NIP-65 outbox
+routing), `nula-sync` (NIP-77 Negentropy), and `nula-signer` (NIP-46
+remote signer) into a single [`Client`] + [`ClientBuilder`].
 
 ## Feature flags
 
-| Feature            | Default | Description                                                                |
-| ------------------ | :-----: | -------------------------------------------------------------------------- |
-| `gossip`           |   ✅    | NIP-65 outbox routing helpers (re-export [`nula_gossip::Gossip`]).         |
-| `sync`             |   ✅    | NIP-77 reconciliation via [`nula_sync`].                                   |
-| `nip46`            |   ❌    | NIP-46 remote signer integration via [`nula_signer`].              |
-| `default-transport`|   ✅    | Pull a tokio-tungstenite WebSocket transport from `nula-relay`.       |
-| `tracing`          |   ❌    | Emit `tracing` spans on every public `Client` method (ADR-0005 fields).    |
+| Feature             | Default | Description                          |
+| ------------------- | :-----: | -----------------------------------  |
+| `gossip`            |   ✅    | NIP-65 outbox routing.               |
+| `sync`              |   ✅    | NIP-77 reconciliation.               |
+| `nip46`             |   ❌    | NIP-46 remote signer.                |
+| `default-transport` |   ✅    | Built-in WebSocket transport.        |
+| `tracing`           |   ❌    | `tracing` spans on `Client` methods. |
 
-## Quickstart
+## Example
 
 ```rust,no_run
 use std::time::Duration;
@@ -49,7 +43,3 @@ for event in events.iter() {
 client.shutdown().await;
 # Ok(()) }
 ```
-
-See [ADR-0011](../../docs/adr/0011-layer5-sdk-facade.md) for the
-rationale behind the chosen API surface and the deliberate departures
-from the upstream `nostr-sdk` shape.
