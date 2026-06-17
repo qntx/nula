@@ -31,7 +31,7 @@ aes = "0.9.0"
 anyhow = { version = "1.0.100", default-features = false, features = ["std"] }
 assert_cmd = "2.0.18"
 base64 = "0.22.1"
-bech32 = { version = "0.11.1", default-features = false, features = ["std"] }
+bech32 = { version = "0.12.0", default-features = false, features = ["std"] }
 bip39 = "2.2.2"
 cbc = { version = "0.2.0", features = ["alloc"] }
 chacha20 = "0.10.0"
