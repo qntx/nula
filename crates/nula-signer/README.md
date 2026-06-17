@@ -25,9 +25,11 @@ against an in-process [`nula_core::Keys`] keeps working.
 - **`AuthUrlHandler`** trait for backends that want to surface the
   signer's `auth_url` UX prompts.
 
-See [ADR-0009](../../docs/adr/0009-multi-relay-routing-remote-signer.md)
-for the full design record.
+## License
 
-[`nula_relay::pool::RelayPool`]: https://docs.rs/nula-relay/
-[`nula_core::Keys`]: https://docs.rs/nula-core/
-[`nula_core::NostrSigner`]: https://docs.rs/nula-core/
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.

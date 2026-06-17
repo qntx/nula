@@ -21,11 +21,11 @@ pure-Rust with zero C dependencies:
 conformance suite are opt-in. Every backend is pure Rust — even a
 `redb` build links no C libraries and carries no `unsafe` code.
 
-## Status
-
-Pre-release. Crate version `0.1.0`; the trait surface may evolve
-incompatibly until the workspace cuts its first SemVer tag.
-
 ## License
 
-Dual-licensed under MIT OR Apache-2.0.
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.

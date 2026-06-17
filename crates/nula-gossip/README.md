@@ -8,7 +8,7 @@ prefer for **direct messages**? `nula-gossip` answers those
 questions and breaks every outgoing `Filter` into the per-relay
 sub-filters the [`nula-relay`] crate fans out.
 
-## What it covers
+## Features
 
 - **NIP-65** (`kind:10002`) outbox / inbox lists with `read` / `write`
   markers (parsed by [`nula_core::nips::nip65`]).
@@ -27,18 +27,11 @@ sub-filters the [`nula-relay`] crate fans out.
   relay pool can fan out, plus an explicit `Orphan` / `Generic`
   fallback for the cases where routing is impossible.
 
-## What it does **not** cover
+## License
 
-- A relay-pool replacement. `nula-gossip` returns relay sets; the
-  pool drives the wire.
-- A signer. See [`nula-signer`] for NIP-46 remote signing.
-- NIP-46 server / bunker side. Out of scope until a future phase.
+Licensed under either of:
 
-See [ADR-0009](../../docs/adr/0009-multi-relay-routing-remote-signer.md)
-for the full design record.
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
 
-[`nula_core::nips::nip17`]: https://docs.rs/nula-core/
-[`nula_core::nips::nip65`]: https://docs.rs/nula-core/
-[`nula_core::Filter`]: https://docs.rs/nula-core/
-[`nula-relay`]: https://docs.rs/nula-relay/
-[`nula-signer`]: https://docs.rs/nula-signer/
+at your option.

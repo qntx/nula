@@ -82,3 +82,12 @@ under the `RUST_LOG` env var (default `info`).
 - `0` on success.
 - `1` on user error (bad input, missing flag, parse failure).
 - `2` on relay / network error (every relay rejected the request).
+
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.

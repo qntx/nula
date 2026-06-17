@@ -41,3 +41,12 @@ an opt-in NIP module.
 | `99_parser`              | Walk a note with `NostrParser` token stream  | —                 |
 
 [Nostr]: https://github.com/nostr-protocol/nostr
+
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.

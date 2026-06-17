@@ -4,8 +4,6 @@ NIP-77 [Negentropy](https://github.com/hoytech/negentropy) reconciliation
 sessions and storage adapters for the [`nula`](https://github.com/qntx/nula)
 workspace.
 
-## What it does
-
 Negentropy is a set-reconciliation algorithm that lets two peers, each
 holding a (potentially huge) set of `(EventId, created_at)` items,
 discover which items are missing on each side with logarithmic
@@ -22,7 +20,7 @@ This crate gives you:
   [`negentropy::NegentropyStorageVector`].
 - An optional [`storage::from_database`] adapter (behind the
   `storage` feature) that turns a [`nula_storage::NostrDatabase`]
-  + [`nula_core::Filter`] into a ready-to-use session.
+  - [`nula_core::Filter`] into a ready-to-use session.
 - Reusable hex encoding / decoding helpers for the NIP-77 wire form.
 
 The actual transport loop (open a subscription, fan messages across
@@ -31,7 +29,7 @@ upload events the relay does not have) is **not** part of this crate
 — that lives in [`nula`](../nula/) so the algorithm stays
 runtime-free and trivially testable.
 
-## Quickstart
+## Example
 
 ```rust,no_run
 use nula_core::{EventId, Timestamp};
@@ -53,13 +51,11 @@ let _wire_hex: &str = session.opening_message_hex();
 # Ok(()) }
 ```
 
-See [the ADR](../../docs/adr/0010-nip77-negentropy-as-standalone-crate.md)
-for why this is a standalone crate.
+## License
 
-## Workspace ADRs
+Licensed under either of:
 
-- [ADR-0010](../../docs/adr/0010-nip77-negentropy-as-standalone-crate.md)
-  records the decision to keep Negentropy out of `nula-core` and
-  `nula-relay`.
-- [ADR-0004](../../docs/adr/0004-error-handling-thiserror.md) shapes
-  the [`Error`] surface.
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.

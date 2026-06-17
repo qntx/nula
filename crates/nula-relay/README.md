@@ -61,3 +61,12 @@ nula-relay = { version = "0.1", default-features = false }
 
 [NIP-01]: https://github.com/nostr-protocol/nips/blob/master/01.md
 [`nula`]: https://github.com/qntx/nula
+
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.

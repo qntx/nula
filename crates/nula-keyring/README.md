@@ -11,15 +11,7 @@ Persist Nostr `Keys` in the operating system's native secret store.
   `linux-native-sync-persistent` for headless fallback)
 - **Windows** — Credential Manager (via `windows-native`)
 
-## Why a separate crate
-
-The OS keyring backends pull in heavy native bindings (`Security.framework`
-on macOS, `secret-service` on Linux, `wincred` on Windows). Keeping them
-behind a separate crate means the rest of the workspace stays
-zero-cost when an application doesn't actually need persistent secret
-storage.
-
-## Quickstart
+## Example
 
 ```rust,no_run
 # async fn doc() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,12 +33,15 @@ keyring.delete("primary").await?;
 # Ok(()) }
 ```
 
-## Sync API
-
 Every async method has a sync sibling (`set_blocking`, `get_blocking`,
 `delete_blocking`) for callers that already run on a synchronous
-boundary -- e.g. CLI startup paths or system tray menus. The async
-methods schedule the same blocking work on tokio's blocking pool so
-they never starve the runtime.
+boundary.
 
-[`Keys`]: https://docs.rs/nula-core/latest/nula_core/key/struct.Keys.html
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT License ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.
