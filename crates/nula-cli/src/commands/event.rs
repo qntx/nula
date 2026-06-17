@@ -4,8 +4,8 @@ use std::io::Read;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
+use nula::Client;
 use nula_core::{EventBuilder, Filter, Kind, Timestamp};
-use nula_sdk::Client;
 use serde_json::json;
 
 use crate::cli::{FetchArgs, PublishArgs};

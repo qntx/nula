@@ -12,7 +12,7 @@
 //! - No transport. The wire frames live in
 //!   [`nula_core::ClientMessage`] / [`nula_core::RelayMessage`]
 //!   (`NegOpen` / `NegMsg` / `NegClose` / `NegErr`); the SDK in
-//!   [`nula_sdk`](https://docs.rs/nula-sdk) drives the loop across a
+//!   [`nula`](https://docs.rs/nula) drives the loop across a
 //!   `nula_relay::pool::RelayPool`.
 //! - No event download. Once [`ReconcileOutcome::need`] tells you
 //!   which event ids the peer holds, you fetch them via your usual

@@ -20,7 +20,7 @@
 //! # Why a real server?
 //!
 //! - **End-to-end integration tests** for upper layers
-//!   (`nula-relay-pool`, `nula-gossip`, `nula-sdk`).
+//!   (`nula-relay-pool`, `nula-gossip`, `nula`).
 //! - **Local development** — running a full Nostr stack against a
 //!   throw-away relay on `127.0.0.1:0` avoids depending on the
 //!   public relay graph for fast iteration.

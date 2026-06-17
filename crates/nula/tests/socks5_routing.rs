@@ -1,4 +1,4 @@
-//! End-to-end test: a `nula_sdk::Client` configured with a SOCKS5
+//! End-to-end test: a `nula::Client` configured with a SOCKS5
 //! `ConnectionMode` reaches a relay **through** an in-test minimal SOCKS5
 //! proxy. This proves the full chain — `ClientBuilder::relay_options` →
 //! `RelayPoolOptions::relay_options` → `pool.add_relay` → relay actor →
@@ -21,8 +21,8 @@
 use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
+use nula::{Client, ConnectionMode, EventBuilder, Filter, Keys, Kind, RelayOptions, Timestamp};
 use nula_relay::server::MockRelayBuilder;
-use nula_sdk::{Client, ConnectionMode, EventBuilder, Filter, Keys, Kind, RelayOptions, Timestamp};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::timeout;

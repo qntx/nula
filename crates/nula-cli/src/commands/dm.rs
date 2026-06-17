@@ -9,9 +9,9 @@
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
+use nula::Client;
 use nula_core::Timestamp;
 use nula_core::nips::nip17::Recipient;
-use nula_sdk::Client;
 use serde_json::json;
 
 use crate::cli::{DmRecvArgs, DmSendArgs};

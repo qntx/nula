@@ -1,7 +1,7 @@
 //! `nula` — command-line interface for the
 //! [nula](https://github.com/qntx/nula) workspace.
 //!
-//! Wraps `nula-sdk` and `nula-relay-builder` into a single binary
+//! Wraps `nula` and `nula-relay` into a single binary
 //! with subcommand groups: `keys`, `relay`, `event` (publish /
 //! fetch), `dm` (NIP-17 send / recv), and `relays` (NIP-65 set /
 //! get). See the crate README for examples.

@@ -149,5 +149,5 @@ async fn refresh_one(
 
 // Re-export the wire-level types so callers writing
 // `client.set_relay_list(&list)` only need a single use:
-// `use nula_sdk::nips::nip65::{RelayList, RelayMarker};`.
+// `use nula::nips::nip65::{RelayList, RelayMarker};`.
 pub use nula_core::nips::nip65::RelayMarker;

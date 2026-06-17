@@ -24,7 +24,7 @@ nula-gossip = { version = "0.2", path = "crates/nula-gossip", default-features =
 nula-signer = { version = "0.2", path = "crates/nula-signer", default-features = false }
 nula-keyring = { version = "0.2", path = "crates/nula-keyring", default-features = false }
 nula-sync = { version = "0.2", path = "crates/nula-sync", default-features = false }
-nula-sdk = { version = "0.2", path = "crates/nula-sdk", default-features = false }
+nula = { version = "0.2", path = "crates/nula", default-features = false }
 nula-cli = { version = "0.2", path = "crates/nula-cli", default-features = false }
 
 aes = "0.9.0"

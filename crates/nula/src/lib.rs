@@ -1,4 +1,4 @@
-//! Layer-5 Nostr SDK facade for the `nula` workspace.
+//! Layer-5 Nostr umbrella facade for the `nula` workspace.
 //!
 //! [`Client`] composes the lower layers — `nula-core` (events,
 //! filters, signers), `nula-relay-pool` (multi-relay coordinator),
@@ -19,9 +19,9 @@
 //! ```rust,no_run
 //! use std::time::Duration;
 //! use nula_core::{EventBuilder, Filter, Keys, Kind};
-//! use nula_sdk::Client;
+//! use nula::Client;
 //!
-//! # async fn doc() -> Result<(), nula_sdk::Error> {
+//! # async fn doc() -> Result<(), nula::Error> {
 //! let keys = Keys::generate().expect("OS RNG");
 //! let client = Client::builder().signer(keys).build()?;
 //!
@@ -44,7 +44,7 @@
 //! | `tracing`           |   ❌    | Emit `tracing` spans on every public `Client` method (ADR-0005 field names).      |
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![doc(html_root_url = "https://docs.rs/nula-sdk")]
+#![doc(html_root_url = "https://docs.rs/nula")]
 #![forbid(unsafe_code)]
 
 pub mod builder;

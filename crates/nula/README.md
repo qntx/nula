@@ -1,4 +1,4 @@
-# nula-sdk
+# nula
 
 Layer-5 Nostr SDK facade for the [`nula`](https://github.com/qntx/nula)
 workspace. Composes the lower layers — `nula-core` (events / filters),
@@ -26,9 +26,9 @@ on for typical Nostr client work.
 ```rust,no_run
 use std::time::Duration;
 use nula_core::{EventBuilder, Filter, Keys, Kind};
-use nula_sdk::Client;
+use nula::Client;
 
-# async fn doc() -> Result<(), nula_sdk::Error> {
+# async fn doc() -> Result<(), nula::Error> {
 let keys = Keys::generate().expect("OS RNG");
 let client = Client::builder().signer(keys).build()?;
 

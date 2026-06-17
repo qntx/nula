@@ -14,7 +14,7 @@
 //! # use std::sync::Arc;
 //! # use nula_core::types::RelayUrl;
 //! use nula_core::BoxFuture;
-//! use nula_sdk::policy::{AdmitPolicy, AdmitStatus, PolicyError};
+//! use nula::policy::{AdmitPolicy, AdmitStatus, PolicyError};
 //!
 //! #[derive(Debug)]
 //! struct AllowOnlyTls;

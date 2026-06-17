@@ -28,7 +28,7 @@ This crate gives you:
 The actual transport loop (open a subscription, fan messages across
 a [`nula_relay_pool::RelayPool`], download missing events,
 upload events the relay does not have) is **not** part of this crate
-— that lives in [`nula-sdk`](../nula-sdk/) so the algorithm stays
+— that lives in [`nula`](../nula/) so the algorithm stays
 runtime-free and trivially testable.
 
 ## Quickstart

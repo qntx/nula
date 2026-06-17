@@ -1,4 +1,4 @@
-//! End-to-end integration tests for `nula_sdk::Client`.
+//! End-to-end integration tests for `nula::Client`.
 //!
 //! Every test spins up an in-process `MockRelay` from
 //! `nula-relay-builder`, drives the SDK against it, and asserts on
@@ -14,7 +14,7 @@
     reason = "this is an integration test binary, not production code"
 )]
 
-// `nula_sdk` transitively pulls every Layer 1-4 crate into the
+// `nula` transitively pulls every Layer 1-4 crate into the
 // integration binary's dependency closure even when we only name a
 // subset here. Pin the rest so the workspace
 // `unused_crate_dependencies` lint stays quiet without forcing each
@@ -22,11 +22,11 @@
 use std::time::Duration;
 
 use futures as _;
+use nula::{Client, MonitorNotification};
 use nula_core::{EventBuilder, Filter, Keys, Kind, Tag, Timestamp};
 use nula_gossip as _;
 use nula_relay::SubscribeOptions;
 use nula_relay::server::MockRelayBuilder;
-use nula_sdk::{Client, MonitorNotification};
 #[cfg(feature = "nip46")]
 use nula_signer as _;
 use nula_storage as _;
@@ -71,7 +71,7 @@ async fn sign_event_builder_requires_signer() {
         .await
         .expect_err("no signer was configured");
     assert!(
-        matches!(err, nula_sdk::Error::SignerNotConfigured),
+        matches!(err, nula::Error::SignerNotConfigured),
         "got {err:?}"
     );
 }
@@ -165,7 +165,7 @@ async fn send_event_to_unparseable_url_fails_with_relay_url_error() {
         .await
         .expect_err("url is malformed");
     assert!(
-        matches!(err, nula_sdk::Error::RelayUrl(_)),
+        matches!(err, nula::Error::RelayUrl(_)),
         "expected RelayUrl error, got {err:?}"
     );
 }
@@ -235,8 +235,8 @@ async fn sync_to_relay_classifies_have_and_need() {
     // Dry-run with SyncDirection::Both classifies the local /
     // remote diff without performing any actual upload or
     // download.
-    let opts = nula_sdk::SyncOptions::new()
-        .direction(nula_sdk::SyncDirection::Both)
+    let opts = nula::SyncOptions::new()
+        .direction(nula::SyncDirection::Both)
         .timeout(Some(Duration::from_secs(5)))
         .dry_run(true);
     let outcome = client
@@ -286,12 +286,12 @@ async fn sync_to_unknown_relay_fails_with_typed_error() {
         .sync_to_relay(
             &unknown,
             Filter::new(),
-            nula_sdk::SyncOptions::new().timeout(Some(Duration::from_millis(50))),
+            nula::SyncOptions::new().timeout(Some(Duration::from_millis(50))),
         )
         .await
         .expect_err("relay never registered");
     assert!(
-        matches!(err, nula_sdk::Error::UnknownRelay { .. }),
+        matches!(err, nula::Error::UnknownRelay { .. }),
         "got {err:?}"
     );
 }
@@ -340,8 +340,8 @@ async fn sync_direction_both_uploads_and_downloads_events() {
     let filter = Filter::new()
         .kind(Kind::TEXT_NOTE)
         .author(*keys.public_key());
-    let opts = nula_sdk::SyncOptions::new()
-        .direction(nula_sdk::SyncDirection::Both)
+    let opts = nula::SyncOptions::new()
+        .direction(nula::SyncDirection::Both)
         .timeout(Some(Duration::from_secs(10)));
     let summary = client
         .sync_to_relay(relay.url(), filter, opts)
@@ -417,12 +417,12 @@ async fn sync_progress_watch_channel_reports_totals() {
     client.add_relay(relay.url()).await.expect("add relay");
     client.connect().await;
 
-    let (tx, rx) = watch::channel(nula_sdk::SyncProgress::default());
+    let (tx, rx) = watch::channel(nula::SyncProgress::default());
     let filter = Filter::new()
         .kind(Kind::TEXT_NOTE)
         .author(*keys.public_key());
-    let opts = nula_sdk::SyncOptions::new()
-        .direction(nula_sdk::SyncDirection::Down)
+    let opts = nula::SyncOptions::new()
+        .direction(nula::SyncDirection::Down)
         .timeout(Some(Duration::from_secs(5)))
         .with_progress(tx);
     let summary = client
@@ -480,8 +480,8 @@ async fn sync_direction_up_skips_download_phase() {
     let filter = Filter::new()
         .kind(Kind::TEXT_NOTE)
         .author(*keys.public_key());
-    let opts = nula_sdk::SyncOptions::new()
-        .direction(nula_sdk::SyncDirection::Up)
+    let opts = nula::SyncOptions::new()
+        .direction(nula::SyncDirection::Up)
         .timeout(Some(Duration::from_secs(5)));
     let summary = client
         .sync_to_relay(relay.url(), filter, opts)
@@ -670,7 +670,7 @@ async fn connect_relay_and_disconnect_relay_target_a_single_endpoint() {
         .connect_relay(&unknown)
         .await
         .expect_err("unknown relay must fail typed");
-    assert!(matches!(err, nula_sdk::Error::UnknownRelay { .. }));
+    assert!(matches!(err, nula::Error::UnknownRelay { .. }));
 
     client.shutdown().await;
     relay.shutdown();
@@ -694,7 +694,7 @@ async fn try_connect_relay_times_out_with_connect_timeout_error() {
         .await
         .expect_err("unreachable relay must time out");
     assert!(
-        matches!(&err, nula_sdk::Error::ConnectTimeout { url: u } if *u == url),
+        matches!(&err, nula::Error::ConnectTimeout { url: u } if *u == url),
         "expected ConnectTimeout, got {err:?}",
     );
 
@@ -806,7 +806,7 @@ async fn nip17_send_private_msg_rejects_empty_recipients() {
     assert!(
         matches!(
             err,
-            nula_sdk::Error::Nip17(nula_core::nips::nip17::Nip17Error::NoRecipients)
+            nula::Error::Nip17(nula_core::nips::nip17::Nip17Error::NoRecipients)
         ),
         "got {err:?}",
     );
@@ -1215,7 +1215,7 @@ async fn gossip_send_gift_wrap_without_dm_relays_errors() {
         .await
         .expect_err("a gift wrap with no DM relays must not be broadcast");
     assert!(
-        matches!(err, nula_sdk::Error::PrivateMessageRelaysNotFound),
+        matches!(err, nula::Error::PrivateMessageRelaysNotFound),
         "expected PrivateMessageRelaysNotFound, got {err:?}",
     );
 
@@ -1286,21 +1286,21 @@ struct StubPolicy {
     reject_events_after_kind: Option<Kind>,
 }
 
-impl nula_sdk::AdmitPolicy for StubPolicy {
+impl nula::AdmitPolicy for StubPolicy {
     fn admit_relay<'a>(
         &'a self,
         relay_url: &'a nula_core::RelayUrl,
-    ) -> nula_core::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
+    ) -> nula_core::BoxFuture<'a, Result<nula::AdmitStatus, nula::PolicyError>> {
         Box::pin(async move {
             let Some(needle) = self.reject_relay_substring.as_deref() else {
-                return Ok(nula_sdk::AdmitStatus::Success);
+                return Ok(nula::AdmitStatus::Success);
             };
             if relay_url.as_str().contains(needle) {
-                Ok(nula_sdk::AdmitStatus::rejected(format!(
+                Ok(nula::AdmitStatus::rejected(format!(
                     "relay url matches `{needle}`"
                 )))
             } else {
-                Ok(nula_sdk::AdmitStatus::Success)
+                Ok(nula::AdmitStatus::Success)
             }
         })
     }
@@ -1308,15 +1308,15 @@ impl nula_sdk::AdmitPolicy for StubPolicy {
     fn admit_connection<'a>(
         &'a self,
         relay_url: &'a nula_core::RelayUrl,
-    ) -> nula_core::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
+    ) -> nula_core::BoxFuture<'a, Result<nula::AdmitStatus, nula::PolicyError>> {
         Box::pin(async move {
             let Some(needle) = self.reject_connection_substring.as_deref() else {
-                return Ok(nula_sdk::AdmitStatus::Success);
+                return Ok(nula::AdmitStatus::Success);
             };
             if relay_url.as_str().contains(needle) {
-                Ok(nula_sdk::AdmitStatus::rejected("connection blocked"))
+                Ok(nula::AdmitStatus::rejected("connection blocked"))
             } else {
-                Ok(nula_sdk::AdmitStatus::Success)
+                Ok(nula::AdmitStatus::Success)
             }
         })
     }
@@ -1326,15 +1326,15 @@ impl nula_sdk::AdmitPolicy for StubPolicy {
         _relay_url: &'a nula_core::RelayUrl,
         _subscription_id: &'a nula_core::message::SubscriptionId,
         event: &'a nula_core::Event,
-    ) -> nula_core::BoxFuture<'a, Result<nula_sdk::AdmitStatus, nula_sdk::PolicyError>> {
+    ) -> nula_core::BoxFuture<'a, Result<nula::AdmitStatus, nula::PolicyError>> {
         Box::pin(async move {
             let Some(min_kind) = self.reject_events_after_kind else {
-                return Ok(nula_sdk::AdmitStatus::Success);
+                return Ok(nula::AdmitStatus::Success);
             };
             if event.kind.as_u16() >= min_kind.as_u16() {
-                Ok(nula_sdk::AdmitStatus::rejected("kind blocked"))
+                Ok(nula::AdmitStatus::rejected("kind blocked"))
             } else {
-                Ok(nula_sdk::AdmitStatus::Success)
+                Ok(nula::AdmitStatus::Success)
             }
         })
     }
@@ -1343,7 +1343,7 @@ impl nula_sdk::AdmitPolicy for StubPolicy {
 #[tokio::test]
 async fn admit_policy_rejects_relay_at_add_time() {
     use std::sync::Arc;
-    let policy: Arc<dyn nula_sdk::AdmitPolicy> = Arc::new(StubPolicy {
+    let policy: Arc<dyn nula::AdmitPolicy> = Arc::new(StubPolicy {
         reject_relay_substring: Some("forbidden".to_owned()),
         ..StubPolicy::default()
     });
@@ -1360,7 +1360,7 @@ async fn admit_policy_rejects_relay_at_add_time() {
         .expect_err("add_relay must surface PolicyRejected");
     assert!(matches!(
         err,
-        nula_sdk::Error::PolicyRejected { stage: "relay", .. }
+        nula::Error::PolicyRejected { stage: "relay", .. }
     ));
 
     // Allowed relay still goes through.
@@ -1379,7 +1379,7 @@ async fn admit_policy_rejects_connection_after_add() {
         .await
         .expect("mock relay binds");
 
-    let policy: Arc<dyn nula_sdk::AdmitPolicy> = Arc::new(StubPolicy {
+    let policy: Arc<dyn nula::AdmitPolicy> = Arc::new(StubPolicy {
         reject_connection_substring: Some("127.0.0.1".to_owned()),
         ..StubPolicy::default()
     });
@@ -1400,7 +1400,7 @@ async fn admit_policy_rejects_connection_after_add() {
         .expect_err("connect_relay must surface PolicyRejected");
     assert!(matches!(
         err,
-        nula_sdk::Error::PolicyRejected {
+        nula::Error::PolicyRejected {
             stage: "connection",
             ..
         }
@@ -1435,7 +1435,7 @@ async fn admit_policy_rejects_events_during_sync_download() {
         .expect("mock relay binds");
 
     let client_db: Arc<dyn nula_storage::NostrDatabase> = Arc::new(MemoryDatabase::new());
-    let policy: Arc<dyn nula_sdk::AdmitPolicy> = Arc::new(StubPolicy {
+    let policy: Arc<dyn nula::AdmitPolicy> = Arc::new(StubPolicy {
         reject_events_after_kind: Some(blocked_kind),
         ..StubPolicy::default()
     });
@@ -1450,8 +1450,8 @@ async fn admit_policy_rejects_events_during_sync_download() {
     client.connect().await;
 
     let filter = Filter::new().kind(blocked_kind).author(*keys.public_key());
-    let opts = nula_sdk::SyncOptions::new()
-        .direction(nula_sdk::SyncDirection::Down)
+    let opts = nula::SyncOptions::new()
+        .direction(nula::SyncDirection::Down)
         .timeout(Some(Duration::from_secs(5)));
     let summary = client
         .sync_to_relay(relay.url(), filter, opts)

@@ -21,8 +21,8 @@
 use anyhow as _;
 use assert_cmd::Command;
 use clap as _;
+use nula as _;
 use nula_core as _;
-use nula_sdk as _;
 use predicates as _;
 use serde_json as _;
 use tokio as _;

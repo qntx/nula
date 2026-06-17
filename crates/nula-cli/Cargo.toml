@@ -20,7 +20,7 @@ path = "src/main.rs"
 [dependencies]
 nula-core           = { workspace = true }
 nula-relay          = { workspace = true, features = ["server"] }
-nula-sdk            = { workspace = true, features = ["memory-fallback", "default-transport"] }
+nula                = { workspace = true, features = ["memory-fallback", "default-transport"] }
 
 anyhow              = { workspace = true }
 clap                = { workspace = true }

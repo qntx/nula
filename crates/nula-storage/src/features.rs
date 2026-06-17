@@ -40,7 +40,7 @@ bitflags! {
     /// Optional capabilities advertised by a backend.
     ///
     /// Upper layers (notably `nula-relay-pool` for negentropy and the
-    /// future search-aware `nula-sdk` facade) read this set to pick
+    /// future search-aware `nula` facade) read this set to pick
     /// query strategies. Backends declare their support set inside
     /// [`crate::NostrDatabase::features`].
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

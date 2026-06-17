@@ -8,9 +8,9 @@
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
+use nula::Client;
 use nula_core::RelayUrl;
 use nula_core::nips::nip65::{RelayList, RelayMarker};
-use nula_sdk::Client;
 use serde_json::json;
 
 use crate::cli::{RelaysGetArgs, RelaysSetArgs};

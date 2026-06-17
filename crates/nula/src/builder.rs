@@ -146,7 +146,7 @@ impl ClientBuilder {
     /// a single SOCKS5 / Tor proxy:
     ///
     /// ```rust,no_run
-    /// # use nula_sdk::{Client, RelayOptions, ConnectionMode};
+    /// # use nula::{Client, RelayOptions, ConnectionMode};
     /// # use std::net::SocketAddr;
     /// # fn doc(tor: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
     /// let client = Client::builder()

@@ -195,7 +195,7 @@ impl Relay {
     /// `["REQ", …]`. The returned [`SubscriptionHandle`] yields
     /// [`crate::SubscriptionItem::NegMsg`] /
     /// [`crate::SubscriptionItem::NegErr`] frames the relay sends
-    /// back; the higher-level `nula-sdk` driver folds each
+    /// back; the higher-level `nula` driver folds each
     /// `NegMsg` into a `nula_sync::Reconciliation` and emits the
     /// next `NEG-MSG` via [`Self::send_msg`].
     ///

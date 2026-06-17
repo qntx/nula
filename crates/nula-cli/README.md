@@ -1,7 +1,7 @@
 # nula-cli
 
 Command-line interface for the [`nula`](https://github.com/qntx/nula)
-workspace. Wraps `nula-sdk` and `nula-relay` into a single
+workspace. Wraps `nula` and `nula-relay` into a single
 `nula` binary with six subcommand groups:
 
 | Group    | Subcommand      | Purpose                                               |
