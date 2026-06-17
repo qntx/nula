@@ -10,6 +10,7 @@ authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "Blossom blob transport client (BUD-01/02/12) with NIP-24242 authorization, built on nula-core signers."
+readme = "README.md"
 
 [package.metadata.docs.rs]
 all-features = true
