@@ -10,7 +10,6 @@ authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "NIP-47 Nostr Wallet Connect (NWC) client built on `nula-relay`. Drives a remote Lightning wallet service over encrypted DMs."
-readme = "README.md"
 
 [package.metadata.docs.rs]
 all-features = true
