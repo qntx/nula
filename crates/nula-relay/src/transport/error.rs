@@ -12,10 +12,6 @@ use thiserror::Error;
 use crate::transport::mode::ConnectionMode;
 
 /// Errors raised by a [`crate::transport::WebSocketTransport`].
-#[allow(
-    clippy::error_impl_error,
-    reason = "`Error` is the idiomatic crate-level error name (see std::io::Error, reqwest::Error)"
-)]
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {

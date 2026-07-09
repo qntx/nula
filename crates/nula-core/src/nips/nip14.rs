@@ -96,7 +96,7 @@ fn is_subject_tag(kind: &TagKind) -> bool {
     matches!(kind, TagKind::Custom(s) if s == SUBJECT_TAG_KEY)
 }
 
-fn starts_with_reply_prefix(s: &str) -> bool {
+const fn starts_with_reply_prefix(s: &str) -> bool {
     // Recognise `Re:` / `RE:` / `re:` (case-insensitive) regardless of
     // whether a space follows. Some real-world clients ship
     // `Re:hello` without the space; users still read it as a reply, so

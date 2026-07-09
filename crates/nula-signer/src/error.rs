@@ -9,10 +9,6 @@ use nula_core::nips::nip46::Method;
 use thiserror::Error;
 
 /// Errors raised by [`crate::NostrConnect`].
-#[allow(
-    clippy::error_impl_error,
-    reason = "`Error` is the conventional crate-level error name"
-)]
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {

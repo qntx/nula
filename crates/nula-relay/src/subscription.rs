@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 /// One frame on a [`SubscriptionHandle`].
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-#[allow(
+#[expect(
     clippy::large_enum_variant,
     reason = "the Event variant carries a full Event while the lifecycle \
               frames (EOSE/CLOSED/NEG-MSG/NEG-ERR) are small; Event is the \

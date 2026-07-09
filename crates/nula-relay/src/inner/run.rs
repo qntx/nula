@@ -364,10 +364,6 @@ async fn reissue_subscriptions(state: &mut ActorState) {
     }
 }
 
-#[allow(
-    clippy::too_many_arguments,
-    reason = "command fan-out keeps the actor body flat and readable"
-)]
 async fn handle_subscribe(
     ctx: &StaticCtx,
     state: &mut ActorState,

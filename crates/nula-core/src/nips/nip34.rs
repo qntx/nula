@@ -47,13 +47,9 @@
 //!
 //! [NIP-34]: https://github.com/nostr-protocol/nips/blob/master/34.md
 
-#![allow(
+#![expect(
     clippy::excessive_nesting,
     reason = "the per-tag match-on-name dispatch pattern in `from_event` keeps the wire-format-to-field mapping at the surface; flattening obscures it"
-)]
-#![allow(
-    clippy::too_many_lines,
-    reason = "NIP-34 fields fan out across 8 typed bundles; splitting renders / parsers further would create indirection without clarity"
 )]
 
 use thiserror::Error;

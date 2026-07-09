@@ -9,10 +9,6 @@ use nula_core::util::hex::HexError;
 use thiserror::Error;
 
 /// Errors raised by [`crate::Reconciliation`] and friends.
-#[allow(
-    clippy::error_impl_error,
-    reason = "`Error` is the conventional crate-level error name"
-)]
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {

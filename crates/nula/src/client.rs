@@ -64,7 +64,7 @@ pub(crate) struct InnerClient {
     /// [`refresher_interval`](nula_gossip::GossipOptions::refresher_interval);
     /// dropping it (with the last [`Client`] clone) aborts the loop.
     #[cfg(feature = "gossip")]
-    #[allow(
+    #[expect(
         dead_code,
         reason = "drop guard: the field is never read, its Drop aborts the refresher task"
     )]
@@ -129,7 +129,7 @@ impl Client {
     /// turned on this cannot happen; if you disabled those, use
     /// [`Self::builder`] and `?` instead.
     #[must_use]
-    #[allow(
+    #[expect(
         clippy::expect_used,
         reason = "infallible with the default feature set; documented panic path"
     )]
@@ -267,23 +267,14 @@ impl Client {
             .await?)
     }
 
-    /// Disconnect and forget a relay.
+    /// Disconnect and forget a relay, dropping any subscriptions it
+    /// still carries.
     ///
     /// # Errors
     ///
     /// - [`Error::Pool`] when the url is not in the pool.
     pub async fn remove_relay(&self, url: &RelayUrl) -> Result<(), Error> {
-        Ok(self.inner.pool.remove_relay(url, false).await?)
-    }
-
-    /// Force-remove a relay regardless of any lingering
-    /// subscriptions.
-    ///
-    /// # Errors
-    ///
-    /// See [`Self::remove_relay`].
-    pub async fn force_remove_relay(&self, url: &RelayUrl) -> Result<(), Error> {
-        Ok(self.inner.pool.remove_relay(url, true).await?)
+        Ok(self.inner.pool.remove_relay(url).await?)
     }
 
     /// Look up a relay by url. Returns a clone of the [`Relay`]
@@ -794,24 +785,7 @@ impl Client {
         let urls = self.inner.pool.relays().await;
         let mut output: Output<()> = Output::default();
         for url in urls.into_keys() {
-            match self.inner.pool.remove_relay(&url, false).await {
-                Ok(()) => {
-                    output.success.insert(url);
-                }
-                Err(e) => {
-                    output.failed.insert(url, e.to_string());
-                }
-            }
-        }
-        output
-    }
-
-    /// Force-remove every relay (ignores lingering subscriptions).
-    pub async fn force_remove_all_relays(&self) -> Output<()> {
-        let urls = self.inner.pool.relays().await;
-        let mut output: Output<()> = Output::default();
-        for url in urls.into_keys() {
-            match self.inner.pool.remove_relay(&url, true).await {
+            match self.inner.pool.remove_relay(&url).await {
                 Ok(()) => {
                     output.success.insert(url);
                 }

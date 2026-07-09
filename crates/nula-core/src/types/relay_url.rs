@@ -128,7 +128,7 @@ impl RelayUrl {
 
     /// Whether the host ends with `.onion`.
     #[must_use]
-    #[allow(
+    #[expect(
         clippy::case_sensitive_file_extension_comparisons,
         reason = "hostnames are ASCII-lowercased at construction time"
     )]

@@ -7,10 +7,6 @@
 use thiserror::Error;
 
 /// Errors raised by the [`crate::Client`] facade.
-#[allow(
-    clippy::error_impl_error,
-    reason = "`Error` is the conventional crate-level error name"
-)]
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {

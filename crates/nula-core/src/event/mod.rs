@@ -18,7 +18,7 @@
 
 pub mod builder;
 pub mod coordinate;
-#[allow(
+#[expect(
     clippy::module_inception,
     reason = "the inner `event` module exposes the `Event` struct; the outer module groups the event-related submodules"
 )]
@@ -219,7 +219,6 @@ mod tests {
 
     /// `JsonUtil` import keeps the trait visible inside the doc test below; the
     /// reference makes the import survive the unused-import lint.
-    #[allow(dead_code, reason = "import sanity check for crate::JsonUtil")]
     fn _imports() -> Option<String> {
         let kind: Kind = Kind::TEXT_NOTE;
         kind.try_to_json().ok()

@@ -92,8 +92,7 @@ use zeroize as _;
 // explicit `use` away inside its module — in particular, every `*Error`
 // stays under its module path with a descriptive prefix
 // (`nula_core::nip02::ContactListError`, `nula_core::signer::SignerError`,
-// …). The prefix matches the v0.1 convention and avoids the
-// `clippy::error_impl_error` warning while keeping the error names
+// …). The prefix matches the v0.1 convention and keeps the error names
 // disambiguated when callers `use nula_core::*Error`.
 // See `prelude` for the curated import-everything view.
 pub use self::boxed::{BoxFuture, BoxStream};

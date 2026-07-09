@@ -30,7 +30,7 @@
 //!
 //! [NIP-49]: https://github.com/nostr-protocol/nips/blob/master/49.md
 
-#![allow(
+#![expect(
     clippy::expect_used,
     clippy::unwrap_in_result,
     clippy::missing_panics_doc,
@@ -198,10 +198,6 @@ pub enum Nip49Error {
 /// across the stack would violate the principle that callers must
 /// reason explicitly about every place the ciphertext lives. Use
 /// [`Clone`] when you really need a second owned copy.
-#[allow(
-    missing_copy_implementations,
-    reason = "see doc comment: explicit Clone keeps callers honest about the secret's lifetime"
-)]
 #[derive(Clone, PartialEq, Eq)]
 pub struct EncryptedSecretKey {
     log_n: u8,

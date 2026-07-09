@@ -794,7 +794,7 @@ impl EventBuilder {
     /// post). The community coordinate stays at the *root* scope
     /// while `parent_post` lives at the *parent* scope.
     #[must_use]
-    #[allow(
+    #[expect(
         clippy::too_many_arguments,
         reason = "every argument maps directly to a NIP-72 §\"Nested replies\" tag column"
     )]

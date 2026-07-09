@@ -561,7 +561,7 @@ impl MerchantVerifyPayment {
 /// Errors raised when parsing a marketplace event.
 #[derive(Debug, Error)]
 #[non_exhaustive]
-#[allow(
+#[expect(
     variant_size_differences,
     reason = "the serde_json::Error source is already boxed to an 8-byte pointer (the smallest sound representation), but still trips the heuristic against the small UnexpectedKind variant — mirrors nip18::RepostError"
 )]

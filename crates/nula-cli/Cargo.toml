@@ -12,10 +12,13 @@ categories.workspace = true
 description = "Command-line interface for the nula Nostr workspace: keys, relay, event publish / fetch."
 readme = "README.md"
 
-# Single binary target.
+# Single binary target. `doc = false` avoids the rustdoc output
+# collision with the `nula` library crate (both would claim
+# `target/doc/nula/`); the CLI surface is documented via `--help`.
 [[bin]]
 name = "nula"
 path = "src/main.rs"
+doc = false
 
 [dependencies]
 nula-core           = { workspace = true }

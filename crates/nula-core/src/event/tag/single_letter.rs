@@ -18,7 +18,7 @@ use thiserror::Error;
 
 /// An ASCII letter `a`–`z` (case-folded). Combine with the case bit to obtain
 /// a [`SingleLetterTag`].
-#[allow(
+#[expect(
     missing_docs,
     reason = "26 self-evident variants, one per ASCII letter"
 )]

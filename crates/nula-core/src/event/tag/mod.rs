@@ -19,7 +19,7 @@
 pub mod kind;
 pub mod list;
 pub mod single_letter;
-#[allow(
+#[expect(
     clippy::module_inception,
     reason = "the inner `tag` module exposes the `Tag` struct; the outer module groups every tag-related submodule"
 )]

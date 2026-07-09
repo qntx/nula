@@ -7,6 +7,7 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -149,17 +150,9 @@ pub(crate) async fn handle_connection(
 
 type Sink = futures::stream::SplitSink<WebSocketStream<TcpStream>, WsMessage>;
 
-/// Outcome of [`handle_inbound_frame`]: whether the connection
-/// loop should keep going or terminate.
-use std::ops::ControlFlow;
-
 /// Handle one frame from the WebSocket stream. Extracted from the
 /// main `select!` body so the orchestration loop stays well below
 /// clippy's `cognitive_complexity` ceiling.
-#[allow(
-    clippy::too_many_arguments,
-    reason = "per-connection state fan-in keeps the orchestration loop flat"
-)]
 async fn handle_inbound_frame(
     ctx: &ConnectionContext,
     subscriptions: &mut HashMap<SubscriptionId, Vec<Filter>>,
@@ -257,10 +250,6 @@ async fn handle_inbound_frame(
 #[derive(Debug)]
 struct DispatchError;
 
-#[allow(
-    clippy::too_many_arguments,
-    reason = "per-connection state fan-in keeps dispatch flat"
-)]
 async fn dispatch(
     ctx: &ConnectionContext,
     subscriptions: &mut HashMap<SubscriptionId, Vec<Filter>>,

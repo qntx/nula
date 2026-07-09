@@ -159,10 +159,6 @@ impl FromIterator<Event> for Events {
 // Marker to satisfy `clippy::iter_not_returning_iterator` — the inner
 // iterator type already implements `FusedIterator`, but we restate it
 // here so downstream generic code can rely on the bound.
-#[allow(
-    dead_code,
-    reason = "marker assertion: `IntoIter` is fused; relied on by downstream generic code."
-)]
 const fn _assert_fused()
 where
     std::vec::IntoIter<Event>: FusedIterator,

@@ -219,7 +219,7 @@ pub fn derive_keys_advanced(
 //
 // Any new `expect` in this module needs to come with the same kind of
 // proof in a comment, enforced by code review.
-#[allow(
+#[expect(
     clippy::expect_used,
     clippy::unwrap_in_result,
     reason = "see module-level comment: every expect guards a statically proved length invariant"

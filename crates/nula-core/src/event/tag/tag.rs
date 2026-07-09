@@ -330,7 +330,7 @@ impl Tag {
 
     /// Return the number of values (always at least `1`).
     #[must_use]
-    #[allow(
+    #[expect(
         clippy::len_without_is_empty,
         reason = "Tag is non-empty by construction"
     )]

@@ -142,8 +142,7 @@ impl Gossip {
 
     /// Resolve the outbox-model relay set an outgoing `event` should be
     /// published to. See [`EventRoute`] for the possible outcomes and
-    /// the crate's [`event`](crate::event) module for the per-kind
-    /// routing table.
+    /// the per-kind routing table.
     ///
     /// [`EventRoute`]: crate::EventRoute
     pub async fn break_down_event(&self, event: &Event) -> crate::event::EventRoute {

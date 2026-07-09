@@ -12,10 +12,6 @@ use std::io;
 use thiserror::Error;
 
 /// Errors emitted by the redb backend.
-#[allow(
-    clippy::error_impl_error,
-    reason = "`Error` is the idiomatic crate-level error name (matches io::Error)"
-)]
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {

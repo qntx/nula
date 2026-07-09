@@ -6,7 +6,7 @@
 //! effect on the very next inbound `EVENT`.
 //!
 //! The HTTP transport, NIP-98 authorization, and request framing live
-//! in [`crate::server::relay`]; this module owns the state and the pure
+//! in `crate::server::relay`; this module owns the state and the pure
 //! [`ManagementState::handle_request`] dispatch (every method assumes
 //! the caller is an already-authorized admin).
 

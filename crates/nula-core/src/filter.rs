@@ -37,10 +37,9 @@ use crate::types::Timestamp;
 /// event against per-NIP runtime constraints that live outside the
 /// filter's NIP-01 fields.
 ///
-/// The defaults preserve the historical [`Filter::matches`] semantics:
-/// expired events ([NIP-40]) and events created in the future are
-/// considered to match. Toggle the flags off when a relay or client
-/// wants strict spec-conformant rejection.
+/// The defaults are permissive: expired events ([NIP-40]) and events
+/// created in the future are considered to match. Toggle the flags off
+/// when a relay or client wants strict spec-conformant rejection.
 ///
 /// To keep the matcher deterministic and unit-testable, no system clock
 /// is read implicitly. Callers wanting expiration / future-date checks
@@ -71,8 +70,8 @@ impl Default for MatchEventOptions {
 }
 
 impl MatchEventOptions {
-    /// Permissive defaults equivalent to the legacy `Filter::matches`
-    /// behaviour: no expiration check, no future-date check, no clock.
+    /// Permissive defaults: no expiration check, no future-date check,
+    /// no clock.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -779,21 +778,6 @@ impl Filter {
         }
         true
     }
-
-    /// Permissive matcher equivalent to `match_event(event,
-    /// MatchEventOptions::default())`.
-    ///
-    /// Kept for backwards compatibility with the v0.1.0-rc1 API. New
-    /// code SHOULD call [`Self::match_event`] directly so the
-    /// expiration / future-date intent is explicit at the call site.
-    #[must_use]
-    #[deprecated(
-        since = "0.1.0-rc2",
-        note = "use `Filter::match_event` with `MatchEventOptions`"
-    )]
-    pub fn matches(&self, event: &Event) -> bool {
-        self.match_event(event, MatchEventOptions::new())
-    }
 }
 
 /// Match an event's tags against a filter's `#<letter>` constraints.
@@ -1024,7 +1008,7 @@ where
         let values: Vec<String> = map.next_value()?;
         // NIP-01: '#e' and '#p' filter lists MUST contain exact 64-char
         // lowercase hex values. Reject any non-conforming entry up front
-        // so downstream Filter::matches never has to defend against
+        // so downstream Filter::match_event never has to defend against
         // malformed input.
         validate_hex_filter_values::<M>(letter, &values)?;
         filter
@@ -1534,13 +1518,5 @@ mod tests {
         let lenient =
             MatchEventOptions::strict(Timestamp::from_secs(1_700_000_500)).allow_expired(true);
         assert!(Filter::new().match_event(&expired_event, lenient));
-    }
-
-    #[test]
-    #[allow(deprecated, reason = "covers the backwards-compat shim")]
-    fn legacy_matches_method_still_works() {
-        let event = signed_event();
-        let f = Filter::new().author(event.pubkey);
-        assert!(f.matches(&event));
     }
 }

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// Unknown server-specific fields (`magnet`, `infohash`, `ipfs`, …) are
 /// preserved in [`BlobDescriptor::extra`] so they survive a round trip.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[allow(
+#[expect(
     clippy::derive_partial_eq_without_eq,
     reason = "the flattened `extra` map holds serde_json::Value, which is not Eq"
 )]

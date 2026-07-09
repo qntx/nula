@@ -10,10 +10,6 @@ use std::error::Error as StdError;
 use thiserror::Error;
 
 /// Errors emitted by any [`crate::NostrDatabase`] implementation.
-#[allow(
-    clippy::error_impl_error,
-    reason = "`Error` is the idiomatic crate-level error name (see std::io::Error, reqwest::Error)"
-)]
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {

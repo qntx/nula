@@ -182,16 +182,13 @@ impl RelayPool {
         Ok(true)
     }
 
-    /// Remove a relay from the pool.
-    ///
-    /// `force = true` evicts the relay regardless of any lingering
-    /// subscriptions. With `force = false` the relay is only removed
-    /// when nothing else references it.
+    /// Remove a relay from the pool, disconnecting its actor and
+    /// dropping any subscriptions it still carries.
     ///
     /// # Errors
     ///
     /// [`Error::RelayNotFound`] when the url is not in the pool.
-    pub async fn remove_relay(&self, url: &RelayUrl, _force: bool) -> Result<(), Error> {
+    pub async fn remove_relay(&self, url: &RelayUrl) -> Result<(), Error> {
         let mut relays = self.inner.relays.write().await;
         let Some(entry) = relays.remove(url) else {
             return Err(Error::RelayNotFound(url.clone()));

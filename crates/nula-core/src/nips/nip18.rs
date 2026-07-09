@@ -41,7 +41,7 @@ use crate::types::RelayUrl;
 /// 14 bytes whereas every other variant fits in two.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-#[allow(
+#[expect(
     variant_size_differences,
     reason = "Serialize variant is already boxed; its 8-byte pointer is the smallest sound representation against the 2-byte NotATextNote variant"
 )]

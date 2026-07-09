@@ -93,7 +93,7 @@ pub enum Token<'a> {
 /// makes forward progress and never errors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
-#[allow(
+#[expect(
     clippy::struct_excessive_bools,
     reason = "each toggle maps 1:1 to a distinct NIP affordance; collapsing them into a bitflags enum would obscure the doc-friendly per-field comments"
 )]
@@ -189,7 +189,7 @@ impl NostrParser {
     /// The returned iterator borrows from `text` and lives for as
     /// long as `text` does.
     #[must_use]
-    #[allow(
+    #[expect(
         clippy::unused_self,
         reason = "kept as a method so a future stateful parser variant can land without breaking callers"
     )]
@@ -374,12 +374,12 @@ impl<'a> NostrParserIter<'a> {
             && self.bytes.get(end - 1) == Some(&b')')
             && let Some(url_bytes) = self.bytes.get(start..end)
         {
-            #[allow(
+            #[expect(
                 clippy::naive_bytecount,
                 reason = "avoid pulling in `bytecount` for two scans of a tiny URL slice"
             )]
             let opens = url_bytes.iter().filter(|&&b| b == b'(').count();
-            #[allow(
+            #[expect(
                 clippy::naive_bytecount,
                 reason = "avoid pulling in `bytecount` for two scans of a tiny URL slice"
             )]

@@ -218,7 +218,7 @@ mod tests {
         // Bump the version prefix to an unsupported value. The first
         // byte is always present because `encode` writes it up front,
         // so the indexed write is bounds-safe.
-        #[allow(
+        #[expect(
             clippy::indexing_slicing,
             reason = "encode always emits a non-empty buffer; the first byte is the version prefix"
         )]
@@ -268,7 +268,7 @@ mod tests {
     fn decode_created_at_rejects_unknown_version() {
         let event = fixture();
         let mut bytes = encode(&event).expect("encode");
-        #[allow(
+        #[expect(
             clippy::indexing_slicing,
             reason = "encode always emits a non-empty buffer; the first byte is the version prefix"
         )]
@@ -350,7 +350,7 @@ mod tests {
             Error::EmptyPayload
         ));
         let mut bytes = encode(&fixture()).expect("encode");
-        #[allow(
+        #[expect(
             clippy::indexing_slicing,
             reason = "encode always emits a non-empty buffer; the first byte is the version prefix"
         )]

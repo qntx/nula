@@ -54,7 +54,7 @@
 // module scope: the only `panic!`s are local to `MessageKeys::*` const
 // fn accessors (where `?`/`expect` are not const-stable). Those
 // methods carry their own targeted `#[allow]`.
-#![allow(
+#![expect(
     clippy::expect_used,
     clippy::unwrap_in_result,
     reason = "see module-level comment above the attribute: every expect \
@@ -255,9 +255,8 @@ impl MessageKeys {
     /// always returns `Some`. The `panic!` is there because `?` and
     /// `expect` are not yet `const`-stable, and we want this accessor
     /// to be `const` for use inside other `const fn`.
-    #[allow(
+    #[expect(
         clippy::panic,
-        clippy::missing_panics_doc,
         reason = "panic guard for a const fn that operates on a fixed-size buffer; the # Panics doc explains the guarantee"
     )]
     const fn chacha_key(&self) -> &[u8; CHACHA_KEY_BYTES] {
@@ -272,9 +271,8 @@ impl MessageKeys {
     /// # Panics
     ///
     /// Statically unreachable for the same reason as [`Self::chacha_key`].
-    #[allow(
+    #[expect(
         clippy::panic,
-        clippy::missing_panics_doc,
         reason = "panic guard for a const fn that operates on a fixed-size buffer; the # Panics doc explains the guarantee"
     )]
     const fn chacha_nonce(&self) -> &[u8; CHACHA_NONCE_BYTES] {
@@ -528,7 +526,7 @@ fn pad(plaintext: &[u8]) -> Result<Vec<u8>, Nip44Error> {
     // `len <= MAX_PLAINTEXT_BYTES = 65_535` proven on the previous line,
     // and `MAX_PLAINTEXT_BYTES + 1 == u16::MAX + 1`. The cast cannot
     // truncate.
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         reason = "len <= 65535 is enforced two lines above"
     )]
@@ -740,7 +738,7 @@ mod tests {
         let mut bogus = vec![0x01_u8; MIN_PAYLOAD_BYTES];
         // Fill with non-zero so the length checks pass. The `i & 0xff`
         // mask makes the truncation cast lossless by construction.
-        #[allow(
+        #[expect(
             clippy::cast_possible_truncation,
             reason = "`i & 0xff` always fits in u8"
         )]

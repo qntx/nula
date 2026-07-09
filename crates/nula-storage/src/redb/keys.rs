@@ -2,7 +2,7 @@
 // constants known at compile time, but clippy still flags each
 // `out[..]` as "may panic". Suppress at the module level since the
 // pattern repeats everywhere.
-#![allow(
+#![expect(
     clippy::indexing_slicing,
     reason = "fixed-offset writes into pre-sized arrays; bounds are const-known"
 )]

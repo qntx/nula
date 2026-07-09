@@ -6,7 +6,7 @@
 //!    filter must serialise back to JSON that re-parses to the same
 //!    value (and the second serialisation must be byte-identical).
 //!
-//! 2. `Filter::matches` MUST NOT panic on any (filter, event) combo
+//! 2. `Filter::match_event` MUST NOT panic on any (filter, event) combo
 //!    \u2014 a relay or client matcher must always return a `bool`, never
 //!    overflow / index-OOB / underflow.
 

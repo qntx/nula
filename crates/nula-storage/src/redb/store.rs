@@ -15,10 +15,8 @@
 // already verified by the surrounding `if key.len() == … {}` guard.
 // Clippy still flags every such slice as "may panic"; opting out at the
 // module level keeps the index-decoding code readable.
-#![allow(
+#![expect(
     clippy::indexing_slicing,
-    clippy::cognitive_complexity,
-    clippy::too_many_lines,
     clippy::excessive_nesting,
     clippy::collapsible_if,
     reason = "index-decoding paths are slice-arithmetic-heavy by nature; bounds are checked by the surrounding length guards"

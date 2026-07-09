@@ -17,10 +17,6 @@ use thiserror::Error;
 use crate::transport as net;
 
 /// Errors raised by [`crate::Relay`].
-#[allow(
-    clippy::error_impl_error,
-    reason = "`Error` is the conventional crate-level error name (matches std::io::Error)"
-)]
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {

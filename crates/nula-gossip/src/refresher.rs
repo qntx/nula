@@ -42,7 +42,7 @@ impl RefresherHandle {
     /// Panics if `gossip.options().refresher_interval` is `None`;
     /// callers must check the option before invoking this helper.
     #[must_use]
-    #[allow(
+    #[expect(
         clippy::expect_used,
         reason = "refresher_interval is a builder-time invariant"
     )]

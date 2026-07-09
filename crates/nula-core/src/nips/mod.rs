@@ -10,8 +10,7 @@
 //!   [`UnsignedEvent`](crate::UnsignedEvent).
 //! - A module-local error enum prefixed with the NIP topic
 //!   (`ContactListError`, `PowError`, …) so importing several at once
-//!   stays unambiguous and side-steps the `clippy::error_impl_error`
-//!   lint.
+//!   stays unambiguous.
 //! - For NIPs that ride on top of other NIPs (NIP-17 on NIP-59, NIP-59
 //!   on NIP-44, NIP-46 on NIP-44), the dependency chain is encoded in
 //!   the Cargo `[features]` graph so disabling the leaf disables

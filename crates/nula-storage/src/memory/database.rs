@@ -73,7 +73,7 @@ impl MemoryDatabase {
         // RwLock poison only happens if a writer panicked mid-mutation.
         // The store can no longer guarantee consistent state at that
         // point, so propagating the panic is the only correct option.
-        #[allow(
+        #[expect(
             clippy::expect_used,
             reason = "poisoned MemoryStore RwLock means unrecoverable inconsistency; propagate as a panic"
         )]
@@ -85,7 +85,7 @@ impl MemoryDatabase {
     }
 
     fn write<R>(&self, f: impl FnOnce(&mut MemoryStore) -> R) -> R {
-        #[allow(
+        #[expect(
             clippy::expect_used,
             reason = "poisoned MemoryStore RwLock means unrecoverable inconsistency; propagate as a panic"
         )]

@@ -160,7 +160,6 @@ rc_buffer = "warn"
 rc_mutex = "warn"
 
 fallible_impl_from = "warn"
-error_impl_error = "warn"
 let_underscore_must_use = "warn"
 
 rest_pat_in_fully_bound_structs = "warn"

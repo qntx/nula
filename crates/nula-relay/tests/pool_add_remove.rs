@@ -47,10 +47,10 @@ async fn remove_relay_evicts_and_errors_on_missing() {
     pool.add_relay(relay.url().clone(), RelayCapabilities::default())
         .await
         .expect("add");
-    pool.remove_relay(relay.url(), false).await.expect("remove");
+    pool.remove_relay(relay.url()).await.expect("remove");
 
     let err = pool
-        .remove_relay(relay.url(), false)
+        .remove_relay(relay.url())
         .await
         .expect_err("second remove should fail");
     assert!(matches!(err, Error::RelayNotFound(_)));

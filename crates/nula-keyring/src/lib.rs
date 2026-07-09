@@ -25,10 +25,6 @@ use thiserror::Error;
 use tokio::task;
 
 /// Errors raised by [`Keyring`].
-#[allow(
-    clippy::error_impl_error,
-    reason = "`Error` is the conventional crate-level error name"
-)]
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {

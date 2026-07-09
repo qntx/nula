@@ -60,10 +60,6 @@ pub enum SecretKeyError {
 /// assert_eq!(sk, restored);
 /// ```
 #[derive(Clone, PartialEq, Eq)]
-#[allow(
-    missing_copy_implementations,
-    reason = "do not copy secret key material implicitly; clone explicitly"
-)]
 pub struct SecretKey(secp256k1::SecretKey);
 
 impl SecretKey {

@@ -42,7 +42,7 @@
 //!
 //! [NIP-90]: https://github.com/nostr-protocol/nips/blob/master/90.md
 
-#![allow(
+#![expect(
     clippy::excessive_nesting,
     reason = "the per-tag match-on-name dispatch pattern in `from_event` keeps the wire-format-to-field mapping at the surface; flattening obscures it"
 )]

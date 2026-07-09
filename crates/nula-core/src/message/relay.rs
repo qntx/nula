@@ -142,7 +142,7 @@ pub enum RelayMessageError {
 /// Messages sent from a relay to a client.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-#[allow(
+#[expect(
     clippy::large_enum_variant,
     reason = "EVENT inherently carries a full Event while the control variants \
               (OK/EOSE/CLOSED/NOTICE/AUTH) are small; boxing it would add \
