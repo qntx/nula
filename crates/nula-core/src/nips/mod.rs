@@ -27,6 +27,7 @@
 //! ## Social events
 //!
 //! - [`nip02`] — Follow list (`kind 3`).
+//! - [`nip03`] — `OpenTimestamps` attestations (`kind 1040`).
 //! - [`nip09`] — Event deletion requests (`kind 5`).
 //! - [`nip10`] — `e` / `p` tags inside text notes (threading).
 //! - [`nip14`] — `subject` tag for `kind: 1` text notes (threaded views).
@@ -42,6 +43,20 @@
 //!   synthesis.
 //! - [`nip38`] — User statuses (`kind 30315`, addressable by status
 //!   type such as `general` / `music`).
+//! - [`nip64`] — Chess games in PGN (`kind 64`).
+//!
+//! ## Discovery and trust
+//!
+//! - [`nip5a`] — Static websites (nsites): `kind 15128` root /
+//!   `kind 35128` named site manifests mapping paths to Blossom
+//!   blobs.
+//! - [`nip69`] — Peer-to-peer order events (`kind 38383`): a shared
+//!   cross-platform liquidity book for P2P bitcoin trades.
+//! - [`nip85`] — Trusted assertions (`kind 30382`–`30385`) plus the
+//!   `kind 10040` trusted-provider list.
+//! - [`nip87`] — Ecash mint discoverability: `kind 38172` (Cashu) /
+//!   `38173` (Fedimint) announcements and `kind 38000`
+//!   recommendations.
 //!
 //! ## DNS-bound identity
 //!
@@ -55,6 +70,9 @@
 //!
 //! - [`nip11`] — Relay information document (HTTP `application/nostr+json`).
 //! - [`nip42`] — Client-to-relay AUTH (`kind 22242`).
+//! - [`nip43`] — Relay access metadata and admission requests
+//!   (`kind 13534` membership list, `8000`/`8001` add/remove,
+//!   `28934`–`28936` join / invite / leave).
 //! - [`nip65`] — Relay list metadata (`kind 10002`).
 //! - [`nip70`] — Protected events (`["-"]` tag).
 //!
@@ -114,6 +132,7 @@
 
 pub mod nip01;
 pub mod nip02;
+pub mod nip03;
 #[cfg(feature = "nip04")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip04")))]
 pub mod nip04;
@@ -155,6 +174,7 @@ pub mod nip38;
 pub mod nip39;
 pub mod nip40;
 pub mod nip42;
+pub mod nip43;
 #[cfg(feature = "nip44")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip44")))]
 pub mod nip44;
@@ -180,6 +200,7 @@ pub mod nip58;
 #[cfg(feature = "nip59")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip59")))]
 pub mod nip59;
+pub mod nip5a;
 #[cfg(feature = "nip44")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nip44")))]
 pub mod nip60;
@@ -187,9 +208,11 @@ pub mod nip60;
 #[cfg_attr(docsrs, doc(cfg(feature = "nip44")))]
 pub mod nip61;
 pub mod nip62;
+pub mod nip64;
 pub mod nip65;
 pub mod nip66;
 pub mod nip68;
+pub mod nip69;
 pub mod nip70;
 pub mod nip71;
 pub mod nip72;
@@ -199,7 +222,9 @@ pub mod nip77;
 pub mod nip78;
 pub mod nip7d;
 pub mod nip84;
+pub mod nip85;
 pub mod nip86;
+pub mod nip87;
 pub mod nip88;
 pub mod nip89;
 pub mod nip90;

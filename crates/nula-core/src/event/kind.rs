@@ -315,6 +315,42 @@ impl Kind {
     pub const GIT_GRASP_LIST: Self = Self(10_317);
     /// Web bookmark (NIP-B0).
     pub const WEB_BOOKMARK: Self = Self(39_701);
+    /// `OpenTimestamps` attestation (NIP-03).
+    pub const OTS_ATTESTATION: Self = Self(1_040);
+    /// Relay member added (NIP-43).
+    pub const RELAY_MEMBER_ADDED: Self = Self(8_000);
+    /// Relay member removed (NIP-43).
+    pub const RELAY_MEMBER_REMOVED: Self = Self(8_001);
+    /// Relay membership list (NIP-43).
+    pub const RELAY_MEMBERSHIP_LIST: Self = Self(13_534);
+    /// Relay join request (NIP-43).
+    pub const RELAY_JOIN_REQUEST: Self = Self(28_934);
+    /// Relay invite (NIP-43).
+    pub const RELAY_INVITE: Self = Self(28_935);
+    /// Relay leave request (NIP-43).
+    pub const RELAY_LEAVE_REQUEST: Self = Self(28_936);
+    /// Root nsite manifest (NIP-5A).
+    pub const NSITE_ROOT: Self = Self(15_128);
+    /// Named nsite manifest (NIP-5A).
+    pub const NSITE_NAMED: Self = Self(35_128);
+    /// Peer-to-peer order (NIP-69).
+    pub const P2P_ORDER: Self = Self(38_383);
+    /// Trusted assertion about a user (NIP-85).
+    pub const USER_ASSERTION: Self = Self(30_382);
+    /// Trusted assertion about an event (NIP-85).
+    pub const EVENT_ASSERTION: Self = Self(30_383);
+    /// Trusted assertion about an addressable event (NIP-85).
+    pub const ADDRESS_ASSERTION: Self = Self(30_384);
+    /// Trusted assertion about a NIP-73 external identifier (NIP-85).
+    pub const EXTERNAL_ID_ASSERTION: Self = Self(30_385);
+    /// Trusted-assertion provider list (NIP-85).
+    pub const TRUSTED_PROVIDER_LIST: Self = Self(10_040);
+    /// Ecash mint recommendation (NIP-87).
+    pub const MINT_RECOMMENDATION: Self = Self(38_000);
+    /// Cashu mint announcement (NIP-87).
+    pub const CASHU_MINT_ANNOUNCEMENT: Self = Self(38_172);
+    /// Fedimint announcement (NIP-87).
+    pub const FEDIMINT_ANNOUNCEMENT: Self = Self(38_173);
 
     /// Construct a kind from a raw `u16`.
     #[must_use]
