@@ -26,7 +26,9 @@ use std::str::FromStr;
 
 use thiserror::Error;
 
-use crate::event::{Coordinate, Event, EventBuilder, Kind, Tag, TagKind};
+use crate::event::{
+    Alphabet, Coordinate, Event, EventBuilder, Kind, SingleLetterTag, Tag, TagKind,
+};
 use crate::types::RelayUrl;
 
 /// `kind: 38172` — Cashu mint announcement.
@@ -235,14 +237,16 @@ impl MintAnnouncement {
     }
 }
 
-/// A recommendation target: the announcement coordinate plus its
-/// relay hint (`a` tag).
+/// A recommendation target: the announcement coordinate, relay
+/// hint, and optional mint-type label (`a` tag).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecommendedMint {
     /// Coordinate of the `kind: 38172` / `kind: 38173` announcement.
     pub coordinate: Coordinate,
     /// Relay where the announcement can be found.
     pub relay_hint: Option<RelayUrl>,
+    /// Optional mint-type label (e.g. `"cashu"` / `"fedimint"`).
+    pub mint_type: Option<String>,
 }
 
 /// Typed bundle for a `kind: 38000` mint recommendation.
@@ -252,8 +256,9 @@ pub struct MintRecommendation {
     pub identifier: String,
     /// Announcement kind being recommended (`k` tag).
     pub recommended_kind: Kind,
-    /// Connection hints (`u` tags).
-    pub connections: Vec<String>,
+    /// Connection hints (`u` tags): the value plus an optional
+    /// mint-type label (e.g. `"cashu"` / `"fedimint"`).
+    pub connections: Vec<(String, Option<String>)>,
     /// Pointers to announcement events (`a` tags).
     pub mints: Vec<RecommendedMint>,
     /// Free-form review mirrored from `.content`.
@@ -298,7 +303,11 @@ impl MintRecommendation {
             .tags
             .iter()
             .filter(|tag| tag.name() == "u")
-            .filter_map(|tag| tag.content().map(str::to_owned))
+            .filter_map(|tag| {
+                let value = tag.content()?.to_owned();
+                let mint_type = tag.get(2).map(str::to_owned);
+                Some((value, mint_type))
+            })
             .collect();
         let mints = event
             .tags
@@ -307,9 +316,11 @@ impl MintRecommendation {
             .filter_map(|tag| {
                 let coordinate = Coordinate::parse(tag.content()?).ok()?;
                 let relay_hint = tag.get(2).and_then(|raw| RelayUrl::parse(raw).ok());
+                let mint_type = tag.get(3).map(str::to_owned);
                 Some(RecommendedMint {
                     coordinate,
                     relay_hint,
+                    mint_type,
                 })
             })
             .collect();
@@ -355,14 +366,23 @@ impl EventBuilder {
             .tag(Tag::d(recommendation.identifier.clone()))
             .tag(Tag::k(recommendation.recommended_kind));
         let u_head = TagKind::from_wire("u");
-        for connection in &recommendation.connections {
-            builder = builder.tag(Tag::with(&u_head, [connection.clone()]));
+        for (connection, mint_type) in &recommendation.connections {
+            let mut u_args = vec![connection.clone()];
+            if let Some(label) = mint_type {
+                u_args.push(label.clone());
+            }
+            builder = builder.tag(Tag::with(&u_head, u_args));
         }
         for mint in &recommendation.mints {
-            builder = builder.tag(mint.relay_hint.as_ref().map_or_else(
-                || Tag::a(&mint.coordinate),
-                |relay| Tag::a_with_relay(&mint.coordinate, relay),
-            ));
+            let a_head = TagKind::single_letter(SingleLetterTag::lowercase(Alphabet::A));
+            let mut a_args = vec![mint.coordinate.to_wire()];
+            if let Some(relay) = &mint.relay_hint {
+                a_args.push(relay.as_str().to_owned());
+            }
+            if let Some(label) = &mint.mint_type {
+                a_args.push(label.clone());
+            }
+            builder = builder.tag(Tag::with(&a_head, a_args));
         }
         builder
     }
@@ -437,10 +457,17 @@ mod tests {
             Coordinate::parse(format!("38172:{}:mint-d-id", mint_pubkey().to_hex())).unwrap();
         let mut recommendation = MintRecommendation::new(MintKind::Cashu, "mint-d-id");
         recommendation.review = "I trust this mint with my life".to_owned();
-        recommendation.connections = vec!["https://cashu.example.com".to_owned()];
+        recommendation.connections = vec![
+            (
+                "https://cashu.example.com".to_owned(),
+                Some("cashu".to_owned()),
+            ),
+            ("fed11abc".to_owned(), Some("fedimint".to_owned())),
+        ];
         recommendation.mints = vec![RecommendedMint {
             coordinate,
             relay_hint: Some(RelayUrl::parse("wss://relay1.example/").unwrap()),
+            mint_type: Some("cashu".to_owned()),
         }];
         let event = EventBuilder::mint_recommendation(&recommendation)
             .sign_with_keys(&keys())
@@ -448,6 +475,24 @@ mod tests {
         let parsed = MintRecommendation::from_event(&event).unwrap();
         assert_eq!(parsed, recommendation);
         assert_eq!(parsed.recommended_kind, KIND_CASHU_MINT);
+    }
+
+    #[test]
+    fn recommendation_without_optional_labels_round_trip() {
+        let coordinate =
+            Coordinate::parse(format!("38172:{}:mint-d-id", mint_pubkey().to_hex())).unwrap();
+        let mut recommendation = MintRecommendation::new(MintKind::Cashu, "mint-d-id");
+        recommendation.connections = vec![("https://cashu.example.com".to_owned(), None)];
+        recommendation.mints = vec![RecommendedMint {
+            coordinate,
+            relay_hint: None,
+            mint_type: None,
+        }];
+        let event = EventBuilder::mint_recommendation(&recommendation)
+            .sign_with_keys(&keys())
+            .unwrap();
+        let parsed = MintRecommendation::from_event(&event).unwrap();
+        assert_eq!(parsed, recommendation);
     }
 
     #[test]
